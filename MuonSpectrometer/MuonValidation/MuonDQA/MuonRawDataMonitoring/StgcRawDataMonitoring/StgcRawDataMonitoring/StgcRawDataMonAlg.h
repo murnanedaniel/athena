@@ -2,14 +2,15 @@
   Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
 */
 
-///////////////////////////////////////////////////////////////////////////////////////////
-// Package : sTGCRawDataMonitoring
-// Author: P. D. Kennedy
-// MMAuthor:  M. Biglietti, E. Rossi (Roma Tre)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Package : sTGCRawDataMonAlg
+// Author: Sebastian Fuenzalida Garrido
+// Local supervisor: Edson Carquin Lopez
+// Technical supervisor: Gerardo Vasquez
 //
 // DESCRIPTION:
-// Subject: sTGC-->Offline Muon Data Quality
-///////////////////////////////////////////////////////////////////////////////////////////
+// Subject: sTGC --> sTGC raw data monitoring
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #ifndef StgcRawDataMonAlg_H
 #define StgcRawDataMonAlg_H
@@ -19,8 +20,8 @@
 #include "AthenaMonitoringKernel/Monitored.h"
 #include "GaudiKernel/ServiceHandle.h"
 #include "GaudiKernel/ToolHandle.h" 
-//Helper Includes
 
+//Helper Includes
 #include "MuonAnalysisInterfaces/IMuonSelectionTool.h"
 #include "MuonPrepRawData/MuonPrepDataContainer.h"
 #include "MuonPrepRawData/sTgcPrepDataCollection.h"
@@ -34,19 +35,16 @@
 #include "StoreGate/ReadHandleKey.h"
 
 //stl includes                                                                                 
-
 #include <string>
 
-namespace Muon {
-class sTgcPrepData;
+namespace Muon 
+{
+  class sTgcPrepData;
 }
 
 namespace GeometricSectors
 {
   static const std::vector<std::string> sTGC_Side = {"CSide", "ASide"}; 
-  //static const std::array<std::string,2> sTGC_Side = {"CSide", "ASide"};
-  //static const std::array<std::string,2> sTGC_Sector = {"S", "L"};
-  //static const std::array<std::string,2> EtaSector = {"1","2"};
 }
 
 namespace Histograms
@@ -66,12 +64,12 @@ namespace Histograms
 }
 
 
-class StgcRawDataMonAlg: public AthMonitorAlgorithm {
+class StgcRawDataMonAlg: public AthMonitorAlgorithm 
+{
  public:
-
+  
   StgcRawDataMonAlg( const std::string& name, ISvcLocator* pSvcLocator );
-
-  //  virtual ~MMRawDataMonAlg();
+  
   virtual ~StgcRawDataMonAlg()=default;
   virtual StatusCode initialize() override;
   virtual StatusCode fillHistograms(const EventContext& ctx) const override;
@@ -84,16 +82,10 @@ class StgcRawDataMonAlg: public AthMonitorAlgorithm {
   SG::ReadCondHandleKey<MuonGM::MuonDetectorManager> m_DetectorManagerKey {this, "DetectorManagerKey",
       "MuonDetectorManager","Key of input MuonDetectorManager condition data"};
  
-  //virtual StatusCode  fillsTGCOverviewVects(const Muon::sTgcPrepData*, sTGCOverviewHistogramStruct& vects) const;
-  
-  //virtual void  fillsTGCOverviewHistograms(const sTGCOverviewHistogramStruct& vects,const int lb) const;
   virtual void fillsTGCOverviewHistograms(const std::vector<const Muon::sTgcPrepData*> &prd, const Muon::sTgcPrepData*) const;
   
-  //virtual StatusCode  fillsTGCSummaryVects( const Muon::sTgcPrepData*, sTGCSummaryHistogramStruct (&vects)[2][2][8][2][2][4]) const; //[side][sector][stationPhi][stationEta][multiplet][gas_gap]
   virtual StatusCode fillsTGCHistograms(const Muon::sTgcPrepData*) const;                                      
-  virtual void fillsTGCSummaryHistograms(const Muon::sTgcPrepData*, Histograms::sTGCSummaryHistogramStruct (&vects)[2][2][4]) const; //[side][stationPhi][stationEta][multiplet][gas_gap]
-
-  //void clusterFromTrack(const xAOD::TrackParticleContainer*, const int lb, const Muon::sTgcPrepData*) const;
+  virtual void fillsTGCSummaryHistograms(const Muon::sTgcPrepData*, Histograms::sTGCSummaryHistogramStruct (&vects)[2][2][4]) const; //[side][multiplet][gas_gap]
   
   int get_PCB_from_channel(const int channel) const;
   int get_sectorPhi_from_stationPhi_stName(const int stationPhi, const std::string& stName) const;
@@ -117,6 +109,5 @@ class StgcRawDataMonAlg: public AthMonitorAlgorithm {
   Gaudi::Property<bool> m_doSTGCESD{this,"DoSTGCESD",true};
   Gaudi::Property<bool> m_do_sTgc_overview{this,"do_sTgc_overview",true};
   Gaudi::Property<bool> m_do_stereoCorrection{this,"do_stereoCorrection",false};
-   
 };    
 #endif
