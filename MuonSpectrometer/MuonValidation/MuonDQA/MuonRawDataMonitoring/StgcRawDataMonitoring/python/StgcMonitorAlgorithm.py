@@ -47,6 +47,8 @@ def StgcMonitoringConfig(inputFlags):
     sTGCGroup.defineHistogram('time_all;Time', type = 'TH1F', title = 'Time;Time[ns];Number of Entries', path = 'Overview', xbins = 5, xmin = 0., xmax = 5.) 
 
     side = ["CSide", "ASide"]
+    stationPhiMax = 16
+    stationEtaMax = 3
 
     for iside in side:
         sTGC_SideGroup = "sTGC_sideGroup{0}".format(iside)
@@ -56,34 +58,34 @@ def StgcMonitoringConfig(inputFlags):
                 title_chargePad_phi_vs_eta = f'Charge (pad): {iside} Multiplet {multip} Gas gap {gasgap}; stationPhi; stationEta; Total charge [fC]'
                 var_chargePad_phi_vs_eta = f'sector_{iside}_phi_multiplet_{multip}_gasgap_{gasgap}, sector_{iside}_eta_multiplet_{multip}_gasgap_{gasgap};ChargePad_vs_phi_vs_eta_{iside}_multiplet_{multip}_gasgap_{gasgap}'
                 if (f'{iside}' == 'ASide'):
-                    stgcSideGroup.defineHistogram(var_chargePad_phi_vs_eta, type = 'TH2F', title = title_chargePad_phi_vs_eta, path = 'Summary', xbins = 8, xmin = 1., xmax = 9., ybins = 3, ymin = 1., ymax = 4., opt = 'kAlwaysCreate', weight = f'charge_pad_{iside}_multiplet_{multip}_gasgap_{gasgap}')
+                    stgcSideGroup.defineHistogram(var_chargePad_phi_vs_eta, type = 'TH2F', title = title_chargePad_phi_vs_eta, path = 'Summary', xbins = stationPhiMax, xmin = 1., xmax = float(stationPhiMax + 1), ybins = stationEtaMax, ymin = 1., ymax = float(stationEtaMax + 1), opt = 'kAlwaysCreate', weight = f'charge_pad_{iside}_multiplet_{multip}_gasgap_{gasgap}')
                 else:
-                    stgcSideGroup.defineHistogram(var_chargePad_phi_vs_eta, type = 'TH2F', title = title_chargePad_phi_vs_eta, path = 'Summary', xbins = 8, xmin = 1., xmax = 9., ybins = 3, ymin = -4., ymax = -1., opt = 'kAlwaysCreate', weight = f'charge_pad_{iside}_multiplet_{multip}_gasgap_{gasgap}')
+                    stgcSideGroup.defineHistogram(var_chargePad_phi_vs_eta, type = 'TH2F', title = title_chargePad_phi_vs_eta, path = 'Summary', xbins = stationPhiMax, xmin = 1., xmax = float(stationPhiMax + 1), ybins = stationEtaMax, ymin = -float(stationEtaMax + 1), ymax = -1., opt = 'kAlwaysCreate', weight = f'charge_pad_{iside}_multiplet_{multip}_gasgap_{gasgap}')
                 
                 title_chargeStrip_phi_vs_eta = f'Charge (strip): {iside} Multiplet {multip} Gas gap {gasgap}; stationPhi; stationEta; Total charge [fC]'
                 var_chargeStrip_phi_vs_eta = f'sector_{iside}_phi_multiplet_{multip}_gasgap_{gasgap}, sector_{iside}_eta_multiplet_{multip}_gasgap_{gasgap};ChargeStrip_vs_phi_vs_eta_{iside}_multiplet_{multip}_gasgap_{gasgap}'
                
                 if (f'{iside}' == 'ASide'):
-                    stgcSideGroup.defineHistogram(var_chargeStrip_phi_vs_eta, type = 'TH2F', title = title_chargeStrip_phi_vs_eta, path = 'Summary', xbins = 8, xmin = 1., xmax = 9., ybins = 3, ymin = 1., ymax = 4., opt = 'kAlwaysCreate', weight = f'charge_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}')
+                    stgcSideGroup.defineHistogram(var_chargeStrip_phi_vs_eta, type = 'TH2F', title = title_chargeStrip_phi_vs_eta, path = 'Summary', xbins = stationPhiMax, xmin = 1., xmax = float(stationPhiMax + 1), ybins = stationEtaMax, ymin = 1., ymax = float(stationEtaMax + 1), opt = 'kAlwaysCreate', weight = f'charge_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}')
                 else:
-                    stgcSideGroup.defineHistogram(var_chargeStrip_phi_vs_eta, type = 'TH2F', title = title_chargeStrip_phi_vs_eta, path = 'Summary', xbins = 8, xmin = 1., xmax = 9., ybins = 3, ymin = -4., ymax = -1., opt = 'kAlwaysCreate', weight = f'charge_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}')
+                    stgcSideGroup.defineHistogram(var_chargeStrip_phi_vs_eta, type = 'TH2F', title = title_chargeStrip_phi_vs_eta, path = 'Summary', xbins = stationPhiMax, xmin = 1., xmax = float(stationPhiMax + 1), ybins = stationEtaMax, ymin = -float(stationEtaMax + 1), ymax = -1., opt = 'kAlwaysCreate', weight = f'charge_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}')
 
                 title_chargeWire_phi_vs_eta = f'Charge (wire): {iside} Multiplet {multip} Gas gap {gasgap}; stationPhi; stationEta; Total charge [fC]'
                 var_chargeWire_phi_vs_eta = f'sector_{iside}_phi_multiplet_{multip}_gasgap_{gasgap}, sector_{iside}_eta_multiplet_{multip}_gasgap_{gasgap};ChargeWire_vs_phi_vs_eta_{iside}_multiplet_{multip}_gasgap_{gasgap}'
  
                 if (f'{iside}' == 'ASide'):
-                    stgcSideGroup.defineHistogram(var_chargeWire_phi_vs_eta, type = 'TH2F', title = title_chargeWire_phi_vs_eta, path = 'Summary', xbins = 8, xmin = 1., xmax = 9., ybins = 3, ymin = 1., ymax = 4., opt = 'kAlwaysCreate', weight = f'charge_wire_{iside}_multiplet_{multip}_gasgap_{gasgap}')
+                    stgcSideGroup.defineHistogram(var_chargeWire_phi_vs_eta, type = 'TH2F', title = title_chargeWire_phi_vs_eta, path = 'Summary', xbins = stationPhiMax, xmin = 1., xmax = float(stationPhiMax + 1), ybins = stationEtaMax, ymin = 1., ymax = float(stationEtaMax + 1), opt = 'kAlwaysCreate', weight = f'charge_wire_{iside}_multiplet_{multip}_gasgap_{gasgap}')
                 else:
-                    stgcSideGroup.defineHistogram(var_chargeWire_phi_vs_eta, type = 'TH2F', title = title_chargeWire_phi_vs_eta, path = 'Summary', xbins = 8, xmin = 1., xmax = 9., ybins = 3, ymin = -4., ymax = -1., opt = 'kAlwaysCreate', weight = f'charge_wire_{iside}_multiplet_{multip}_gasgap_{gasgap}')
+                    stgcSideGroup.defineHistogram(var_chargeWire_phi_vs_eta, type = 'TH2F', title = title_chargeWire_phi_vs_eta, path = 'Summary', xbins = stationPhiMax, xmin = 1., xmax = float(stationPhiMax + 1), ybins = stationEtaMax, ymin = -float(stationEtaMax + 1), ymax = -1., opt = 'kAlwaysCreate', weight = f'charge_wire_{iside}_multiplet_{multip}_gasgap_{gasgap}')
 
-                for phiStation in range(1, 9):
+                for phiStation in range(1, stationPhiMax + 1):
                     title_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi = f'Station eta vs strip number vs charge (strip): {iside} Multiplet {multip} Gas gap {gasgap} stationPhi {phiStation}; stationEta; Strip number; Total charge [fC]'
                     var_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi = f'sector_{iside}_eta_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation}, stripNumber_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation};StationEta_vs_stripNumber_vs_chargePad_{iside}_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation}'
                     
                     if (f'{iside}' == 'ASide'):
-                        stgcSideGroup.defineHistogram(var_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi, type = 'TH2F', title = title_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi, path = 'Summary', xbins = 3, xmin = 1., xmax = 4., ybins = 400, ymin = 0., ymax = 400., opt = 'kAlwaysCreate', weight = f'charge_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation}')
+                        stgcSideGroup.defineHistogram(var_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi, type = 'TH2F', title = title_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi, path = 'Summary', xbins = stationEtaMax, xmin = 1., xmax = float(stationEtaMax + 1), ybins = 400, ymin = 0., ymax = 400., opt = 'kAlwaysCreate', weight = f'charge_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation}')
                     else:
-                        stgcSideGroup.defineHistogram(var_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi, type = 'TH2F', title = title_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi, path = 'Summary', xbins = 3, xmin = -4., xmax = -1., ybins = 400, ymin = 0., ymax = 400., opt = 'kAlwaysCreate', weight = f'charge_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation}')
+                        stgcSideGroup.defineHistogram(var_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi, type = 'TH2F', title = title_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi, path = 'Summary', xbins = stationEtaMax, xmin = -float(stationEtaMax + 1), xmax = -1., ybins = 400, ymin = 0., ymax = 400., opt = 'kAlwaysCreate', weight = f'charge_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation}')
 
     acc = helper.result()
     result.merge(acc)
@@ -94,8 +96,10 @@ if __name__=='__main__':
     Configurable.configurableRun3Behavior = 1
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
             
-    ConfigFlags.Input.Files = ['/eos/home-s/sfuenzal/NSWSoftware_0804/MuonSpectrometerPackages_0806/InputData/mc21/ESD.29004502._000074.pool.root.1'
-    ]
+    ConfigFlags.Input.Files = []
+
+    for i in range(50, 61):
+        ConfigFlags.Input.Files += [f'/eos/home-s/sfuenzal/NSWSoftware_0804/InputSamples_sTGC/mc21/ESD.29004502._0000{i}.pool.root.1'] 
     
     ConfigFlags.Output.HISTFileName = 'monitor_sTGC.root'
 
@@ -115,6 +119,6 @@ if __name__=='__main__':
     cfg.merge(sTGCMonitorAcc)           
     
     #number of events selected in the ESD
-    cfg.run(100)
+    cfg.run(10000)
 
 
