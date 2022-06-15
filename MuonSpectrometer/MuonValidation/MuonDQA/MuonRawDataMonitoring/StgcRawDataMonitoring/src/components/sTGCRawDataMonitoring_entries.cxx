@@ -1,8 +1,8 @@
-/*                                                                                                           
-Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration                                     
+/*                                                                                                     
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration                         
 */
 
 #include "StgcRawDataMonitoring/StgcRawDataMonAlg.h"
 
-DECLARE_COMPONENT(StgcRawDataMonAlg)
+DECLARE_COMPONENT(sTgcRawDataMonAlg)
  

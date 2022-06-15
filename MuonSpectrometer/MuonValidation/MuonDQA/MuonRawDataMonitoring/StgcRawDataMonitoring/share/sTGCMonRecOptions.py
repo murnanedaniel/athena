@@ -1,4 +1,6 @@
-###### Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration #######
+#
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration #
+#
 
 from RecExConfig.RecFlags import rec
 from RecExConfig.RecAlgsFlags import recAlgs
@@ -13,6 +15,7 @@ rec.doAOD=False
 rec.doDPD=False
 rec.doESD=False
 doTAG=False
+
 # switch off as much as possible
 rec.doTruth=False
 rec.doRecoTiming=False
@@ -62,7 +65,6 @@ rec.AutoConfiguration = [ "everything" ]
 
 from AthenaCommon.DetFlags import DetFlags      
 DetFlags.detdescr.all_setOn()
-
 
 include("RecExCommon/RecExCommon_topOptions.py")
 

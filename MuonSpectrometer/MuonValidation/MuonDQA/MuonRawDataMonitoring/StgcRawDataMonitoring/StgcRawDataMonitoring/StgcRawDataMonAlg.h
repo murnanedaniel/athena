@@ -1,19 +1,19 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Package : sTGCRawDataMonAlg
+// Package : sTgcRawDataMonAlg
 // Author: Sebastian Fuenzalida Garrido
 // Local supervisor: Edson Carquin Lopez
 // Technical supervisor: Gerardo Vasquez
 //
 // DESCRIPTION:
-// Subject: sTGC --> sTGC raw data monitoring
+// Subject: sTgc --> sTgc raw data monitoring
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifndef StgcRawDataMonAlg_H
-#define StgcRawDataMonAlg_H
+#ifndef sTgcRawDataMonAlg_H
+#define sTgcRawDataMonAlg_H
 
 //Core Include
 #include "AthenaMonitoring/AthMonitorAlgorithm.h"
@@ -44,13 +44,13 @@ namespace Muon
 
 namespace GeometricSectors
 {
-  static const std::vector<std::string> sTGC_Side   = {"CSide", "ASide"};
-  static const std::vector<std::string> sTGC_Sector = {"STS"  , "STL"};
+  static const std::vector<std::string> sTgc_Side   = {"CSide", "ASide"};
+  static const std::vector<std::string> sTgc_Sector = {"STS"  , "STL"};
 }
 
 namespace Histograms
 {
-  struct sTGCSummaryHistogramStruct 
+  struct sTgcSummaryHistogramStruct 
   {
     std::vector<int> strip_charges_vec;
     
@@ -65,13 +65,13 @@ namespace Histograms
 }
 
 
-class StgcRawDataMonAlg: public AthMonitorAlgorithm 
+class sTgcRawDataMonAlg: public AthMonitorAlgorithm 
 {
  public:
   
-  StgcRawDataMonAlg( const std::string& name, ISvcLocator* pSvcLocator );
+  sTgcRawDataMonAlg(const std::string& name, ISvcLocator* pSvcLocator);
   
-  virtual ~StgcRawDataMonAlg()=default;
+  virtual ~sTgcRawDataMonAlg()=default;
   virtual StatusCode initialize() override;
   virtual StatusCode fillHistograms(const EventContext& ctx) const override;
   
@@ -83,17 +83,18 @@ class StgcRawDataMonAlg: public AthMonitorAlgorithm
   SG::ReadCondHandleKey<MuonGM::MuonDetectorManager> m_DetectorManagerKey {this, "DetectorManagerKey",
       "MuonDetectorManager","Key of input MuonDetectorManager condition data"};
  
-  virtual void fillsTGCOverviewHistograms(const std::vector<const Muon::sTgcPrepData*> &prd, const Muon::sTgcPrepData*) const;
+  virtual void fillsTgcOverviewHistograms(const std::vector<const Muon::sTgcPrepData*> &prd, const Muon::sTgcPrepData*) const;
   
-  virtual StatusCode fillsTGCHistograms(const Muon::sTgcPrepData*) const;                                      
-  virtual void fillsTGCSummaryHistograms(const Muon::sTgcPrepData*, Histograms::sTGCSummaryHistogramStruct (&vects)[2][2][4]) const; //[side][multiplet][gas_gap]
+  virtual StatusCode fillsTgcHistograms(const Muon::sTgcPrepData*) const;                                      
+  virtual void fillsTgcSummaryHistograms(const Muon::sTgcPrepData*, Histograms::sTgcSummaryHistogramStruct (&vects)[2][2][4]) const; //[side][multiplet][gas_gap]
 
   int get_sectorPhi_from_stationPhi_stName(const int stationPhi, const std::string& stName) const;
 
-  SG::ReadHandleKey<Muon::sTgcPrepDataContainer> m_sTGCContainerKey{this,"sTGCPrepDataContainerName","STGC_Measurements"};
-  SG::ReadHandleKey<xAOD::MuonContainer> m_muonKey{this,"MuonKey","Muons","muons"};
+  SG::ReadHandleKey<Muon::sTgcPrepDataContainer> m_sTgcContainerKey{this,"sTGCPrepDataContainerName", "STGC_Measurements"};
+  
+  SG::ReadHandleKey<xAOD::MuonContainer> m_muonKey{this, "MuonKey", "Muons", "muons"};
 
-  Gaudi::Property<bool> m_doSTGCESD{this,"DoSTGCESD",true};
-  Gaudi::Property<bool> m_do_sTgc_overview{this,"do_sTgc_overview",true};
+  Gaudi::Property<bool> m_dosTgcESD{this,"dosTgcESD",true};
+  Gaudi::Property<bool> m_dosTgcOverview{this,"dosTgcOverview",true};
 };    
 #endif

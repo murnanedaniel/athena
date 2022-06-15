@@ -1,16 +1,17 @@
 #
-#Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration #
 #
 
 from AthenaConfiguration.ComponentFactory import CompFactory
 
-def StgcMonitoringConfig(inputFlags):
+def sTgcMonitoringConfig(inputFlags):
     '''Function to configures some algorithms in the monitoring system.'''
     ### STEP 1 ###
     # Define one top-level monitoring algorithm. The new configuration 
     # framework uses a component accumulator.
     from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
     result = ComponentAccumulator()
+    
     # Make sure muon geometry is configured
     from MuonConfig.MuonGeometryConfig import MuonGeoModelCfg
     result.merge(MuonGeoModelCfg(inputFlags))
@@ -22,37 +23,35 @@ def StgcMonitoringConfig(inputFlags):
     ServiceMgr.Dump = False
 
     from AthenaMonitoring import AthMonitorCfgHelper
-    helper = AthMonitorCfgHelper(inputFlags,'StgcAthMonitorCfg')
+    helper = AthMonitorCfgHelper(inputFlags, 'StgcAthMonitorCfg')
 
     # Adding an algorithm to the helper.
-
-    sTGCMonAlg = helper.addAlgorithm(CompFactory.StgcRawDataMonAlg,'sTGCMonAlg')
-    sTGCMonAlg.DoSTGCESD = True  
+    sTgcMonAlg = helper.addAlgorithm(CompFactory.sTgcRawDataMonAlg,'sTgcMonAlg')
+    sTgcMonAlg.dosTgcESD = True  
 
     # Add a generic monitoring tool (a "group" in old language). The returned      
     # object here is the standard GenericMonitoringTool. 
 
-    sTGCGroup = helper.addGroup(sTGCMonAlg,'sTGCMonitor','Muon/MuonRawDataMonitoring/sTGC/')
+    sTgcGroup = helper.addGroup(sTgcMonAlg,'sTgcMonitor','Muon/MuonRawDataMonitoring/sTgc/')
 
     # Configure histograms
     # Overview histograms
-    
-    sTGCGroup.defineHistogram('strip_times;Strip_Time', type = 'TH1F', title = 'Strip Time; Strip Time [ns];Number of Entries', path = 'Overview', xbins = 20, xmin = 0., xmax = 100.) 
-    sTGCGroup.defineHistogram('strip_charges;Strip_Charge', type = 'TH1F', title = 'Strip Charge; Strip Charge [fC];Number of Entries', path = 'Overview', xbins = 200, xmin = 0., xmax = 1000.) 
-    sTGCGroup.defineHistogram('strip_number;Strip_Number', type = 'TH1F', title = 'Strip Number; Strip number;Number of Entries', path = 'Overview', xbins = 20, xmin = 0., xmax = 400.) 
-    sTGCGroup.defineHistogram('charge_all;Charge', type = 'TH1F', title = 'Charge;Charge[fC];Number of Entries', path = 'Overview', xbins = 100, xmin = 0., xmax = 1000.) 
-    sTGCGroup.defineHistogram('x_mon,y_mon;Posx_vs_Posy', type = 'TH2F', title="Posx vs Posy;sTGC-GlobalX [mm];sTGC-GlobalY [mm];", path = 'Overview', xbins = 500, xmin = -5000, xmax = 5000., ybins = 500, ymin = -5000., ymax = 5000.) 
-    sTGCGroup.defineHistogram('R_mon,z_mon;R_vs_Posz', type = 'TH2F', title = "R vs Posz; sTGC-GlobalR [mm]; sTGC-GlobalZ [mm];", path = 'Overview', xbins = 500, xmin = 2500., xmax = 5000., ybins = 1000, ymin = 6800 ,ymax = 8000) 
-    sTGCGroup.defineHistogram('numberofstrips_percluster;Number_of_strips_percluster', type = 'TH1F', title = 'Number of strips per cluster;Number of strips;Number of Entries', path = 'Overview', xbins = 12, xmin = 0., xmax = 12.) 
-    sTGCGroup.defineHistogram('time_all;Time', type = 'TH1F', title = 'Time;Time[ns];Number of Entries', path = 'Overview', xbins = 5, xmin = 0., xmax = 5.) 
+    sTgcGroup.defineHistogram('strip_times;Strip_Time', type = 'TH1F', title = 'Strip Time; Strip Time [ns];Number of Entries', path = 'Overview', xbins = 20, xmin = 0., xmax = 100.) 
+    sTgcGroup.defineHistogram('strip_charges;Strip_Charge', type = 'TH1F', title = 'Strip Charge; Strip Charge [fC];Number of Entries', path = 'Overview', xbins = 200, xmin = 0., xmax = 1000.) 
+    sTgcGroup.defineHistogram('strip_number;Strip_Number', type = 'TH1F', title = 'Strip Number; Strip number;Number of Entries', path = 'Overview', xbins = 20, xmin = 0., xmax = 400.) 
+    sTgcGroup.defineHistogram('charge_all;Charge', type = 'TH1F', title = 'Charge;Charge[fC];Number of Entries', path = 'Overview', xbins = 100, xmin = 0., xmax = 1000.) 
+    sTgcGroup.defineHistogram('x_mon,y_mon;Posx_vs_Posy', type = 'TH2F', title="Posx vs Posy;sTgc-GlobalX [mm];sTgc-GlobalY [mm];", path = 'Overview', xbins = 500, xmin = -5000, xmax = 5000., ybins = 500, ymin = -5000., ymax = 5000.) 
+    sTgcGroup.defineHistogram('R_mon,z_mon;R_vs_Posz', type = 'TH2F', title = "R vs Posz; sTgc-GlobalR [mm]; sTgc-GlobalZ [mm];", path = 'Overview', xbins = 500, xmin = 2500., xmax = 5000., ybins = 1000, ymin = 6800 ,ymax = 8000) 
+    sTgcGroup.defineHistogram('numberofstrips_percluster;Number_of_strips_percluster', type = 'TH1F', title = 'Number of strips per cluster;Number of strips;Number of Entries', path = 'Overview', xbins = 12, xmin = 0., xmax = 12.) 
+    sTgcGroup.defineHistogram('time_all;Time', type = 'TH1F', title = 'Time;Time[ns];Number of Entries', path = 'Overview', xbins = 5, xmin = 0., xmax = 5.) 
 
     side = ["CSide", "ASide"]
     stationPhiMax = 16
     stationEtaMax = 3
 
     for iside in side:
-        sTGC_SideGroup = "sTGC_sideGroup{0}".format(iside)
-        stgcSideGroup    = helper.addGroup(sTGCMonAlg, sTGC_SideGroup, "Muon/MuonRawDataMonitoring/sTGC/" + iside)
+        sTgc_SideGroup = "sTgc_sideGroup{0}".format(iside)
+        stgcSideGroup    = helper.addGroup(sTgcMonAlg, sTgc_SideGroup, "Muon/MuonRawDataMonitoring/sTgc/" + iside)
         for multip in range(1, 3):
             for gasgap in range(1, 5):
                 title_chargePad_phi_vs_eta = f'Charge (pad): {iside} Multiplet {multip} Gas gap {gasgap}; stationPhi; stationEta; Total charge [fC]'
@@ -80,7 +79,7 @@ def StgcMonitoringConfig(inputFlags):
 
                 for phiStation in range(1, stationPhiMax + 1):
                     title_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi = f'Station eta vs strip number vs charge (strip): {iside} Multiplet {multip} Gas gap {gasgap} stationPhi {phiStation}; stationEta; Strip number; Total charge [fC]'
-                    var_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi = f'sector_{iside}_eta_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation}, stripNumber_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation};StationEta_vs_stripNumber_vs_chargePad_{iside}_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation}'
+                    var_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi = f'sector_{iside}_eta_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation}, stripNumber_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation};StationEta_vs_stripNumber_vs_chargeStrip_{iside}_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation}'
                     
                     if (f'{iside}' == 'ASide'):
                         stgcSideGroup.defineHistogram(var_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi, type = 'TH2F', title = title_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi, path = 'Summary', xbins = stationEtaMax, xmin = 1., xmax = float(stationEtaMax + 1), ybins = 400, ymin = 0., ymax = 400., opt = 'kAlwaysCreate', weight = f'charge_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation}')
@@ -91,17 +90,14 @@ def StgcMonitoringConfig(inputFlags):
     result.merge(acc)
     return result
 if __name__=='__main__':
-    # Setup the Run III behavior
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior = 1
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
             
     ConfigFlags.Input.Files = []
 
     for i in range(50, 61):
-        ConfigFlags.Input.Files += [f'/eos/home-s/sfuenzal/NSWSoftware_0804/InputSamples_sTGC/mc21/ESD.29004502._0000{i}.pool.root.1'] 
+        ConfigFlags.Input.Files += [f'/eos/home-s/sfuenzal/NSWSoftware_0804/InputSamples_sTgc/mc21/ESD.29004502._0000{i}.pool.root.1'] 
     
-    ConfigFlags.Output.HISTFileName = 'monitor_sTGC.root'
+    ConfigFlags.Output.HISTFileName = 'monitor_sTgc.root'
 
     ConfigFlags.Detector.GeometrysTGC=True
     ConfigFlags.DQ.useTrigger=False
@@ -114,11 +110,11 @@ if __name__=='__main__':
     
     cfg = MainServicesCfg(ConfigFlags)
     cfg.merge(PoolReadCfg(ConfigFlags))
-    sTGCMonitorAcc  =  StgcMonitoringConfig(ConfigFlags)
-    sTGCMonitorAcc.OutputLevel=2
-    cfg.merge(sTGCMonitorAcc)           
+    sTgcMonitorAcc  =  sTgcMonitoringConfig(ConfigFlags)
+    sTgcMonitorAcc.OutputLevel=2
+    cfg.merge(sTgcMonitorAcc)           
     
     #number of events selected in the ESD
-    cfg.run(10000)
+    cfg.run(10)
 
 

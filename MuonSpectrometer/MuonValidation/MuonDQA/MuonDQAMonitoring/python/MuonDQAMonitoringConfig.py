@@ -23,8 +23,8 @@ def MuonDQAMonitoringConfig(flags):
                 from MMRawDataMonitoring.MMMonitorAlgorithm import MMMonitoringConfig
                 result.merge(MMMonitoringConfig(flags))
             if flags.Detector.GeometrysTGC:
-                from StgcRawDataMonitoring.StgcMonitorAlgorithm import StgcMonitoringConfig
-                result.merge(StgcMonitoringConfig(flags))
+                from StgcRawDataMonitoring.StgcMonitorAlgorithm import sTgcMonitoringConfig
+                result.merge(sTgcMonitoringConfig(flags))
         if flags.DQ.Environment in ('online', 'tier0','tier0Raw'):
             if flags.Detector.GeometryCSC:
                 from CscRawDataMonitoring.CscMonitoringRAW_Alg import CscMonitoringRAW_AlgConfig

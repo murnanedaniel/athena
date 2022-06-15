@@ -1,20 +1,18 @@
-/*                                                                                                        													  
-Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration                                   
+/*                                                                             
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration                              
 */
-///////////////////////////////////////////////////////////////////////////                                  
-//Utils for the main sTGCRawDataMonAlg.cxx                                                                    
-        
-//Part of StgcRawDataMonAlg.h                                                                                 
-//see StgcRawDataMonAlg.cxx                                                                                
-        
-///////////////////////////////////////////////////////////////////////////                                 
-         
 
+///////////////////////////////////////////////////////////////////////////                          
+// Utils for the main sTGCRawDataMonAlg.cxx                                                            
+// Part of StgcRawDataMonAlg.h                                                                         
+// see StgcRawDataMonAlg.cxx                                
+///////////////////////////////////////////////////////////////////////////                      
+         
 #include "StgcRawDataMonitoring/StgcRawDataMonAlg.h"
 #include <string>
 #include <stdexcept>
 
-int StgcRawDataMonAlg::get_sectorPhi_from_stationPhi_stName(int stationPhi, const std::string &stName) const 
+int sTgcRawDataMonAlg::get_sectorPhi_from_stationPhi_stName(int stationPhi, const std::string &stName) const 
 {  
   if (stationPhi == 1 && stName == "STS") return 1;
   if (stationPhi == 1 && stName == "STL") return 2;
