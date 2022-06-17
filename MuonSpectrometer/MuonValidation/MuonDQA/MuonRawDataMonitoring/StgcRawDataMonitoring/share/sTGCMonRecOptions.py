@@ -66,5 +66,4 @@ rec.AutoConfiguration = [ "everything" ]
 from AthenaCommon.DetFlags import DetFlags      
 DetFlags.detdescr.all_setOn()
 
-include("RecExCommon/RecExCommon_topOptions.py")
 

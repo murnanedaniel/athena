@@ -44,8 +44,7 @@ namespace Muon
 
 namespace GeometricSectors
 {
-  static const std::vector<std::string> sTgc_Side   = {"CSide", "ASide"};
-  static const std::vector<std::string> sTgc_Sector = {"STS"  , "STL"};
+  static const std::array<std::string, 2> sTgc_Side   = {"CSide", "ASide"};
 }
 
 namespace Histograms
@@ -79,19 +78,17 @@ class sTgcRawDataMonAlg: public AthMonitorAlgorithm
 
   ServiceHandle<Muon::IMuonIdHelperSvc> m_idHelperSvc {this, "MuonIdHelperSvc", "Muon::MuonIdHelperSvc/MuonIdHelperSvc"};
 
-  ToolHandle<CP::IMuonSelectionTool> m_muonSelectionTool{this,"MuonSelectionTool","CP::MuonSelectionTool/MuonSelectionTool"};
-  SG::ReadCondHandleKey<MuonGM::MuonDetectorManager> m_DetectorManagerKey {this, "DetectorManagerKey",
-      "MuonDetectorManager","Key of input MuonDetectorManager condition data"};
+  SG::ReadCondHandleKey<MuonGM::MuonDetectorManager> m_DetectorManagerKey {this, "DetectorManagerKey", "MuonDetectorManager","Key of input MuonDetectorManager condition data"};
  
-  virtual void fillsTgcOverviewHistograms(const std::vector<const Muon::sTgcPrepData*> &prd, const Muon::sTgcPrepData*) const;
-  
-  virtual StatusCode fillsTgcHistograms(const Muon::sTgcPrepData*) const;                                      
-  virtual void fillsTgcSummaryHistograms(const Muon::sTgcPrepData*, Histograms::sTgcSummaryHistogramStruct (&vects)[2][2][4]) const; //[side][multiplet][gas_gap]
+  void fillsTgcOverviewHistograms(const std::vector<const Muon::sTgcPrepData*> &prd, const Muon::sTgcPrepData*) const;
+
+  void fillsTgcSummaryHistograms(const Muon::sTgcPrepData*, Histograms::sTgcSummaryHistogramStruct (&vects)[2][2][4]) const; //[side][multiplet][gas_gap]
 
   int get_sectorPhi_from_stationPhi_stName(const int stationPhi, const std::string& stName) const;
 
+  SG::ReadHandleKey<xAOD::TrackParticleContainer> m_meTrkKey{this, "METrkContainer", "ExtrapolatedMuonTrackParticles"};
   SG::ReadHandleKey<Muon::sTgcPrepDataContainer> m_sTgcContainerKey{this,"sTGCPrepDataContainerName", "STGC_Measurements"};
-  
+
   SG::ReadHandleKey<xAOD::MuonContainer> m_muonKey{this, "MuonKey", "Muons", "muons"};
 
   Gaudi::Property<bool> m_dosTgcESD{this,"dosTgcESD",true};

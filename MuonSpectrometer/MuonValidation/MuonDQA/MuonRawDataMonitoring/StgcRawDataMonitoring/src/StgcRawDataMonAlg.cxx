@@ -45,61 +45,51 @@ sTgcRawDataMonAlg::sTgcRawDataMonAlg( const std::string& name, ISvcLocator* pSvc
 
 StatusCode sTgcRawDataMonAlg::initialize()
 {   
-  // init message stream
-  ATH_MSG_DEBUG("initialize sTgcRawDataMonAlg");
-  ATH_MSG_DEBUG("******************");
-  ATH_MSG_DEBUG("dosTgcESD: " << m_dosTgcESD);
-  ATH_MSG_DEBUG("******************");
-  
   ATH_CHECK(AthMonitorAlgorithm::initialize());
   ATH_CHECK(m_DetectorManagerKey.initialize());
   ATH_CHECK(m_idHelperSvc.retrieve());
-
-  ATH_MSG_INFO("Found the MuonIdHelperSvc");
+  
   ATH_CHECK(m_muonKey.initialize());
+  ATH_CHECK(m_meTrkKey.initialize());
   ATH_CHECK(m_sTgcContainerKey.initialize());
   
-  ATH_MSG_DEBUG("end of initialize");
-  ATH_MSG_INFO("sTgcRawDataMonAlg initialization DONE");
-
   return StatusCode::SUCCESS;
 } 
 
 StatusCode sTgcRawDataMonAlg::fillHistograms(const EventContext& ctx) const
 {  
-  const xAOD::TrackParticleContainer *meTPContainer = nullptr;
-  ATH_CHECK(evtStore() -> retrieve(meTPContainer,"ExtrapolatedMuonTrackParticles" ));
+  //const xAOD::TrackParticleContainer *meTPContainer = nullptr;
+  //ATH_CHECK(evtStore() -> retrieve(meTPContainer,"ExtrapolatedMuonTrackParticles" ));
 
   std::vector<const Muon::sTgcPrepData*> prep_data_vector;
+  
+  SG::ReadHandle<xAOD::TrackParticleContainer> meTPContainer{m_meTrkKey, ctx};
   SG::ReadHandle<Muon::sTgcPrepDataContainer> sTgc_container(m_sTgcContainerKey, ctx);
 
   if (m_dosTgcESD) 
     {
-      Histograms::sTgcSummaryHistogramStruct summaryPlots[2][2][4];
-            
-      for(const Muon::sTgcPrepDataCollection* coll : *sTgc_container)
+      if (m_dosTgcOverview)
 	{
-	  for (const Muon::sTgcPrepData* prd : *coll)
+	  Histograms::sTgcSummaryHistogramStruct summaryPlots[2][2][4];
+            
+	  for(const Muon::sTgcPrepDataCollection* coll : *sTgc_container)
 	    {
-	      prep_data_vector.push_back(prd);
-	      if (m_dosTgcOverview) fillsTgcOverviewHistograms(prep_data_vector, prd);
-	      fillsTgcSummaryHistograms(prd, summaryPlots);
+	      for (const Muon::sTgcPrepData* prd : *coll)
+		{
+		  prep_data_vector.push_back(prd);
+		  fillsTgcOverviewHistograms(prep_data_vector, prd);
+		  fillsTgcSummaryHistograms(prd, summaryPlots);
+		}
 	    }
 	}
     }
-    
-  prep_data_vector.clear();
-  
+     
   return StatusCode::SUCCESS;
 }
 
 void sTgcRawDataMonAlg::fillsTgcOverviewHistograms(const std::vector<const Muon::sTgcPrepData*> &prd, const Muon::sTgcPrepData *sTgc_object) const 
 {    
-  auto charge_all = Monitored::Collection("charge_all", prd, [] (const Muon::sTgcPrepData *aux) 
-					  {
-					    auto charge_var = aux -> charge(); 
-					    return charge_var;
-					  });
+  auto charge_all = Monitored::Collection("charge_all", prd, [] (const Muon::sTgcPrepData *aux) {return aux -> charge();});
   auto numberofstrips_percluster = Monitored::Collection("numberofstrips_percluster", prd, [] (const Muon::sTgcPrepData *aux) {const std::vector<Identifier> &stripIds = aux -> rdoList(); return stripIds.size();});
   
   fill("sTgcMonitor", charge_all, numberofstrips_percluster);
@@ -133,13 +123,9 @@ void sTgcRawDataMonAlg::fillsTgcSummaryHistograms(const Muon::sTgcPrepData *sTgc
   int gas_gap      = m_idHelperSvc -> stgcIdHelper().gasGap(Id);  
   int channel_type = m_idHelperSvc -> stgcIdHelper().channelType(Id);
   int charge       = sTgc_object-> charge();
- 
-  int stationName  = m_idHelperSvc -> stgcIdHelper().stationName(Id);
-
-  int isector      = (stationName == 58) ? 1 : 0;
   int iside        = (stationEta > 0) ? 1 : 0;
-
-  int stationPhiComplete = get_sectorPhi_from_stationPhi_stName(stationPhi, GeometricSectors::sTgc_Sector[isector]);
+  std::string stationName = m_idHelperSvc -> stgcIdHelper().stationNameString(m_idHelperSvc -> stgcIdHelper().stationName(Id));
+  int stationPhiComplete = get_sectorPhi_from_stationPhi_stName(stationPhi, stationName);
  
   auto &Vectors = vects[iside][multiplet - 1][gas_gap - 1];
   Vectors.strip_charges_vec = sTgc_object-> stripCharges();  
@@ -184,10 +170,5 @@ void sTgcRawDataMonAlg::fillsTgcSummaryHistograms(const Muon::sTgcPrepData *sTgc
   Vectors.stationEta_perPhi_vec.clear();
   Vectors.strip_numbers_perPhi_vec.clear();
   Vectors.charge_perPhi_vec.clear();
-}
-
-StatusCode sTgcRawDataMonAlg::fillsTgcHistograms( const Muon::sTgcPrepData* ) const
-{
-  return StatusCode::SUCCESS;
 }
 
