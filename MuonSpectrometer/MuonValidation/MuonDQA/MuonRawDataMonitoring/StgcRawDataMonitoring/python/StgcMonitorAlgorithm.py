@@ -41,7 +41,7 @@ def sTgcMonitoringConfig(inputFlags):
     sTgcGroup.defineHistogram('strip_number;Strip_Number', type = 'TH1F', title = 'Strip Number; Strip number;Number of Entries', path = 'Overview', xbins = 20, xmin = 0., xmax = 400.) 
     sTgcGroup.defineHistogram('charge_all;Charge', type = 'TH1F', title = 'Charge;Charge[fC];Number of Entries', path = 'Overview', xbins = 100, xmin = 0., xmax = 1000.) 
     sTgcGroup.defineHistogram('x_mon,y_mon;Posx_vs_Posy', type = 'TH2F', title="Posx vs Posy;sTgc-GlobalX [mm];sTgc-GlobalY [mm];", path = 'Overview', xbins = 500, xmin = -5000, xmax = 5000., ybins = 500, ymin = -5000., ymax = 5000.) 
-    sTgcGroup.defineHistogram('R_mon,z_mon;R_vs_Posz', type = 'TH2F', title = "R vs Posz; sTgc-GlobalR [mm]; sTgc-GlobalZ [mm];", path = 'Overview', xbins = 500, xmin = 2500., xmax = 5000., ybins = 1000, ymin = 6800 ,ymax = 8000) 
+    sTgcGroup.defineHistogram('R_mon,z_mon;R_vs_Posz', type = 'TH2F', title = "R vs Posz; sTgc-GlobalR [mm]; sTgc-GlobalZ [mm];", path = 'Overview', xbins = 500, xmin = 0., xmax = 5000., ybins = 1000, ymin = -10000., ymax = 10000.) 
     sTgcGroup.defineHistogram('numberofstrips_percluster;Number_of_strips_percluster', type = 'TH1F', title = 'Number of strips per cluster;Number of strips;Number of Entries', path = 'Overview', xbins = 12, xmin = 0., xmax = 12.) 
     sTgcGroup.defineHistogram('time_all;Time', type = 'TH1F', title = 'Time;Time[ns];Number of Entries', path = 'Overview', xbins = 5, xmin = 0., xmax = 5.) 
 
@@ -115,6 +115,6 @@ if __name__=='__main__':
     cfg.merge(sTgcMonitorAcc)           
     
     #number of events selected in the ESD
-    cfg.run(10)
+    cfg.run(10000)
 
 

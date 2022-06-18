@@ -58,9 +58,6 @@ StatusCode sTgcRawDataMonAlg::initialize()
 
 StatusCode sTgcRawDataMonAlg::fillHistograms(const EventContext& ctx) const
 {  
-  //const xAOD::TrackParticleContainer *meTPContainer = nullptr;
-  //ATH_CHECK(evtStore() -> retrieve(meTPContainer,"ExtrapolatedMuonTrackParticles" ));
-
   std::vector<const Muon::sTgcPrepData*> prep_data_vector;
   
   SG::ReadHandle<xAOD::TrackParticleContainer> meTPContainer{m_meTrkKey, ctx};
