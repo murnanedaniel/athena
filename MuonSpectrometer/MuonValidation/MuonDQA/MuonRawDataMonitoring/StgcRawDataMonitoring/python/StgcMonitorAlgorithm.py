@@ -91,19 +91,29 @@ def sTgcMonitoringConfig(inputFlags):
     return result
 if __name__=='__main__':
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
-            
-    ConfigFlags.Input.Files = []
-
-    for i in range(50, 61):
-        ConfigFlags.Input.Files += [f'/eos/home-s/sfuenzal/NSWSoftware_0804/InputSamples_sTgc/mc21/ESD.29004502._0000{i}.pool.root.1'] 
+    import argparse
     
-    ConfigFlags.Output.HISTFileName = 'monitor_sTgc.root'
+    # If you want to run the package in a standalone way you have to execute the command: 
+    # python3 -m StgcRawDataMonitoring.StgcMonitorAlgorithm --events NumberOfEvents --samples PathToInputSamples --output OutputROOTFile
+    # in the run folder
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--events", default = 100, type = int, help = 'Number of events that you want to run.')
+    parser.add_argument("--samples", nargs = "+", default = None, help = 'Path to the input sample. If you want to run multiple samples at once you have to introduce them separated by blank spaces.')
+    parser.add_argument("--output", default = "monitor_sTgc.root", help = 'Name of the output ROOT file.')
+    args = parser.parse_args()
 
-    ConfigFlags.Detector.GeometrysTGC=True
-    ConfigFlags.DQ.useTrigger=False
+    ConfigFlags.Input.Files = []
+    ConfigFlags.Input.Files += args.samples 
+    
+    ConfigFlags.Output.HISTFileName = args.output
+
+    ConfigFlags.Detector.GeometrysTGC = True
+    ConfigFlags.DQ.useTrigger = False
 
     ConfigFlags.lock()
     ConfigFlags.dump()
+
     # Initialize configuration object, add accumulator, merge, and run.
     from AthenaConfiguration.MainServicesConfig import MainServicesCfg 
     from AthenaPoolCnvSvc.PoolReadConfig import PoolReadCfg
@@ -111,10 +121,10 @@ if __name__=='__main__':
     cfg = MainServicesCfg(ConfigFlags)
     cfg.merge(PoolReadCfg(ConfigFlags))
     sTgcMonitorAcc  =  sTgcMonitoringConfig(ConfigFlags)
-    sTgcMonitorAcc.OutputLevel=2
+    sTgcMonitorAcc.OutputLevel = 2
     cfg.merge(sTgcMonitorAcc)           
     
-    #number of events selected in the ESD
-    cfg.run(10000)
+    # number of events selected in the ESD
+    cfg.run(args.events)
 
 

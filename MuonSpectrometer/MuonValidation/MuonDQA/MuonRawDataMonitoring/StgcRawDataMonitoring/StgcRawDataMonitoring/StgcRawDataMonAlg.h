@@ -17,22 +17,12 @@
 
 //Core Include
 #include "AthenaMonitoring/AthMonitorAlgorithm.h"
-#include "AthenaMonitoringKernel/Monitored.h"
-#include "GaudiKernel/ServiceHandle.h"
-#include "GaudiKernel/ToolHandle.h" 
 
 //Helper Includes
-#include "MuonAnalysisInterfaces/IMuonSelectionTool.h"
-#include "MuonPrepRawData/MuonPrepDataContainer.h"
-#include "MuonPrepRawData/sTgcPrepDataCollection.h"
 #include "MuonIdHelpers/IMuonIdHelperSvc.h"
-#include "MuonReadoutGeometry/MuonDetectorManager.h"
-#include "AthenaMonitoring/DQAtlasReadyFilterTool.h"
-#include "xAODTrigger/MuonRoIContainer.h"
-#include "xAODMuon/MuonContainer.h"
 #include "MuonPrepRawData/sTgcPrepDataContainer.h"
-#include "MuonPrepRawData/sTgcPrepData.h"
 #include "StoreGate/ReadHandleKey.h"
+#include "MuonPrepRawData/sTgcPrepData.h"
 
 //stl includes                                                                                 
 #include <string>
@@ -77,19 +67,14 @@ class sTgcRawDataMonAlg: public AthMonitorAlgorithm
  private:  
 
   ServiceHandle<Muon::IMuonIdHelperSvc> m_idHelperSvc {this, "MuonIdHelperSvc", "Muon::MuonIdHelperSvc/MuonIdHelperSvc"};
-
-  SG::ReadCondHandleKey<MuonGM::MuonDetectorManager> m_DetectorManagerKey {this, "DetectorManagerKey", "MuonDetectorManager","Key of input MuonDetectorManager condition data"};
  
-  void fillsTgcOverviewHistograms(const std::vector<const Muon::sTgcPrepData*> &prd, const Muon::sTgcPrepData*) const;
+  void fillsTgcOverviewHistograms(const Muon::sTgcPrepData*, const std::vector<const Muon::sTgcPrepData*> &prd) const;
 
   void fillsTgcSummaryHistograms(const Muon::sTgcPrepData*, Histograms::sTgcSummaryHistogramStruct (&vects)[2][2][4]) const; //[side][multiplet][gas_gap]
 
   int get_sectorPhi_from_stationPhi_stName(const int stationPhi, const std::string& stName) const;
 
-  SG::ReadHandleKey<xAOD::TrackParticleContainer> m_meTrkKey{this, "METrkContainer", "ExtrapolatedMuonTrackParticles"};
   SG::ReadHandleKey<Muon::sTgcPrepDataContainer> m_sTgcContainerKey{this,"sTGCPrepDataContainerName", "STGC_Measurements"};
-
-  SG::ReadHandleKey<xAOD::MuonContainer> m_muonKey{this, "MuonKey", "Muons", "muons"};
 
   Gaudi::Property<bool> m_dosTgcESD{this,"dosTgcESD",true};
   Gaudi::Property<bool> m_dosTgcOverview{this,"dosTgcOverview",true};

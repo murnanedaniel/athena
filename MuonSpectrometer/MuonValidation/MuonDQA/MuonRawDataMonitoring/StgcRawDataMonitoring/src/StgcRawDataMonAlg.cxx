@@ -12,24 +12,7 @@
 // Subject: sTgc --> sTgc raw data monitoring
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include "MuonReadoutGeometry/MuonDetectorManager.h"
-#include "MuonReadoutGeometry/MuonStation.h"
-#include "MuonReadoutGeometry/sTgcReadoutElement.h"
-#include "MuonDQAUtils/MuonChamberNameConverter.h"
-#include "MuonDQAUtils/MuonChambersRange.h"
-#include "MuonCalibIdentifier/MuonFixedId.h"
-
 #include "StgcRawDataMonitoring/StgcRawDataMonAlg.h"
-
-#include "xAODTracking/TrackParticleContainer.h"
-#include "xAODTracking/TrackParticle.h"
-#include "xAODTracking/TrackingPrimitives.h"
-#include "MuonPrepRawData/MuonPrepDataContainer.h"
-#include "MuonRIO_OnTrack/sTgcClusterOnTrack.h"
-#include "AthenaMonitoring/AthenaMonManager.h"
-#include "MuonPrepRawData/sTgcPrepData.h"
-#include "MuonSegment/MuonSegment.h"
-
 
 /////////////////////////////////////////////////////////////////////////////
 // *********************************************************************
@@ -46,11 +29,7 @@ sTgcRawDataMonAlg::sTgcRawDataMonAlg( const std::string& name, ISvcLocator* pSvc
 StatusCode sTgcRawDataMonAlg::initialize()
 {   
   ATH_CHECK(AthMonitorAlgorithm::initialize());
-  ATH_CHECK(m_DetectorManagerKey.initialize());
   ATH_CHECK(m_idHelperSvc.retrieve());
-  
-  ATH_CHECK(m_muonKey.initialize());
-  ATH_CHECK(m_meTrkKey.initialize());
   ATH_CHECK(m_sTgcContainerKey.initialize());
   
   return StatusCode::SUCCESS;
@@ -60,23 +39,19 @@ StatusCode sTgcRawDataMonAlg::fillHistograms(const EventContext& ctx) const
 {  
   std::vector<const Muon::sTgcPrepData*> prep_data_vector;
   
-  SG::ReadHandle<xAOD::TrackParticleContainer> meTPContainer{m_meTrkKey, ctx};
   SG::ReadHandle<Muon::sTgcPrepDataContainer> sTgc_container(m_sTgcContainerKey, ctx);
 
-  if (m_dosTgcESD) 
+  if (m_dosTgcESD && m_dosTgcOverview)  
     {
-      if (m_dosTgcOverview)
+      Histograms::sTgcSummaryHistogramStruct summaryPlots[2][2][4];
+      
+      for(const Muon::sTgcPrepDataCollection* coll : *sTgc_container)
 	{
-	  Histograms::sTgcSummaryHistogramStruct summaryPlots[2][2][4];
-            
-	  for(const Muon::sTgcPrepDataCollection* coll : *sTgc_container)
+	  for (const Muon::sTgcPrepData* prd : *coll)
 	    {
-	      for (const Muon::sTgcPrepData* prd : *coll)
-		{
-		  prep_data_vector.push_back(prd);
-		  fillsTgcOverviewHistograms(prep_data_vector, prd);
-		  fillsTgcSummaryHistograms(prd, summaryPlots);
-		}
+	      prep_data_vector.push_back(prd);
+	      fillsTgcOverviewHistograms(prd, prep_data_vector);
+	      fillsTgcSummaryHistograms(prd, summaryPlots);
 	    }
 	}
     }
@@ -84,29 +59,59 @@ StatusCode sTgcRawDataMonAlg::fillHistograms(const EventContext& ctx) const
   return StatusCode::SUCCESS;
 }
 
-void sTgcRawDataMonAlg::fillsTgcOverviewHistograms(const std::vector<const Muon::sTgcPrepData*> &prd, const Muon::sTgcPrepData *sTgc_object) const 
+void sTgcRawDataMonAlg::fillsTgcOverviewHistograms(const Muon::sTgcPrepData *sTgc_object, const std::vector<const Muon::sTgcPrepData*> &prd) const 
 {    
-  auto charge_all = Monitored::Collection("charge_all", prd, [] (const Muon::sTgcPrepData *aux) {return aux -> charge();});
-  auto numberofstrips_percluster = Monitored::Collection("numberofstrips_percluster", prd, [] (const Muon::sTgcPrepData *aux) {const std::vector<Identifier> &stripIds = aux -> rdoList(); return stripIds.size();});
+  auto charge_all = Monitored::Collection("charge_all", prd, [] (const Muon::sTgcPrepData *aux) 
+					  {
+					    return aux -> charge();
+					  });
+  
+  auto numberofstrips_percluster = Monitored::Collection("numberofstrips_percluster", prd, [] (const Muon::sTgcPrepData *aux) 
+							 {
+							   const std::vector<Identifier> &stripIds = aux -> rdoList(); 
+							   return stripIds.size();
+							 });
   
   fill("sTgcMonitor", charge_all, numberofstrips_percluster);
   
   std::vector<short int> strip_times_target = sTgc_object-> stripTimes();
   std::vector<int> strip_charges_target = sTgc_object-> stripCharges();
   std::vector<short unsigned int> strip_number_target = sTgc_object-> stripNumbers();
-  std::vector<int> strip_statEta_strip_target = sTgc_object-> stripCharges();
 
-  auto time_all = Monitored::Collection("time_all", prd, [] (const Muon::sTgcPrepData *aux) {return aux -> time();});      
+  auto time_all = Monitored::Collection("time_all", prd, [] (const Muon::sTgcPrepData *aux) 
+					{
+					  return aux -> time();
+					});
+      
   auto strip_times = Monitored::Collection("strip_times", strip_times_target);
   auto strip_charges = Monitored::Collection("strip_charges", strip_charges_target);
   auto strip_number = Monitored::Collection("strip_number", strip_number_target);
 
   fill("sTgcMonitor", time_all, strip_times, strip_charges, strip_number);
 
-  auto x_mon = Monitored::Collection("x_mon", prd, [] (const Muon::sTgcPrepData *aux) {Amg::Vector3D pos = aux -> globalPosition(); return pos.x();});
-  auto y_mon = Monitored::Collection("y_mon", prd, [] (const Muon::sTgcPrepData *aux) {Amg::Vector3D pos = aux -> globalPosition(); return pos.y();});
-  auto z_mon = Monitored::Collection("z_mon", prd, [] (const Muon::sTgcPrepData *aux) {Amg::Vector3D pos = aux -> globalPosition(); return pos.z();});
-  auto R_mon = Monitored::Collection("R_mon", prd, [] (const Muon::sTgcPrepData *aux) {Amg::Vector3D pos = aux -> globalPosition(); return std::hypot(pos.x(), pos.y());});
+  auto x_mon = Monitored::Collection("x_mon", prd, [] (const Muon::sTgcPrepData *aux) 
+				     {
+				       Amg::Vector3D pos = aux -> globalPosition(); 
+				       return pos.x();
+				     });
+  
+  auto y_mon = Monitored::Collection("y_mon", prd, [] (const Muon::sTgcPrepData *aux) 
+				     {
+				       Amg::Vector3D pos = aux -> globalPosition(); 
+				       return pos.y();
+				     });
+  
+  auto z_mon = Monitored::Collection("z_mon", prd, [] (const Muon::sTgcPrepData *aux) 
+				     {
+				       Amg::Vector3D pos = aux -> globalPosition(); 
+				       return pos.z();
+				     });
+  
+  auto R_mon = Monitored::Collection("R_mon", prd, [] (const Muon::sTgcPrepData *aux) 
+				     {
+				       Amg::Vector3D pos = aux -> globalPosition(); 
+				       return std::hypot(pos.x(), pos.y());
+				     });
 
   fill("sTgcMonitor", x_mon, y_mon, z_mon, R_mon);
 }

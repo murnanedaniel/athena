@@ -4,6 +4,7 @@
 
 from RecExConfig.RecFlags import rec
 from RecExConfig.RecAlgsFlags import recAlgs
+
 recAlgs.doTrigger=False
 
 # reat ESD don't write anything

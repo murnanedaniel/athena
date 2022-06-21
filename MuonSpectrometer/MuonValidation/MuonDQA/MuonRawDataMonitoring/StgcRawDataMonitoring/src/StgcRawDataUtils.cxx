@@ -9,8 +9,6 @@
 ///////////////////////////////////////////////////////////////////////////                      
          
 #include "StgcRawDataMonitoring/StgcRawDataMonAlg.h"
-#include <string>
-#include <stdexcept>
 
 int sTgcRawDataMonAlg::get_sectorPhi_from_stationPhi_stName(int stationPhi, const std::string &stName) const 
 { 
