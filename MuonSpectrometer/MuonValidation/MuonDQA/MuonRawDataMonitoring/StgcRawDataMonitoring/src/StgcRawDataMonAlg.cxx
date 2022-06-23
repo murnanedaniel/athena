@@ -37,8 +37,6 @@ StatusCode sTgcRawDataMonAlg::initialize()
 
 StatusCode sTgcRawDataMonAlg::fillHistograms(const EventContext& ctx) const
 {  
-  std::vector<const Muon::sTgcPrepData*> prep_data_vector;
-  
   SG::ReadHandle<Muon::sTgcPrepDataContainer> sTgc_container(m_sTgcContainerKey, ctx);
 
   if (m_dosTgcESD && m_dosTgcOverview)  
@@ -46,11 +44,10 @@ StatusCode sTgcRawDataMonAlg::fillHistograms(const EventContext& ctx) const
       Histograms::sTgcSummaryHistogramStruct summaryPlots[2][2][4];
       
       for(const Muon::sTgcPrepDataCollection* coll : *sTgc_container)
-	{
+	{	  
 	  for (const Muon::sTgcPrepData* prd : *coll)
 	    {
-	      prep_data_vector.push_back(prd);
-	      fillsTgcOverviewHistograms(prd, prep_data_vector);
+	      fillsTgcOverviewHistograms(prd, *coll);
 	      fillsTgcSummaryHistograms(prd, summaryPlots);
 	    }
 	}
@@ -59,8 +56,8 @@ StatusCode sTgcRawDataMonAlg::fillHistograms(const EventContext& ctx) const
   return StatusCode::SUCCESS;
 }
 
-void sTgcRawDataMonAlg::fillsTgcOverviewHistograms(const Muon::sTgcPrepData *sTgc_object, const std::vector<const Muon::sTgcPrepData*> &prd) const 
-{    
+void sTgcRawDataMonAlg::fillsTgcOverviewHistograms(const Muon::sTgcPrepData *sTgc_object, const Muon::MuonPrepDataCollection<Muon::sTgcPrepData> &prd) const 
+{   
   auto charge_all = Monitored::Collection("charge_all", prd, [] (const Muon::sTgcPrepData *aux) 
 					  {
 					    return aux -> charge();
@@ -164,6 +161,7 @@ void sTgcRawDataMonAlg::fillsTgcSummaryHistograms(const Muon::sTgcPrepData *sTgc
       auto stationEta_ = Monitored::Collection("sector_" + GeometricSectors::sTgc_Side[iside] + "_eta_multiplet_" + std::to_string(multiplet) + "_gasgap_" + std::to_string(gas_gap), Vectors.stationEta_vec);
       fill("sTgc_sideGroup" + GeometricSectors::sTgc_Side[iside], charge_perLayer_wire_, stationPhi_, stationEta_);    
     }
+
 
   Vectors.strip_charges_vec.clear();
   Vectors.charge_vec.clear();

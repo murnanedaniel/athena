@@ -99,7 +99,7 @@ if __name__=='__main__':
     
     parser = argparse.ArgumentParser()
     parser.add_argument("--events", default = 100, type = int, help = 'Number of events that you want to run.')
-    parser.add_argument("--samples", nargs = "+", default = None, help = 'Path to the input sample. If you want to run multiple samples at once you have to introduce them separated by blank spaces.')
+    parser.add_argument("--samples", nargs = "+", default = None, help = 'Path to the input samples. If you want to run multiple samples at once you have to introduce them separated by blank spaces.')
     parser.add_argument("--output", default = "monitor_sTgc.root", help = 'Name of the output ROOT file.')
     args = parser.parse_args()
 

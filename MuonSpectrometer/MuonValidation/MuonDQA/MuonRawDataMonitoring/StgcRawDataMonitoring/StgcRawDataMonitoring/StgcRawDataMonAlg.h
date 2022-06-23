@@ -42,11 +42,9 @@ namespace Histograms
   struct sTgcSummaryHistogramStruct 
   {
     std::vector<int> strip_charges_vec;
-    
     std::vector<int> stationEta_perPhi_vec;
     std::vector<short unsigned int> strip_numbers_perPhi_vec;
     std::vector<int> charge_perPhi_vec;
-
     std::vector<int> charge_vec;
     std::vector<int> stationPhi_vec;
     std::vector<int> stationEta_vec;
@@ -68,10 +66,8 @@ class sTgcRawDataMonAlg: public AthMonitorAlgorithm
 
   ServiceHandle<Muon::IMuonIdHelperSvc> m_idHelperSvc {this, "MuonIdHelperSvc", "Muon::MuonIdHelperSvc/MuonIdHelperSvc"};
  
-  void fillsTgcOverviewHistograms(const Muon::sTgcPrepData*, const std::vector<const Muon::sTgcPrepData*> &prd) const;
-
+  void fillsTgcOverviewHistograms(const Muon::sTgcPrepData*, const Muon::MuonPrepDataCollection<Muon::sTgcPrepData> &prd) const;
   void fillsTgcSummaryHistograms(const Muon::sTgcPrepData*, Histograms::sTgcSummaryHistogramStruct (&vects)[2][2][4]) const; //[side][multiplet][gas_gap]
-
   int get_sectorPhi_from_stationPhi_stName(const int stationPhi, const std::string& stName) const;
 
   SG::ReadHandleKey<Muon::sTgcPrepDataContainer> m_sTgcContainerKey{this,"sTGCPrepDataContainerName", "STGC_Measurements"};
