@@ -38,6 +38,7 @@ StatusCode sTgcRawDataMonAlg::initialize()
 StatusCode sTgcRawDataMonAlg::fillHistograms(const EventContext& ctx) const
 {  
   SG::ReadHandle<Muon::sTgcPrepDataContainer> sTgc_container(m_sTgcContainerKey, ctx);
+  ATH_CHECK(sTgc_container.isValid());
 
   if (m_dosTgcESD && m_dosTgcOverview)  
     {

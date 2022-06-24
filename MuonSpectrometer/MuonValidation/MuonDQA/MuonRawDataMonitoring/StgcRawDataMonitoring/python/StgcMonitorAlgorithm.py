@@ -89,6 +89,7 @@ def sTgcMonitoringConfig(inputFlags):
     acc = helper.result()
     result.merge(acc)
     return result
+
 if __name__=='__main__':
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
     import argparse
