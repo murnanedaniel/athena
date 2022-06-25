@@ -56,27 +56,21 @@ def sTgcMonitoringConfig(inputFlags):
             for gasgap in range(1, 5):
                 title_chargePad_phi_vs_eta = f'Charge (pad): {iside} Multiplet {multip} Gas gap {gasgap}; stationPhi; stationEta; Total charge [fC]'
                 var_chargePad_phi_vs_eta = f'sector_{iside}_phi_multiplet_{multip}_gasgap_{gasgap}, sector_{iside}_eta_multiplet_{multip}_gasgap_{gasgap};ChargePad_vs_phi_vs_eta_{iside}_multiplet_{multip}_gasgap_{gasgap}'
-                if (f'{iside}' == 'ASide'):
-                    stgcSideGroup.defineHistogram(var_chargePad_phi_vs_eta, type = 'TH2F', title = title_chargePad_phi_vs_eta, path = 'Summary', xbins = stationPhiMax, xmin = 1., xmax = float(stationPhiMax + 1), ybins = stationEtaMax, ymin = 1., ymax = float(stationEtaMax + 1), opt = 'kAlwaysCreate', weight = f'charge_pad_{iside}_multiplet_{multip}_gasgap_{gasgap}')
-                else:
-                    stgcSideGroup.defineHistogram(var_chargePad_phi_vs_eta, type = 'TH2F', title = title_chargePad_phi_vs_eta, path = 'Summary', xbins = stationPhiMax, xmin = 1., xmax = float(stationPhiMax + 1), ybins = stationEtaMax, ymin = -float(stationEtaMax + 1), ymax = -1., opt = 'kAlwaysCreate', weight = f'charge_pad_{iside}_multiplet_{multip}_gasgap_{gasgap}')
-                
+
                 title_chargeStrip_phi_vs_eta = f'Charge (strip): {iside} Multiplet {multip} Gas gap {gasgap}; stationPhi; stationEta; Total charge [fC]'
                 var_chargeStrip_phi_vs_eta = f'sector_{iside}_phi_multiplet_{multip}_gasgap_{gasgap}, sector_{iside}_eta_multiplet_{multip}_gasgap_{gasgap};ChargeStrip_vs_phi_vs_eta_{iside}_multiplet_{multip}_gasgap_{gasgap}'
-               
-                if (f'{iside}' == 'ASide'):
-                    stgcSideGroup.defineHistogram(var_chargeStrip_phi_vs_eta, type = 'TH2F', title = title_chargeStrip_phi_vs_eta, path = 'Summary', xbins = stationPhiMax, xmin = 1., xmax = float(stationPhiMax + 1), ybins = stationEtaMax, ymin = 1., ymax = float(stationEtaMax + 1), opt = 'kAlwaysCreate', weight = f'charge_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}')
-                else:
-                    stgcSideGroup.defineHistogram(var_chargeStrip_phi_vs_eta, type = 'TH2F', title = title_chargeStrip_phi_vs_eta, path = 'Summary', xbins = stationPhiMax, xmin = 1., xmax = float(stationPhiMax + 1), ybins = stationEtaMax, ymin = -float(stationEtaMax + 1), ymax = -1., opt = 'kAlwaysCreate', weight = f'charge_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}')
 
                 title_chargeWire_phi_vs_eta = f'Charge (wire): {iside} Multiplet {multip} Gas gap {gasgap}; stationPhi; stationEta; Total charge [fC]'
                 var_chargeWire_phi_vs_eta = f'sector_{iside}_phi_multiplet_{multip}_gasgap_{gasgap}, sector_{iside}_eta_multiplet_{multip}_gasgap_{gasgap};ChargeWire_vs_phi_vs_eta_{iside}_multiplet_{multip}_gasgap_{gasgap}'
- 
                 if (f'{iside}' == 'ASide'):
+                    stgcSideGroup.defineHistogram(var_chargePad_phi_vs_eta, type = 'TH2F', title = title_chargePad_phi_vs_eta, path = 'Summary', xbins = stationPhiMax, xmin = 1., xmax = float(stationPhiMax + 1), ybins = stationEtaMax, ymin = 1., ymax = float(stationEtaMax + 1), opt = 'kAlwaysCreate', weight = f'charge_pad_{iside}_multiplet_{multip}_gasgap_{gasgap}')
+                    stgcSideGroup.defineHistogram(var_chargeStrip_phi_vs_eta, type = 'TH2F', title = title_chargeStrip_phi_vs_eta, path = 'Summary', xbins = stationPhiMax, xmin = 1., xmax = float(stationPhiMax + 1), ybins = stationEtaMax, ymin = 1., ymax = float(stationEtaMax + 1), opt = 'kAlwaysCreate', weight = f'charge_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}')
                     stgcSideGroup.defineHistogram(var_chargeWire_phi_vs_eta, type = 'TH2F', title = title_chargeWire_phi_vs_eta, path = 'Summary', xbins = stationPhiMax, xmin = 1., xmax = float(stationPhiMax + 1), ybins = stationEtaMax, ymin = 1., ymax = float(stationEtaMax + 1), opt = 'kAlwaysCreate', weight = f'charge_wire_{iside}_multiplet_{multip}_gasgap_{gasgap}')
                 else:
+                    stgcSideGroup.defineHistogram(var_chargePad_phi_vs_eta, type = 'TH2F', title = title_chargePad_phi_vs_eta, path = 'Summary', xbins = stationPhiMax, xmin = 1., xmax = float(stationPhiMax + 1), ybins = stationEtaMax, ymin = -float(stationEtaMax + 1), ymax = -1., opt = 'kAlwaysCreate', weight = f'charge_pad_{iside}_multiplet_{multip}_gasgap_{gasgap}')
+                    stgcSideGroup.defineHistogram(var_chargeStrip_phi_vs_eta, type = 'TH2F', title = title_chargeStrip_phi_vs_eta, path = 'Summary', xbins = stationPhiMax, xmin = 1., xmax = float(stationPhiMax + 1), ybins = stationEtaMax, ymin = -float(stationEtaMax + 1), ymax = -1., opt = 'kAlwaysCreate', weight = f'charge_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}')
                     stgcSideGroup.defineHistogram(var_chargeWire_phi_vs_eta, type = 'TH2F', title = title_chargeWire_phi_vs_eta, path = 'Summary', xbins = stationPhiMax, xmin = 1., xmax = float(stationPhiMax + 1), ybins = stationEtaMax, ymin = -float(stationEtaMax + 1), ymax = -1., opt = 'kAlwaysCreate', weight = f'charge_wire_{iside}_multiplet_{multip}_gasgap_{gasgap}')
-
+               
                 for phiStation in range(1, stationPhiMax + 1):
                     title_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi = f'Station eta vs strip number vs charge (strip): {iside} Multiplet {multip} Gas gap {gasgap} stationPhi {phiStation}; stationEta; Strip number; Total charge [fC]'
                     var_stationEta_vs_stripNumber_vs_chargeStrip_eachPhi = f'sector_{iside}_eta_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation}, stripNumber_strip_{iside}_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation};StationEta_vs_stripNumber_vs_chargeStrip_{iside}_multiplet_{multip}_gasgap_{gasgap}_stationPhi_{phiStation}'
