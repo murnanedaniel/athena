@@ -31,15 +31,18 @@ StatusCode sTgcRawDataMonAlg::initialize()
   ATH_CHECK(AthMonitorAlgorithm::initialize());
   ATH_CHECK(m_idHelperSvc.retrieve());
   ATH_CHECK(m_sTgcContainerKey.initialize());
-  
+  ATH_CHECK(m_muonKey.initialize());
+  ATH_CHECK(m_meTrkKey.initialize());
   return StatusCode::SUCCESS;
 } 
 
 StatusCode sTgcRawDataMonAlg::fillHistograms(const EventContext& ctx) const
 {  
+  int lumiblock = -1;
+  lumiblock = GetEventInfo(ctx)->lumiBlock();
   SG::ReadHandle<Muon::sTgcPrepDataContainer> sTgc_container(m_sTgcContainerKey, ctx);
   ATH_CHECK(sTgc_container.isValid());
-
+  
   if (m_dosTgcESD && m_dosTgcOverview)  
     {
       for(const Muon::sTgcPrepDataCollection* coll : *sTgc_container)
@@ -51,7 +54,13 @@ StatusCode sTgcRawDataMonAlg::fillHistograms(const EventContext& ctx) const
 	    }
 	}
     }
-     
+  SG::ReadHandle<xAOD::TrackParticleContainer> meTPContainer{m_meTrkKey,ctx};
+    if (!meTPContainer.isValid()) {
+	ATH_MSG_FATAL("Nope. Could not retrieve "<<m_meTrkKey.fullKey());
+	return StatusCode::FAILURE;
+    }
+    clusterFromTrack(meTPContainer.cptr(),lumiblock);
+   
   return StatusCode::SUCCESS;
 }
 
@@ -165,4 +174,15 @@ void sTgcRawDataMonAlg::fillsTgcSummaryHistograms(const Muon::sTgcPrepData *sTgc
       fill("sTgc_sideGroup" + GeometricSectors::sTgc_Side[iside], charge_perLayer_wire_, stationPhi_, stationEta_);    
     }
 }
+void sTgcRawDataMonAlg::clusterFromTrack(const xAOD::TrackParticleContainer*  muonContainer, int lb) const
+{
 
+	for(const xAOD::TrackParticle* meTP : *muonContainer) {
+		
+		if(!meTP) continue;
+
+		auto eta_trk = Monitored::Scalar<float>("eta_trk", meTP->eta());
+                auto phi_trk = Monitored::Scalar<float>("phi_trk", meTP->phi());
+                fill("sTgcMonitor",eta_trk,phi_trk);
+        }
+}

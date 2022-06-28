@@ -36,6 +36,8 @@ def sTgcMonitoringConfig(inputFlags):
 
     # Configure histograms
     # Overview histograms
+    sTgcGroup.defineHistogram('eta_trk;Eta_Track', type = 'TH1F', title = 'Eta Track; Eta Track;Number of Entries', path = 'Overview', xbins = 100, xmin = -3., xmax = 3.)
+    sTgcGroup.defineHistogram('phi_trk;Phi_Track', type = 'TH1F', title = 'Phi Track; Phi Track;Number of Entries', path = 'Overview', xbins = 100, xmin = -3.14, xmax = 3.14)
     sTgcGroup.defineHistogram('strip_times;Strip_Time', type = 'TH1F', title = 'Strip Time; Strip Time [ns];Number of Entries', path = 'Overview', xbins = 20, xmin = 0., xmax = 100.) 
     sTgcGroup.defineHistogram('strip_charges;Strip_Charge', type = 'TH1F', title = 'Strip Charge; Strip Charge [fC];Number of Entries', path = 'Overview', xbins = 200, xmin = 0., xmax = 1000.) 
     sTgcGroup.defineHistogram('strip_number;Strip_Number', type = 'TH1F', title = 'Strip Number; Strip number;Number of Entries', path = 'Overview', xbins = 20, xmin = 0., xmax = 400.) 

@@ -23,6 +23,10 @@
 #include "MuonPrepRawData/sTgcPrepDataContainer.h"
 #include "StoreGate/ReadHandleKey.h"
 #include "MuonPrepRawData/sTgcPrepData.h"
+#include "xAODTracking/TrackParticleContainer.h"
+#include "xAODTracking/TrackParticle.h"
+#include "xAODTracking/TrackingPrimitives.h"
+
 
 //stl includes                                                                                 
 #include <string>
@@ -54,9 +58,10 @@ class sTgcRawDataMonAlg: public AthMonitorAlgorithm
   void fillsTgcOverviewHistograms(const Muon::sTgcPrepData*, const Muon::MuonPrepDataCollection<Muon::sTgcPrepData> &prd) const;
   void fillsTgcSummaryHistograms(const Muon::sTgcPrepData*) const; 
   int get_sectorPhi_from_stationPhi_stName(const int stationPhi, const std::string& stName) const;
-
+  SG::ReadHandleKey<xAOD::MuonContainer> m_muonKey{this,"MuonKey","Muons","muons"};
+  void clusterFromTrack(const xAOD::TrackParticleContainer*  muonContainer, int lb) const;
   SG::ReadHandleKey<Muon::sTgcPrepDataContainer> m_sTgcContainerKey{this,"sTGCPrepDataContainerName", "STGC_Measurements"};
-
+  SG::ReadHandleKey<xAOD::TrackParticleContainer> m_meTrkKey{this, "METrkContainer", "ExtrapolatedMuonTrackParticles"};
   Gaudi::Property<bool> m_dosTgcESD{this,"dosTgcESD",true};
   Gaudi::Property<bool> m_dosTgcOverview{this,"dosTgcOverview",true};
 };    
