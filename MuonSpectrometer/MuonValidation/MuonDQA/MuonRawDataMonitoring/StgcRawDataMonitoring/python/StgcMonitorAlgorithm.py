@@ -46,7 +46,7 @@ def sTgcMonitoringConfig(inputFlags):
     sTgcGroup.defineHistogram('R_mon,z_mon;R_vs_Posz', type = 'TH2F', title = "R vs Posz; sTgc-GlobalR [mm]; sTgc-GlobalZ [mm];", path = 'Overview', xbins = 500, xmin = 0., xmax = 5000., ybins = 1000, ymin = -10000., ymax = 10000.) 
     sTgcGroup.defineHistogram('numberofstrips_percluster;Number_of_strips_percluster', type = 'TH1F', title = 'Number of strips per cluster;Number of strips;Number of Entries', path = 'Overview', xbins = 12, xmin = 0., xmax = 12.) 
     sTgcGroup.defineHistogram('time_all;Time', type = 'TH1F', title = 'Time;Time[ns];Number of Entries', path = 'Overview', xbins = 5, xmin = 0., xmax = 5.) 
-
+    sTgcGroup.defineHistogram('sector_CSide_eta1,stationPhi_CSide_eta1;Occupancy_CSide_eta1_PCB', type='TH2F', title='Occupancy EC eta1; ; Sector;', path='Occupancy', xbins=40, xmin=0, xmax=40., ybins=16, ymin=.5, ymax=16.5,opt='kAlwaysCreate')
     side = ["CSide", "ASide"]
     stationPhiMax = 16
     stationEtaMax = 3

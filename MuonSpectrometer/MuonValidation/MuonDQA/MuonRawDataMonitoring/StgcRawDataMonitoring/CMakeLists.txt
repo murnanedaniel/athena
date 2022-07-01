@@ -13,7 +13,8 @@ atlas_add_component( StgcRawDataMonitoring
                      src/*.cxx
                      src/components/*.cxx
                      INCLUDE_DIRS ${ROOT_INCLUDE_DIRS}
- 		     LINK_LIBRARIES ${ROOT_LIBRARIES} AthenaMonitoringLib ) 
+ 		     LINK_LIBRARIES ${ROOT_LIBRARIES}  AthenaBaseComps AthenaMonitoringLib EventInfo MuonIdHelpersLib MuonPrepRawData MuonDQAUtilsLib TrkSegment Identifier xAODEventInfo xAODTrigger GaudiKernel MuonCalibIdentifier MuonReadoutGeometry MuonRIO_OnTrack MuonSegment AnalysisTriggerEvent LWHists TrkEventPrimitives GeoModelUtilities MuonAnalysisInterfacesLib)
+ 
 
 #
 # Install files from the package:

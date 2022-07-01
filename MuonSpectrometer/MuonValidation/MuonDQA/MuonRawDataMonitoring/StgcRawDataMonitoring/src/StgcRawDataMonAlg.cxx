@@ -13,6 +13,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "StgcRawDataMonitoring/StgcRawDataMonAlg.h"
+//Stgc cxx includes
 
 /////////////////////////////////////////////////////////////////////////////
 // *********************************************************************
@@ -176,7 +177,8 @@ void sTgcRawDataMonAlg::fillsTgcSummaryHistograms(const Muon::sTgcPrepData *sTgc
 }
 void sTgcRawDataMonAlg::clusterFromTrack(const xAOD::TrackParticleContainer*  muonContainer, int lb) const
 {
-
+        std::vector<int> sector_CSide_eta1_ontrack;
+        std::vector<int> stationPhi_CSide_eta1_ontrack;
 	for(const xAOD::TrackParticle* meTP : *muonContainer) {
 		
 		if(!meTP) continue;
@@ -184,5 +186,49 @@ void sTgcRawDataMonAlg::clusterFromTrack(const xAOD::TrackParticleContainer*  mu
 		auto eta_trk = Monitored::Scalar<float>("eta_trk", meTP->eta());
                 auto phi_trk = Monitored::Scalar<float>("phi_trk", meTP->phi());
                 fill("sTgcMonitor",eta_trk,phi_trk);
+                const Trk::Track* meTrack = meTP->track();
+                if(!meTrack) continue;
+		// get the vector of measurements on track
+		const DataVector<const Trk::MeasurementBase>* meas = meTrack->measurementsOnTrack();
+                bool isMM=false;
+                for(const Trk::MeasurementBase* it : *meas) {
+			const Trk::RIO_OnTrack* rot = dynamic_cast<const Trk::RIO_OnTrack*>(it);
+                        if(!rot) continue;
+			Identifier rot_id = rot->identify();
+                        if(!m_idHelperSvc->isMM(rot_id)) continue;
+			isMM=true;
+                        const Muon::MMClusterOnTrack* cluster = dynamic_cast<const Muon::MMClusterOnTrack*>(rot);
+			if(!cluster) continue;
+
+			std::string stName = m_idHelperSvc->mmIdHelper().stationNameString(m_idHelperSvc->mmIdHelper().stationName(rot_id));
+			int stEta          = m_idHelperSvc->mmIdHelper().stationEta(rot_id);
+			int stPhi          = m_idHelperSvc->mmIdHelper().stationPhi(rot_id);
+			int multi          = m_idHelperSvc->mmIdHelper().multilayer(rot_id);
+			int gap            = m_idHelperSvc->mmIdHelper().gasGap(rot_id);
+			int ch             = m_idHelperSvc->mmIdHelper().channel(rot_id);
+                        // MMS and MML phi sectors
+			//				int phisec = (stNumber%2==0) ? 1 : 0;
+			int sectorPhi = get_sectorPhi_from_stationPhi_stName(stPhi,stName); // 1->16
+			int PCB = get_PCB_from_channel(ch);
+			int iside = (stEta > 0) ? 1 : 0;
+                        const int pcb_counter = 5;
+                        if(stEta==-1) {
+			 stationPhi_CSide_eta1_ontrack.push_back(sectorPhi);
+                    sector_CSide_eta1_ontrack.push_back(get_bin_for_occ_CSide_pcb_eta1_hist(stEta, multi, gap, PCB));
+                         auto stationPhi_cSide_eta1_ontrack = Monitored::Collection("stationPhi_CSide_eta1_ontrack",stationPhi_CSide_eta1_ontrack);
+                         auto sector_cSide_eta1_ontrack = Monitored::Collection("sector_CSide_eta1_ontrack",sector_CSide_eta1_ontrack); 
+                      
+                       fill("sTgcMonitor",stationPhi_cSide_eta1_ontrack,sector_cSide_eta1_ontrack);
+			}
+
+
+                        
+                 
+
+                }        
+                     
+                          
+	        
         }
+        
 }
