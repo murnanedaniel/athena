@@ -37,6 +37,7 @@ def MuonsCommonCfg(ConfigFlags):
         MaxEta          = 3.,
         MuQuality       = 3,
         IsRun3Geo       = isRun3,
+        DisablePtCuts   = False,
         TurnOffMomCorr  = True)) 
     acc.addPublicTool(DFCommonMuonsSelector)
     if DFCommonMuonsTrtCutOff is not None: DFCommonMuonsSelector.TrtCutOff = DFCommonMuonsTrtCutOff
