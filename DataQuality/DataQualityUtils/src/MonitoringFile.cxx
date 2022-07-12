@@ -365,24 +365,24 @@ void populateKeyMapping(TDirectory* dir, keycyclemap& kcmap) {
 // This function will merge objects given a name, a vector of cycles, 
 // a directory, a merge type, and optionally an object to merge into.  
 // Return value is a merged object.
-void MonitoringFile::mergeObjsMultiCycles(const std::string& keyname, 
+TObject* MonitoringFile::mergeObjsMultiCycles(const std::string& keyname, 
                 const std::vector<int>& cycles,
                 TDirectory* dir,
                 const std::string & mergeType,
-                std::shared_ptr<TObject>& obj) {
+                TObject* obj) {
    if (cycles.size() == 0) {
-      return;
+      return obj;
    }
    int start_idx = 0;
-   if (obj == nullptr) {
+   if (obj == 0) {
       TKey* key(dir->GetKey(keyname.c_str(), cycles[0]));
-      obj.reset(key->ReadObj());
+      obj = key->ReadObj();
       start_idx = 1;
-      TH1* h = dynamic_cast<TH1*>(obj.get());
+      TH1* h = dynamic_cast<TH1*>(obj);
       if (h && !histOKToMerge(h)) {
   // histogram is damaged goods
   std::cerr << "WARNING: HISTOGRAM " << h->GetName() << " IS INTERNALLY INCONSISTENT, NOT MERGING" << std::endl;
-  return;
+  return obj;
       }
    }
    for (std::vector<int>::size_type idx = start_idx; 
@@ -405,23 +405,24 @@ void MonitoringFile::mergeObjsMultiCycles(const std::string& keyname,
    }
    // next: if current "target" histogram exists, but is empty, reset it to the next object.
    // works around 
-  h = dynamic_cast<TH1*>(obj.get());
+  h = dynamic_cast<TH1*>(obj);
   if (h && h->GetEntries() == 0 && h->GetSumOfWeights() == 0) {
     // just take over nextObj as obj
-    obj.reset(nextObj.release());
+    obj = nextObj.release();
     continue;
   }
          if (h && (obj->IsA() !=  h->IsA())) {
            // problem: class types have changed ...
      std::cerr << "WARNING: CHANGE OF CLASS TYPES FOR " << h->GetName() << ", NOT MERGING" << std::endl;
+     nextObj.release();
      continue;
    }
-   MonitoringFile::mergeObjs(obj.get(), nextObj.get(), mergeType,m_debugLevel>VERBOSE?VERBOSE: (dqutils::MonitoringFile::debugLevel_t)m_debugLevel);
+   MonitoringFile::mergeObjs(obj, nextObj.get(), mergeType,m_debugLevel>VERBOSE?VERBOSE: (dqutils::MonitoringFile::debugLevel_t)m_debugLevel);
       } else {
    std::cerr << "MonitoringFile::mergeObjsMultiCycles(): NULL KEY; corrupt file?" << std::endl;
       }
    }
-   return;
+   return obj;
 }
 
 
@@ -532,7 +533,7 @@ mergeDirectory( TDirectory* outputDir, const std::vector<TFile*>& inputFiles, bo
      //std::cerr<<"Skipping keyname "<keyname<<std::endl;
      continue; //skip everything except directories 
    }
-   std::shared_ptr<TObject> obj(key->ReadObj());
+   std::unique_ptr<TObject> obj(key->ReadObj());
          if (obj.get() == 0) {
             std::cerr << "MonitoringFile::mergeDirectory(): "
                << "In directory \"" << inputDir->GetPath() << "\",\n"
@@ -548,7 +549,7 @@ mergeDirectory( TDirectory* outputDir, const std::vector<TFile*>& inputFiles, bo
          TEfficiency* e(0);
          TDirectory* d(0);
          TTree* t(0);
-         std::shared_ptr<TObject> targetObj;
+         TObject* targetObj(0);
    //moved inside if to speedup
 //          h = dynamic_cast<TH1*>( obj.get() );
 //          d = dynamic_cast<TDirectory*>( obj.get() );
@@ -610,12 +611,12 @@ mergeDirectory( TDirectory* outputDir, const std::vector<TFile*>& inputFiles, bo
         TDirectory* currentDir = gDirectory;
         outputDir->cd();
         TTree* t2 = t->CloneTree();
-        targetObj.reset(t2);
+        targetObj = t2;
         currentDir->cd();
       } else {
-        targetObj = obj;
+        targetObj = obj.get();
       }
-      mergeObjsMultiCycles(keyName, kcit->second, inputDir,
+      targetObj = mergeObjsMultiCycles(keyName, kcit->second, inputDir,
          mergeType, targetObj);
             for( std::vector<TFile*>::const_iterator j = i+1; j!= inputFilesEnd; ++j ) {
                TFile* nextInputFile = *j;
@@ -629,7 +630,7 @@ mergeDirectory( TDirectory* outputDir, const std::vector<TFile*>& inputFiles, bo
          getListOfKeysWithName(nextInputDir, kcit->first, &tl);
          populateCycleVector(tl, nextCycles);
      
-         mergeObjsMultiCycles(kcit->first, nextCycles, 
+         targetObj = mergeObjsMultiCycles(kcit->first, nextCycles, 
                    nextInputDir, mergeType, targetObj);
 
             }

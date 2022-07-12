@@ -403,10 +403,10 @@ namespace dqutils {
     enum debugLevel_t { none = 0, DEBUG, VERBOSE };
     typedef std::map<TDirectory*, std::vector<TDirectory*> > map_dir_vdir;
 
-    static void mergeObjsMultiCycles(const std::string&, 
+    static TObject* mergeObjsMultiCycles(const std::string&, 
 					 const std::vector<int>&, 
 					 TDirectory*, const std::string&, 
-					 std::shared_ptr<TObject>&);
+					 TObject* = 0);
     static int mergeObjs(TObject*, TObject*, const std::string &, debugLevel_t debugLevel = none);
     static int mergeLB_createListOfHistos(TDirectory*, TDirectory*, std::vector<std::string>&, debugLevel_t&);
     static int mergeLB_recursiveDirCopy(TDirectory*, TDirectory*, TDirectory*, std::vector<std::string>&, debugLevel_t&);
