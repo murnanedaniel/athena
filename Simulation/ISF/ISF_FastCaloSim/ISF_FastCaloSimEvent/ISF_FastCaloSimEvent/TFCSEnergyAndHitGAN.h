@@ -7,8 +7,18 @@
 
 #include "ISF_FastCaloSimEvent/TFCSParametrizationBinnedChain.h"
 #include "ISF_FastCaloSimEvent/TFCSSimulationState.h"
+#include "ISF_FastCaloSimEvent/TFCGDetectorRegion.h"
+#include "ISF_FastCaloSimEvent/TFCGEtaSlice.h"
 #include <string>
 #include "TH2D.h"
+
+// XML reader
+#include <libxml/xmlmemory.h>
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+#include <libxml/xmlreader.h>
+#include <libxml/xpath.h>
+#include <libxml/xpathInternals.h>
 
 // forward declare lwtnn dependencies
 namespace lwt
@@ -56,13 +66,11 @@ public:
   unsigned int get_nr_of_init(unsigned int bin) const;
   void set_nr_of_init(unsigned int bin,unsigned int ninit);
   
-  const Binning& get_Binning() const {return m_Binning;};
-  const lwt::LightweightGraph* get_graph() const {return m_graph;};
+  const TFCGDetectorRegion::Binning get_Binning() const {return m_region->GetBinning();};
   const std::string* get_input() const {return m_input;};
   
   bool initializeNetwork(int pid,int etaMin,std::string FastCaloGANInputFolderName);
   
-  bool fillFastCaloGanNetworkInputs(TFCSSimulationState& simulstate,const TFCSTruthState* truth, NetworkInputs & inputs,double & trueEnergy) const;
   bool fillEnergy(TFCSSimulationState& simulstate, const TFCSTruthState* truth, const TFCSExtrapolationState* extrapol, NetworkInputs inputs) const;
   virtual FCSReturnCode simulate(TFCSSimulationState& simulstate,const TFCSTruthState* truth, const TFCSExtrapolationState* extrapol) const override;
   
@@ -71,21 +79,19 @@ public:
   static void unit_test(TFCSSimulationState* simulstate=nullptr,const TFCSTruthState* truth=nullptr, const TFCSExtrapolationState* extrapol=nullptr);
 
 protected:  
-  void GetBinning(int pid,int etaMax,std::string FastCaloGANInputFolderName);
+  void SetRegionAndSliceFromXML(int pid,int etaMax,std::string FastCaloGANInputFolderName);
   
 private:
+  bool ReadBooleanAttribute(std::string name, xmlNodePtr node);
+  int GetBinsInFours(double bins);
   std::vector< int > m_bin_ninit;
   
   //Persistify configuration in string m_input. A custom Streamer(...) builds m_graph on the fly when reading from file.
   //Inside Athena, if GANfreemem() is true, the content of m_input is deleted after reading in order to free memory
   std::string*     m_input=nullptr;
-  lwt::LightweightGraph* m_graph=nullptr;//!Do not persistify
   
-  Binning m_Binning;
-  
-  // specific to architecture
-  // preprocessing of input
-  int m_GANLatentSize = 0;
+  TFCGEtaSlice* m_slice;
+  TFCGDetectorRegion* m_region;
 
   ClassDefOverride(TFCSEnergyAndHitGAN,2)  //TFCSEnergyAndHitGAN
 };

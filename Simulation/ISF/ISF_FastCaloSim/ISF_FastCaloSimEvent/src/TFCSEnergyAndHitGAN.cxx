@@ -26,17 +26,7 @@
 #include <iostream>
 #include <fstream>
 
-//LWTNN
-#include "lwtnn/LightweightGraph.hh"
-#include "lwtnn/parse_json.hh"
 
-// XML reader
-#include <libxml/xmlmemory.h>
-#include <libxml/parser.h>
-#include <libxml/tree.h>
-#include <libxml/xmlreader.h>
-#include <libxml/xpath.h>
-#include <libxml/xpathInternals.h>
 
 //=============================================
 //======= TFCSEnergyAndHitGAN =========
@@ -49,11 +39,11 @@ TFCSEnergyAndHitGAN::TFCSEnergyAndHitGAN(const char* name, const char* title):TF
 
 TFCSEnergyAndHitGAN::~TFCSEnergyAndHitGAN()
 {
-  if(m_input!=nullptr) {
-    delete m_input;
+  if(m_slice!=nullptr) {
+    delete m_slice;
   }
-  if(m_graph!=nullptr) {
-    delete m_graph;
+  if(m_region!=nullptr) {
+    delete m_region;
   }
 }
 
@@ -102,102 +92,89 @@ bool TFCSEnergyAndHitGAN::initializeNetwork(int pid,int etaMin,std::string FastC
   if (inputFile.empty()){
     ATH_MSG_ERROR("Could not find json file " << inputFile );
     return false;
-  } else {
-    ATH_MSG_INFO("For pid: " << pid <<" and eta " << etaMin <<"-" << etaMax <<", loading json file " << inputFile );
-    std::ifstream input(inputFile);
-    std::stringstream sin;
-    sin << input.rdbuf();
-    input.close();
-    // build the graph
-    auto config=lwt::parse_json_graph(sin);
-    m_graph=new lwt::LightweightGraph(config);
-    if (m_graph==nullptr){
-      ATH_MSG_ERROR("Could not create LightWeightGraph from  " << inputFile );
-      return false;
-    }
-    if(m_input!=nullptr) {
-      delete m_input;
-    }
-    m_input = new std::string(sin.str());
-  }                
-  m_GANLatentSize = 50; 
+  }
     
   //Get all Binning histograms to store in memory
-  GetBinning(pid,(etaMin+etaMax)/2,FastCaloGANInputFolderName);    
-
-  if (m_GANLatentSize==0){
-    ATH_MSG_ERROR("m_GANLatentSize uninitialized!");
-    return false;
-  }
+  SetRegionAndSliceFromXML(pid,(etaMin+etaMax)/2,FastCaloGANInputFolderName);    
 
   return true;
 }
 
-void TFCSEnergyAndHitGAN::GetBinning(int pid,int etaMid,std::string FastCaloGANInputFolderName){ 
+void TFCSEnergyAndHitGAN::SetRegionAndSliceFromXML(int pid,int etaMid,std::string FastCaloGANInputFolderName){ 
    std::string xmlFullFileName = FastCaloGANInputFolderName + "/binning.xml";
    ATH_MSG_DEBUG("Opening XML file in "<< xmlFullFileName);
-   
-   std::vector<Binning> AllBinning;
-   std::vector<int> EtaMaxList;
-   
+  
    xmlDocPtr doc = xmlParseFile( xmlFullFileName.c_str() );
    for( xmlNodePtr nodeRoot = doc->children; nodeRoot != NULL; nodeRoot = nodeRoot->next) {
       if (xmlStrEqual( nodeRoot->name, BAD_CAST "Bins" )) {
-         for( xmlNodePtr nodeBin = nodeRoot->children; nodeBin != NULL; nodeBin = nodeBin->next ) {
-            if (xmlStrEqual( nodeBin->name, BAD_CAST "Bin" )) {
-               int nodePid = atof( (const char*) xmlGetProp( nodeBin, BAD_CAST "pid" ) );
-               //int nodeEtaMin = atof( (const char*) xmlGetProp( nodeBin, BAD_CAST "etaMin" ) );
-               int nodeEtaMax = atof( (const char*) xmlGetProp( nodeBin, BAD_CAST "etaMax" ) );
-               
-               Binning binsInLayer;
-               bool correctentry=true;
-	             if(nodePid!=pid) correctentry=false;
-               
-               for( xmlNodePtr nodeLayer = nodeBin->children; nodeLayer != NULL; nodeLayer = nodeLayer->next ) {
-                  if( xmlStrEqual( nodeLayer->name, BAD_CAST "Layer" ) ) {
-                     std::vector<double> edges; 
-                     std::string s( (const char*)xmlGetProp( nodeLayer, BAD_CAST "r_edges" ) );
-                    
-                     std::istringstream ss(s);
-                     std::string token;
- 
-                     while(std::getline(ss, token, ',')) {
-                        edges.push_back(atof( token.c_str() ));
+         for( xmlNodePtr nodeParticle = nodeRoot->children; nodeParticle != NULL; nodeParticle = nodeParticle->next ) {
+            if (xmlStrEqual( nodeParticle->name, BAD_CAST "Particle" )) {
+               int nodePid = atof( (const char*) xmlGetProp( nodeParticle, BAD_CAST "pid" ) );
+               for( xmlNodePtr nodeBin = nodeParticle->children; nodeBin != NULL; nodeBin = nodeBin->next ) {
+                  if(nodePid == pid){ 
+                     if (xmlStrEqual( nodeBin->name, BAD_CAST "Bin" )) {
+                        int nodeEtaMin = atof( (const char*) xmlGetProp( nodeBin, BAD_CAST "etaMin" ) );
+                        int nodeEtaMax = atof( (const char*) xmlGetProp( nodeBin, BAD_CAST "etaMax" ) );
+                        int ganVersion = atof( (const char*) xmlGetProp( nodeBin, BAD_CAST "ganVersion" ) );
+                        int regionId = atof( (const char*) xmlGetProp( nodeBin, BAD_CAST "regionId" ) );
+                  
+                        if(fabs(etaMid) > nodeEtaMin && fabs(etaMid) < nodeEtaMax){ 
+
+                          ATH_MSG_INFO("Detector region: "<<regionId<<" GAN version: "<<ganVersion);
+                          
+                          m_region = new TFCGDetectorRegion(regionId, nodePid, nodeEtaMin, nodeEtaMax);
+                          m_slice = new TFCGEtaSlice(nodePid, nodeEtaMin, nodeEtaMax);
+
+                          bool symmetrisedAlpha = ReadBooleanAttribute( "symmetriseAlpha", nodeParticle);
+                          m_region->SetSymmetrisedAlpha(symmetrisedAlpha);
+
+                          int latentDim = atof( (const char*) xmlGetProp( nodeParticle, BAD_CAST "latentDim" ) );
+                          m_slice->SetLatentSpaceSize(latentDim);
+                          
+                          TFCGDetectorRegion::Binning binsInLayer;
+                          std::vector<int> relevantlayers;
+
+                          for( xmlNodePtr nodeLayer = nodeBin->children; nodeLayer != NULL; nodeLayer = nodeLayer->next ) {
+                              if( xmlStrEqual( nodeLayer->name, BAD_CAST "Layer" ) ) {
+                                std::vector<double> edges; 
+                                std::string s( (const char*)xmlGetProp( nodeLayer, BAD_CAST "r_edges" ) );
+                                
+                                std::istringstream ss(s);
+                                std::string token;
+            
+                                while(std::getline(ss, token, ',')) {
+                                    edges.push_back(atof( token.c_str() ));
+                                }
+                                
+                                int binsInAlpha = atof( (const char*) xmlGetProp( nodeLayer, BAD_CAST "n_bin_alpha" ) );
+                                int layer = atof( (const char*) xmlGetProp( nodeLayer, BAD_CAST "id" ) );
+                                
+                                //ATH_MSG_INFO("Layer: "<<layer<<" binsInAlpha: "<<binsInAlpha<<" edges: "<< s);
+                                
+                                std::string name = "hist_pid_" + std::to_string(nodePid) + "_region_" + std::to_string(regionId) + "_layer_" + std::to_string(layer);
+                                int xBins = edges.size()-1;
+                                if (xBins == 0) xBins = 1; //remove warning
+                                else relevantlayers.push_back(layer); 
+                                double minAlpha = -TMath::Pi();
+                                if (m_symmetrisedAlpha && ganVersion > 1 && binsInAlpha > 1 && nodePid != 211){
+                                  minAlpha = 0;
+                                }
+                                binsInLayer[layer] = TH2D(name.c_str(), name.c_str(), xBins, &edges[0], binsInAlpha, minAlpha, TMath::Pi());
+                              }
+                          }
+                          
+                          m_region->SetBinning(binsInLayer);
+                          m_region->SetRelevantLayers(relevantlayers);
+                          m_slice->SetGANVersion(ganVersion);
+                        }
                      }
-                     
-                     int binsInAlpha = atof( (const char*) xmlGetProp( nodeLayer, BAD_CAST "n_bin_alpha" ) );
-                     int layer = atof( (const char*) xmlGetProp( nodeLayer, BAD_CAST "id" ) );
-                     
-                     if(correctentry) ATH_MSG_DEBUG("nodepid="<<nodePid<<" nodeEtaMax="<<nodeEtaMax<<" Layer: "<<layer<<" binsInAlpha: "<<binsInAlpha<<" edges: "<< s);
-                     
-                     std::string name = "hist_pid_" + std::to_string(nodePid) + "_etaSliceNumber_" + std::to_string(EtaMaxList.size()) + "_layer_" + std::to_string(layer);
-                     int xBins = edges.size()-1;
-                     if (xBins == 0) {
-                       xBins = 1; //remove warning
-                       edges.push_back(0);
-                       edges.push_back(1);
-                     }  
-                     binsInLayer[layer] = TH2D(name.c_str(), name.c_str(), xBins, &edges[0], binsInAlpha, -TMath::Pi(), TMath::Pi());
-                     binsInLayer[layer].SetDirectory(0);
-                  }
-               }
-               
-	             if(!correctentry) continue;
-               AllBinning.push_back(binsInLayer);
-               EtaMaxList.push_back(nodeEtaMax);
-            }         
+                  }         
+                }
+            }
          }
       }
    }
-   
-   int index = 0;
-   for (int etaMax : EtaMaxList){
-     if (etaMid < etaMax) {
-       m_Binning=AllBinning[index];
-       break;
-     }
-     index++;
-   }
+
    
    ATH_MSG_DEBUG("Done XML file");
 }   
@@ -206,25 +183,6 @@ void TFCSEnergyAndHitGAN::GetBinning(int pid,int etaMid,std::string FastCaloGANI
 const std::string TFCSEnergyAndHitGAN::get_variable_text(TFCSSimulationState& simulstate,const TFCSTruthState*, const TFCSExtrapolationState*) const
 {
   return std::string(Form("layer=%d",simulstate.getAuxInfo<int>("GANlayer"_FCShash)));
-}
-
-bool TFCSEnergyAndHitGAN::fillFastCaloGanNetworkInputs(TFCSSimulationState& simulstate,const TFCSTruthState* truth, NetworkInputs & inputs,double & trueEnergy) const
-{
-  // fill randomize latent space
-  //FIXME: should this really be momentum
-  trueEnergy = truth->P();
-  double randUniformZ = 0.;
-  //FIXME: make dependency on input particle eta, pdgid and energy
-  for (int i = 0; i< m_GANLatentSize; i ++)
-  {
-    randUniformZ = CLHEP::RandFlat::shoot(simulstate.randomEngine(), -1., 1.);
-    inputs["node_0"].insert ( std::pair<std::string,double>(std::to_string(i), randUniformZ) );
-  }
-  
-  //std::cout << "Check label: " <<trueEnergy <<" "<<std::pow(2,22)<<" "<<trueEnergy/std::pow(2,22)<<std::endl;
-  inputs["node_1"].insert ( std::pair<std::string,double>("0", trueEnergy/(std::pow(2,22))) );
-
-  return true;
 }
 
 bool TFCSEnergyAndHitGAN::fillEnergy(TFCSSimulationState& simulstate, const TFCSTruthState* truth, const TFCSExtrapolationState* extrapol, NetworkInputs inputs) const
@@ -239,15 +197,7 @@ bool TFCSEnergyAndHitGAN::fillEnergy(TFCSSimulationState& simulstate, const TFCS
 
   ATH_MSG_VERBOSE("Momentum " << truth->P() <<" pdgId " << truth->pdgid());
   
-  // compute the network output values
-  //ATH_MSG_VERBOSE("neural network input = "<<inputs);
-  ATH_MSG_VERBOSE("input size " << inputs["node_0"].size());
-  NetworkOutputs outputs = m_graph->compute(inputs);
-  //ATH_MSG_VERBOSE("neural network output = "<<outputs);
 
-  ATH_MSG_VERBOSE("neural network output size = "<<outputs.size());
-
-  const Binning& binsInLayers = m_Binning;
   ATH_MSG_VERBOSE("Get binning");
 
   int vox = 0; 
@@ -657,3 +607,12 @@ void TFCSEnergyAndHitGAN::unit_test(TFCSSimulationState* simulstate,const TFCSTr
   simulstate->Print();
 }
 
+bool TFCSEnergyAndHitGAN::ReadBooleanAttribute(std::string name, xmlNodePtr node){
+   std::cout<<"Retrieving "<<name<<std::endl;
+   std::string attribute = (const char*) xmlGetProp( node, BAD_CAST name.c_str() );
+   bool value = attribute == "true" ? true : false; 
+   std::cout<<name<<": "<<value<<std::endl;
+   return value;
+}
+
+int TFCSEnergyAndHitGAN::GetBinsInFours(double bins){
