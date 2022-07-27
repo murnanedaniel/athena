@@ -681,7 +681,7 @@ void checkInactiveFEs(bool isIBL, TFile* hitMapFile, int &npush_backFE,
       sum=sum+std::pow(2,2);//calculating number to know which FEs in the module shall be masked
       sum_FE++;
     }
-    if(FE3<=0.9average_hit and disk1A!=0 and disk2A!=0 and disk3A!=0 and disk1C!=0 and disk2C!=0 and disk3C!=0){//value multiplied with average_hit is threshold
+    if(FE3<=0.9*average_hit and disk1A!=0 and disk2A!=0 and disk3A!=0 and disk1C!=0 and disk2C!=0 and disk3C!=0){//value multiplied with average_hit is threshold
       sum=sum+std::pow(2,3);//calculating number to know which FEs in the module shall be masked
       sum_FE++;
     }
