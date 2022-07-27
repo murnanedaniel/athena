@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 ################################################################################
 #
@@ -12,7 +12,7 @@ from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
 from AthenaConfiguration.AccumulatorCache import AccumulatorCache
 from AthenaConfiguration.Enums import ProductionStep
-from AthenaCommon.SystemOfUnits import GeV, MeV, mm, deg
+from AthenaCommon.SystemOfUnits import GeV, MeV, deg
 from tauRec.tauRecFlags import tauFlags
 
 cached_instances = {}
@@ -29,11 +29,6 @@ _DefaultLargeD0TrackContainer = "InDetLargeD0TrackParticles"
 def setPrefix(prefix): 
     global sPrefix 
     sPrefix = prefix 
-    
-######################################################################## 
-def setAODmode(mode): 
-    global bAODmode 
-    bAODmode = mode
 
 ########################################################################
 # JetSeedBuilder
@@ -46,25 +41,6 @@ def JetSeedBuilderCfg(flags):
     JetSeedBuilder = JetSeedBuilder(name = _name)
     
     result.setPrivateTools(JetSeedBuilder)
-    return result
-
-#########################################################################
-def InDetTrackSelectionToolForTJVACfg(flags):
-    result = ComponentAccumulator()
-    _name = sPrefix + 'InDetTrackSelectionToolForTJVA'
-
-    # Configures tau track selector tool (should eventually check whether an existing one is available)
-    InDet__InDetTrackSelectionTool = CompFactory.InDet.InDetTrackSelectionTool
-    InDetTrackSelectionToolForTJVA = InDet__InDetTrackSelectionTool(name = _name,
-                                                                    minPt                = 1000.,
-                                                                    maxD0                = 9999.*mm,
-                                                                    maxZ0                = 9999.*mm,
-                                                                    minNPixelHits        = 2,  # PixelHits + PixelDeadSensors
-                                                                    minNSctHits          = 0,  # SCTHits + SCTDeadSensors
-                                                                    minNSiHits           = 7,  # PixelHits + SCTHits + PixelDeadSensors + SCTDeadSensors
-                                                                    minNTrtHits          = 0)
-
-    result.setPrivateTools(InDetTrackSelectionToolForTJVA)
     return result
 
 #########################################################################
@@ -84,6 +60,8 @@ def TauVertexFinderCfg(flags):
     result = ComponentAccumulator()
     _name = sPrefix + 'TauVertexFinder'
 
+    from InDetConfig.InDetTrackSelectionToolConfig import Tau_InDetTrackSelectionToolForTJVACfg
+
     # Algorithm that overwrites numTrack() and charge() of tauJets in container
     # from tauRecTools.tauRecToolsConf import TauVertexFinder
     TauVertexFinder = CompFactory.getComp("TauVertexFinder")
@@ -91,7 +69,7 @@ def TauVertexFinderCfg(flags):
                                       UseTJVA                 = flags.Tau.doTJVA,
                                       UseTJVA_Tiebreak        = flags.Tau.doTJVATiebreak,
                                       AssociatedTracks="GhostTrack", # OK??
-                                      InDetTrackSelectionToolForTJVA = result.popToolsAndMerge(InDetTrackSelectionToolForTJVACfg(flags)),
+                                      InDetTrackSelectionToolForTJVA = result.popToolsAndMerge(Tau_InDetTrackSelectionToolForTJVACfg(flags)),
                                       Key_trackPartInputContainer= flags.Tau.TrackCollection,
                                       Key_vertexInputContainer = flags.Tau.VertexCollection,
                                       TVATool = result.popToolsAndMerge(TVAToolCfg(flags)) )
@@ -231,7 +209,7 @@ def TauTrackFinderCfg(flags):
                                     removeDuplicateCoreTracks = flags.Tau.RemoveDupeCoreTracks,
                                     useGhostTracks = flags.Tau.useGhostTracks,
                                     ghostTrackDR = flags.Tau.ghostTrackDR,
-                                    Key_jetContainer = (flags.Tau.JetCollection if flags.Tau.useGhostTracks else ""),
+                                    Key_jetContainer = (flags.Tau.SeedJetCollection if flags.Tau.useGhostTracks else ""),
                                     Key_trackPartInputContainer = flags.Tau.TrackCollection,
                                     Key_LargeD0TrackInputContainer = (flags.Tau.LargeD0TrackContainer if flags.Tau.associateLRT else ""),
                                     TrackToVertexIPEstimator = result.popToolsAndMerge(TauTrackToVertexIPEstimatorCfg(flags)) )
@@ -262,7 +240,7 @@ def TauVertexedClusterDecoratorCfg(flags):
 
     TauVertexedClusterDecorator = CompFactory.getComp("TauVertexedClusterDecorator")
     myTauVertexedClusterDecorator = TauVertexedClusterDecorator(name = _name,
-                                                                SeedJet = flags.Tau.JetCollection)
+                                                                SeedJet = flags.Tau.SeedJetCollection)
 
     result.setPrivateTools(myTauVertexedClusterDecorator)
     return result
@@ -1056,3 +1034,33 @@ def TauCombinedTESCfg(flags):
     result.setPrivateTools(myTauCombinedTES)
     return result
 
+########################################################################
+# muon removal tool
+def TauAODMuonRemovalCfg(flags):
+    result = ComponentAccumulator()   
+    _name = sPrefix + 'MuonRemoval'
+    TauAODLeptonRemovalTool = CompFactory.getComp("TauAODLeptonRemovalTool")
+    myMuonRemoval = TauAODLeptonRemovalTool(    name                   = _name,
+                                                Key_MuonInputContainer = 'Muons',
+                                                doMuonTrkRm            = True,
+                                                doMuonClsRm            = True,
+                                                muonIDWP               = 'Medium'
+    )
+    result.setPrivateTools(myMuonRemoval)
+    return result
+
+########################################################################
+# elec removal tool
+def TauAODElectronRemovalCfg(flags):
+    result = ComponentAccumulator()  
+    _name = sPrefix + 'ElecRemoval'
+    TauAODLeptonRemovalTool = CompFactory.getComp("TauAODLeptonRemovalTool")
+    myElecRemoval = TauAODLeptonRemovalTool(    name                   = _name,
+                                                Key_ElecInputContainer = 'Electrons',
+                                                doElecTrkRm            = True,
+                                                doElecClsRm            = True,
+                                                elecIDWP               = 'Medium'
+    )
+    result.setPrivateTools(myElecRemoval)
+    return result
+########################################################################

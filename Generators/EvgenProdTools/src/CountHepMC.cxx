@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef XAOD_ANALYSIS
@@ -15,6 +15,8 @@
 #include "EventInfo/EventInfo.h"
 #include "EventInfo/EventID.h"
 #include "EventInfo/EventType.h"
+#include "xAODEventInfo/EventAuxInfo.h"
+#include "StoreGate/ReadDecorHandle.h"
 #include "IOVDbDataModel/IOVMetaDataContainer.h"
 #include "IOVDbDataModel/IOVPayloadContainer.h"
 #include "AthenaPoolUtilities/CondAttrListCollection.h"
@@ -22,11 +24,8 @@
 #include <cassert>
 #include <string>
 
-
-
 CountHepMC::CountHepMC(const std::string& name, ISvcLocator* pSvcLocator) :
-  GenBase(name, pSvcLocator),
-  m_nPass(0)
+  GenBase(name, pSvcLocator)
 {
   declareProperty("RequestedOutput", m_nCount=5000);
   declareProperty("FirstEvent",      m_firstEv=1);
@@ -34,23 +33,24 @@ CountHepMC::CountHepMC(const std::string& name, ISvcLocator* pSvcLocator) :
   declareProperty("CorrectEventID",  m_corEvtID=false);
   declareProperty("CorrectRunNumber", m_corRunNumber=false);
   declareProperty("NewRunNumber",    m_newRunNumber=999999);
+  declareProperty("CopyRunNumber",   m_copyRunNumber=true);
   declareProperty("inputKeyName", m_inputKeyName = "GEN_EVENT");
 }
 
+StatusCode CountHepMC::initialize()
+{
+  ATH_CHECK(GenBase::initialize());
 
-CountHepMC::~CountHepMC() {
+  if(m_corRunNumber) ATH_CHECK(m_metaDataStore.retrieve());
 
-}
-
-
-StatusCode CountHepMC::initialize() {
-  CHECK(GenBase::initialize());
-
-  m_nPass = 0;
+  if(m_corEvtID || m_corRunNumber) {
+    ATH_CHECK(m_inputEvtInfoKey.initialize());
+    ATH_CHECK(m_outputEvtInfoKey.initialize());
+    if(!m_mcWeightsKey.empty()) ATH_CHECK(m_mcWeightsKey.initialize());
+  }
 
   return StatusCode::SUCCESS;
 }
-
 
 StatusCode CountHepMC::execute() {
 
@@ -60,6 +60,10 @@ StatusCode CountHepMC::execute() {
   ATH_MSG_INFO("Options for HepMC event number, EvtID event number, EvtID run number = " << m_corHepMC << m_corEvtID << m_corRunNumber );
   // Fix the event number
   int newnum = m_nPass + m_firstEv - 1;
+  if (newnum<=0){
+    ATH_MSG_ERROR("Event number must be positive-definite; " << newnum << " is not allowed");
+    return StatusCode::FAILURE;
+  }
 
   if (m_corHepMC) {
     std::string   key = m_inputKeyName;
@@ -78,9 +82,24 @@ StatusCode CountHepMC::execute() {
     }
   }
 
+  xAOD::EventInfo* outputEvtInfo{nullptr};
+  if(m_corEvtID||m_corRunNumber) {
+    SG::ReadHandle<xAOD::EventInfo> inputEvtInfoHandle(m_inputEvtInfoKey);
+    SG::WriteHandle<xAOD::EventInfo> outputEvtInfoHandle(m_outputEvtInfoKey);
+    ATH_CHECK(outputEvtInfoHandle.record(std::make_unique<xAOD::EventInfo>(), std::make_unique<xAOD::EventAuxInfo>()));
+
+    outputEvtInfo = outputEvtInfoHandle.ptr();
+    *outputEvtInfo = *inputEvtInfoHandle;
+
+    if(!m_mcWeightsKey.empty()) {
+      SG::ReadDecorHandle<xAOD::EventInfo,std::vector<float>> mcWeights(m_mcWeightsKey);
+      outputEvtInfo->setMCEventWeights(mcWeights(0));
+    }
+  }
+
   if (m_corEvtID) {
     // Change the EventID in the eventinfo header
-    const EventInfo* pInputEvt(0);
+    const EventInfo* pInputEvt(nullptr);
     if (evtStore()->retrieve(pInputEvt).isSuccess()) {
       assert(pInputEvt);
       EventID* eventID = const_cast<EventID*>(pInputEvt->event_ID());
@@ -90,11 +109,40 @@ StatusCode CountHepMC::execute() {
       ATH_MSG_ERROR("No EventInfo object found");
       return StatusCode::SUCCESS;
     }
+
+    outputEvtInfo->setEventNumber(newnum);
   }
+
+
+  // Copy generation run number into mc channel number
+  if (m_copyRunNumber) {
+    const EventInfo* pInputEvt(nullptr);
+    if (evtStore()->retrieve(pInputEvt).isSuccess()) {
+      assert(pInputEvt);
+
+      unsigned int run_number = pInputEvt->event_ID()->run_number();
+
+      EventType* eventType = const_cast<EventType*>(pInputEvt->event_type());
+      eventType->set_mc_channel_number(run_number);
+      eventType->set_mc_event_number  (newnum);
+
+      outputEvtInfo->setRunNumber(run_number);
+      outputEvtInfo->setMCChannelNumber(run_number);
+      outputEvtInfo->setMCEventNumber(newnum);
+      outputEvtInfo->setEventNumber(newnum);
+
+      ATH_MSG_DEBUG("Copied run number into mc channel number: " << run_number);
+    } else {
+      ATH_MSG_ERROR("No EventInfo object found");
+      return StatusCode::FAILURE;
+    }
+
+  }
+
 
   if (m_corRunNumber) {
     // Change the EventID in the eventinfo header
-    const EventInfo* pInputEvt(0);
+    const EventInfo* pInputEvt(nullptr);
     unsigned int oldRunNumber = 0;
     if (evtStore()->retrieve(pInputEvt).isSuccess()) {
       assert(pInputEvt);
@@ -112,12 +160,16 @@ StatusCode CountHepMC::execute() {
       return StatusCode::SUCCESS;
     }
 
+    oldRunNumber = outputEvtInfo->runNumber();
+    outputEvtInfo->setRunNumber(m_newRunNumber);
+    outputEvtInfo->setMCChannelNumber(m_newRunNumber);
+
     {
       // change the channel number where /Generation/Parameters are found
       auto newChannelNumber =
-          static_cast< CondAttrListCollection::ChanNum >(m_newRunNumber);
+	static_cast< CondAttrListCollection::ChanNum >(m_newRunNumber);
       auto oldChannelNumber =
-          static_cast< CondAttrListCollection::ChanNum >(oldRunNumber);
+	static_cast< CondAttrListCollection::ChanNum >(oldRunNumber);
 
       const char* key = "/Generation/Parameters";
       const IOVMetaDataContainer * iovContainer = nullptr;

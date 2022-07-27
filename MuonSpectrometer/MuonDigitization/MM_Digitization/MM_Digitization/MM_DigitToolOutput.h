@@ -23,43 +23,41 @@ Class to store output produced by MDT_Digitization tools:
 #include <vector>
 
 class MM_DigitToolOutput {
- public:
-    MM_DigitToolOutput(bool hitWasEff,
-                       const std::vector <int>& strpos,
-                       const std::vector<float>& time,
-                       const std::vector<float>& charge,
-                       int strTrig, float strTimeTrig )
-     :  m_hitWasEff(hitWasEff),
+public:
+    MM_DigitToolOutput(bool hitWasEff, const std::vector<int>& strpos, const std::vector<float>& time, const std::vector<float>& charge,
+                       int strTrig, float strTimeTrig) :
+        m_hitWasEff(hitWasEff),
         m_strpos(strpos),
         m_time(time),
         m_charge(charge),
         m_stripForTrigger(strTrig),
-        m_stripTimeForTrigger(strTimeTrig),
-        m_isValid(false)
+        m_stripTimeForTrigger(strTimeTrig)
+
     {
-        if(m_strpos.size() > 0 && m_time.size() > 0 && m_charge.size() > 0) m_isValid = true;
+        m_isValid = !(m_strpos.empty() || m_time.empty() || m_charge.empty());
     }
 
-    ~MM_DigitToolOutput() {}
+    ~MM_DigitToolOutput() = default;
 
-    bool hitWasEfficient()  const { return m_hitWasEff; }
-    std::vector<int> stripPos() const { return m_strpos; }
-    std::vector<float> stripTime() const { return m_time; }
-    std::vector<float> stripCharge() const { return m_charge; }
+    bool hitWasEfficient() const { return m_hitWasEff; }
+    const std::vector<int>& stripPos() const { return m_strpos; }
+    const std::vector<float>& stripTime() const { return m_time; }
+    const std::vector<float>& stripCharge() const { return m_charge; }
+    bool isValid() const { return m_isValid; }
+
     int stripForTrigger() const { return m_stripForTrigger; }
     float stripTimeForTrigger() const { return m_stripTimeForTrigger; }
-    void setStripForTrigger(int val)  { m_stripForTrigger = val; }
+    void setStripForTrigger(int val) { m_stripForTrigger = val; }
     void setStripTimeForTrigger(float val) { m_stripTimeForTrigger = val; }
-    bool isValid() { return m_isValid; }
 
- private:
-    bool  m_hitWasEff;
-    std::vector<int> m_strpos;
-    std::vector<float>  m_time;
-    std::vector<float> m_charge;
-    int m_stripForTrigger;
-    float m_stripTimeForTrigger;
-    bool m_isValid;
+private:
+    bool m_hitWasEff{false};
+    std::vector<int> m_strpos{};
+    std::vector<float> m_time{};
+    std::vector<float> m_charge{};
+    int m_stripForTrigger{0};
+    float m_stripTimeForTrigger{0.f};
+    bool m_isValid{false};
 };
 
 #endif

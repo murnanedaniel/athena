@@ -130,9 +130,7 @@ namespace MuonGM {
         m_manager->setCachingFlag(m_caching);
         m_manager->setCacheFillingFlag(m_cacheFillingFlag);
         m_manager->setControlAlinesFlag(m_controlAlines);
-        m_manager->setNSWABLinesAsciiSideA(m_NSWABLinesSideA);
-        m_manager->setNSWABLinesAsciiSideC(m_NSWABLinesSideC);
-        m_manager->setMMAsBuiltCalculator(m_MMAsBuiltJsonPath);
+        m_manager->setNSWABLineAsciiPath(m_NSWABLineAsciiPath);
         // set here the flag defining the geometry granularity
         // minimalgeo = 1 => The geo tree is built up to the Detector Level (Full PhysVol)
         //                     no internal structure of the Detector is built
@@ -140,6 +138,7 @@ namespace MuonGM {
         m_manager->setMinimalGeoFlag(m_minimalGeoFlag);
         m_manager->setMdtDeformationFlag(m_mdtDeformationFlag);
         m_manager->setMdtAsBuiltParamsFlag(m_mdtAsBuiltParaFlag);
+        m_manager->setNswAsBuiltParamsFlag(m_nswAsBuiltParaFlag);
 
         if (m_controlCscIntAlines == 0)
             m_manager->setApplyCscIntAlignment(false);
@@ -157,11 +156,8 @@ namespace MuonGM {
         MYSQL::LockedMYSQL mysql = MYSQL::GetPointer();
         mysql->setGeometryVersion(m_layout);
         mysql->set_amdb_from_RDB(m_rdb == 1);
-        mysql->set_DBMuonVersion(m_DBMuonVersion);
 
-        log << MSG::INFO << "Mysql helper class created here for geometry version " << mysql->getGeometryVersion() << " from DB MuonVersion <" << mysql->get_DBMuonVersion() << ">"
-            << endmsg;
-
+ 
         StatusCode sc = StatusCode::SUCCESS;
 
         const MdtIdHelper *mdtidh = nullptr;
@@ -243,8 +239,6 @@ namespace MuonGM {
         // m_includeCutouts = 0 => no cutouts
         m_manager->setCutoutsFlag(m_includeCutouts);
         m_manager->setCutoutsBogFlag(m_includeCutoutsBog);
-        mysql->setCutoutsBogFlag(m_includeCutoutsBog);
-        mysql->setCtbBisFlag(m_includeCtbBis);
         mysql->setControlAlines(m_controlAlines);
 
         dbr->setGeometryVersion(m_layout);
@@ -322,7 +316,7 @@ namespace MuonGM {
         }
         */
 
-        const StoredMaterialManager *theMaterialManager;
+        StoredMaterialManager *theMaterialManager;
         if (StatusCode::SUCCESS != m_pDetStore->retrieve(theMaterialManager, "MATERIALS")) {
             return;
         } else {

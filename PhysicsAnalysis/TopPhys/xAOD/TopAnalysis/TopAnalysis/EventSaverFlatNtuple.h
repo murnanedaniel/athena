@@ -285,6 +285,32 @@ namespace top {
     float m_weight_leptonSF_MU_SF_ID_STAT_LOWPT_DOWN;
     float m_weight_leptonSF_MU_SF_ID_SYST_LOWPT_UP;
     float m_weight_leptonSF_MU_SF_ID_SYST_LOWPT_DOWN;
+    float m_weight_leptonSF_MU_SF_ID_BKG_FRACTION_UP;
+    float m_weight_leptonSF_MU_SF_ID_BKG_FRACTION_DOWN;
+    float m_weight_leptonSF_MU_SF_ID_FIT_MODEL_LOWPT_UP;
+    float m_weight_leptonSF_MU_SF_ID_FIT_MODEL_LOWPT_DOWN;
+    float m_weight_leptonSF_MU_SF_ID_LUMI_UNCERT_UP;
+    float m_weight_leptonSF_MU_SF_ID_LUMI_UNCERT_DOWN;
+    float m_weight_leptonSF_MU_SF_ID_MATCHING_UP;
+    float m_weight_leptonSF_MU_SF_ID_MATCHING_DOWN;
+    float m_weight_leptonSF_MU_SF_ID_MATCHING_LOWPT_UP;
+    float m_weight_leptonSF_MU_SF_ID_MATCHING_LOWPT_DOWN;
+    float m_weight_leptonSF_MU_SF_ID_MC_XSEC_UP;
+    float m_weight_leptonSF_MU_SF_ID_MC_XSEC_DOWN;
+    float m_weight_leptonSF_MU_SF_ID_PT_DEPENDENCY_UP;
+    float m_weight_leptonSF_MU_SF_ID_PT_DEPENDENCY_DOWN;
+    float m_weight_leptonSF_MU_SF_ID_QCD_TEMPLATE_UP;
+    float m_weight_leptonSF_MU_SF_ID_QCD_TEMPLATE_DOWN;
+    float m_weight_leptonSF_MU_SF_ID_SUPRESSION_SCALE_UP;
+    float m_weight_leptonSF_MU_SF_ID_SUPRESSION_SCALE_DOWN;
+    float m_weight_leptonSF_MU_SF_ID_SYS_UP;
+    float m_weight_leptonSF_MU_SF_ID_SYS_DOWN;
+    float m_weight_leptonSF_MU_SF_ID_TRUTH_UP;
+    float m_weight_leptonSF_MU_SF_ID_TRUTH_DOWN;
+    float m_weight_leptonSF_MU_SF_ID_TRUTH_LOWPT_UP;
+    float m_weight_leptonSF_MU_SF_ID_TRUTH_LOWPT_DOWN;
+    float m_weight_leptonSF_MU_SF_ID_BAD_MUON_VETO_UP;
+    float m_weight_leptonSF_MU_SF_ID_BAD_MUON_VETO_DOWN;
     // Muon isolation SF systematics
     float m_weight_leptonSF_MU_SF_Isol_STAT_UP;
     float m_weight_leptonSF_MU_SF_Isol_STAT_DOWN;
@@ -294,6 +320,16 @@ namespace top {
     float m_weight_leptonSF_MU_SF_TTVA_STAT_DOWN;
     float m_weight_leptonSF_MU_SF_TTVA_SYST_UP;
     float m_weight_leptonSF_MU_SF_TTVA_SYST_DOWN;
+    float m_weight_leptonSF_MU_SF_TTVA_BKG_FRACTION_UP;
+    float m_weight_leptonSF_MU_SF_TTVA_BKG_FRACTION_DOWN;
+    float m_weight_leptonSF_MU_SF_TTVA_LUMI_UNCERT_UP;
+    float m_weight_leptonSF_MU_SF_TTVA_LUMI_UNCERT_DOWN;
+    float m_weight_leptonSF_MU_SF_TTVA_MC_XSEC_UP;
+    float m_weight_leptonSF_MU_SF_TTVA_MC_XSEC_DOWN;
+    float m_weight_leptonSF_MU_SF_TTVA_QCD_TEMPLATE_UP;
+    float m_weight_leptonSF_MU_SF_TTVA_QCD_TEMPLATE_DOWN;
+    float m_weight_leptonSF_MU_SF_TTVA_SUPRESSION_SCALE_UP;
+    float m_weight_leptonSF_MU_SF_TTVA_SUPRESSION_SCALE_DOWN;
 
     ///-- triggers --///
     float m_weight_trigger;
@@ -389,10 +425,8 @@ namespace top {
                                           std::vector<float> > > m_perjet_weight_trackjet_bTagSF_named_down;
 
     ///-- weights for matrix-method fakes estimate, for each selection and configuration --///
-    int m_ASMsize;
+    std::string m_ASMdecorName;
     std::vector<float> m_ASMweights;
-    std::vector<std::vector<float> > m_ASMweights_Syst;
-    std::vector<std::vector<std::string> > m_ASMweights_Systname;
 
     /// Weights for bootstrapping
     std::vector<int> m_weight_poisson;
@@ -734,6 +768,12 @@ namespace top {
     float m_met_met;
     float m_met_sumet;
     float m_met_phi;
+    float m_met_sig;
+    float m_met_sigHT;
+    float m_met_sigET;
+    float m_met_sigRho;
+    float m_met_sigVarL;
+    float m_met_sigVarT;
     //these are for specific studies on the met, turned off by default, and turned on with the WriteMETBuiltWithLooseObjects option
     float m_met_met_withLooseObjects;
     float m_met_phi_withLooseObjects;

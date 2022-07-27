@@ -11,20 +11,10 @@
 '''
 
 import ROOT
-from RatesAnalysis.Util import getMetadata, populateTriggers, getGlobalGroup, toJson, toCSV
+from RatesAnalysis.Util import getTableName, getMetadata, populateTriggers, getGlobalGroup, toJson, toCSV
 from AthenaCommon.Logging import logging
 
 
-def getTableName(name):
-  tabName = "Table_Rate_"
-  if name == "HLT" or name == "L1":
-    tabName += "Chain" + name
-  else:
-    tabName += name
-
-  tabName += "_HLT_All.csv"
-
-  return tabName 
 
 def main():
   from argparse import ArgumentParser
@@ -36,7 +26,12 @@ def main():
   parser.add_argument('--outputJSONFile', default='rates.json', 
                       help='JSON file of rates for use with the RuleBook')
   parser.add_argument('--userDetails',
-                      help='User supplied metadata string giving any extra details about this run.')                      
+                      help='User supplied metadata string giving any extra details about this run.')    
+  parser.add_argument('--jira', 
+                      help='Related jira ticket number')
+  parser.add_argument('--amiTag', 
+                      help='AMI tag used for data reprocessing')   
+               
   args = parser.parse_args()
   log = logging.getLogger('RatesPostProcessing')
 
@@ -52,6 +47,8 @@ def main():
   metadata['normalisation'] = normHist.GetBinContent(1)
   metadata['n_evts'] = normHist.GetBinContent(2)
   metadata['details'] = args.userDetails
+  metadata['JIRA'] = args.jira
+  metadata['amiTag'] = args.amiTag
 
   HLTGlobalGroup = getGlobalGroup(inputFile, 'RATE_GLOBAL_HLT')
   L1GlobalGroup = getGlobalGroup(inputFile, 'RATE_GLOBAL_L1')

@@ -2,7 +2,7 @@
   Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
-#include "MuonTrackPerformance/MuonRecoValidationTool.h"
+#include "MuonRecoValidationTool.h"
 
 #include "GaudiKernel/IIncidentSvc.h"
 #include "GaudiKernel/ITHistSvc.h"
@@ -335,7 +335,7 @@ namespace Muon {
 
         // hit counts
         IMuonSegmentHitSummaryTool::HitCounts hitCounts = m_segmentHitSummaryTool->getHitCounts(segment);
-        m_ntuple.segmentBlock.nmdtHits->push_back(hitCounts.nmdtHitsMl1 + hitCounts.nmdtHitsMl2 + hitCounts.ncscHitsEta);
+        m_ntuple.segmentBlock.nmdtHits->push_back(hitCounts.nmdtHits()+ hitCounts.nmmHits() + hitCounts.ncscHits.netaHits);
         m_ntuple.segmentBlock.ntrigEtaHits->push_back(hitCounts.netaTrigHitLayers);
         m_ntuple.segmentBlock.ntrigPhiHits->push_back(hitCounts.nphiTrigHitLayers);
 

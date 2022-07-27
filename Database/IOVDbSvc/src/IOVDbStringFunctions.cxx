@@ -8,7 +8,7 @@
 
 namespace IOVDbNamespace{
   std::string 
-  spaceStrip( std::string_view input){
+  spaceStrip( const std::string & input){
     // return the input string stripped of leading/trailing spaces
     std::string::size_type idx1=input.find_first_not_of(" \n\r\t");
     std::string::size_type idx2=input.find_last_not_of(" \n\r\t");
@@ -103,14 +103,18 @@ namespace IOVDbNamespace{
   std::string 
   sanitiseFilename(const std::string & fname){
     std::string newName{fname};
-    std::replace(newName.begin(), newName.end(), '/', '^');
+    auto oldEnd = newName.end();
+    auto newEnd = std::remove(newName.begin(), oldEnd, '/');
+    //keep this line for reference
+    //std::replace(newName.begin(), newName.end(), '/', '^');
+    newName.erase(newEnd, newName.end());
     return newName;
   }
   
   std::string 
   sanitiseCrestTag(const std::string & fname){
     const std::string newName{sanitiseFilename(fname)};
-    return newName.substr(1, std::string::npos);
+    return newName;
   }
   
   std::string

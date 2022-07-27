@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /// @file   AFPTDBasicTool.h
@@ -10,19 +10,17 @@
 #ifndef AFP_LOCRECO_AFPTDBASICKALMANTOOL_H
 #define AFP_LOCRECO_AFPTDBASICKALMANTOOL_H 1
 
-// STL includes
-#include <string>
-#include <list>
-#include <vector>
-
 
 // FrameWork includes
 #include "AthenaBaseComps/AthAlgTool.h"
 #include "GaudiKernel/ServiceHandle.h"
 
 // xAOD includes
+#include "AFP_DBTools/ToFLocParamData.h"
+#include "AFP_DBTools/IToFLocParamDBTool.h"
 #include "xAODForward/AFPToFHit.h"
 #include "xAODForward/AFPToFHitContainer.h"
+#include "xAODForward/AFPToFTrack.h"
 #include "xAODForward/AFPToFTrackContainer.h"
 #include "xAODForward/AFPToFTrackAuxContainer.h"
 
@@ -31,6 +29,11 @@
 #include "AFP_LocReco/AFPLocRecoStationBasicObj.h"
 #include "AFP_LocReco/AFPTDBasicToolTrack.h"
 
+// STL includes
+#include "nlohmann/json.hpp"
+#include <string>
+#include <list>
+#include <vector>
 
 /// Class reconstructing tracks using basic Kalman filter.
 ///
@@ -69,16 +72,16 @@ private:
   /// AFP station ID for which tracks will be reconstructed
   Gaudi::Property<int> m_stationID{this, "stationID", 0, "ID number of station for which tracks should be reconstructed"};
 
-  /// Name of the xAOD container with clusters to be used in track reconstruction
-  SG::ReadHandleKey<xAOD::AFPToFHitContainer> m_hitContainerKey{this, "AFPToFHitClusterContainerKey", "AFPToFHitContainer", "Name of the container with ToF hits from which ToF tracks are to be reconstructed"};
+  /// Name of the xAOD container with ToF hits to be used in track reconstruction
+  SG::ReadHandleKey<xAOD::AFPToFHitContainer> m_hitContainerKey{this, "AFPToFHitContainerKey", "AFPToFHitContainer", "Name of the container with ToF hits from which ToF tracks are to be reconstructed"};
 
-  /// Minimal number of clusters in track. If there are less clusters track is rejected (Default = 3)
-  Gaudi::Property<unsigned int> m_minHitsNumber{this, "minHitsNumber", 3, "Minimal number of bars in track. If there are less bars track is rejected"};
+  /// Minimal number of bars in track. If there are less bars, track is rejected (Default = 3)
+  Gaudi::Property<unsigned int> m_minHitsNumber{this, "minHitsNumber", 3, "Minimal number of bars in track. If there are less bars, track is rejected"};
 
   Gaudi::Property<double> m_maxAllowedLength{this, "maxAllowedLength", 100, "Maximal length of the bar signal at which bar can be joined to the track"};
 
-  Gaudi::Property<std::vector<double> > m_TimeOffset{this, "TimeOffset", {}, "Array of bar time offsets with respect t0=0 at vz=0"};
-  Gaudi::Property<std::vector<double> > m_BarWeight{this, "BarWeight", {1.,1.,1.,1.}, "Array of bar weights used to calculate average time"};  
+  /// @ brief Tool for accessing DB to get the local ToF parameters
+  ToolHandle<AFP::IToFLocParamDBTool> m_tofLocParamDBTool {this, "tofLocParamDBTool", "AFP__ToFLocParamDBTool", "Tool to access DB to get the local ToF parameters"};
 
   /// Fills Station with ToF hits, dividing them into stations 
   void fillTrainWithBars(std::vector<const xAOD::AFPToFHit*> my_trainBars[4], SG::ReadHandle<xAOD::AFPToFHitContainer>& hitContainer) const;

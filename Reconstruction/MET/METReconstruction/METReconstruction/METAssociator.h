@@ -1,7 +1,7 @@
 ///////////////////////// -*- C++ -*- /////////////////////////////
 
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // METAssociator.h
@@ -74,9 +74,8 @@ namespace met {
     virtual ~METAssociator();
 
     // AsgTool Handles
-    virtual StatusCode initialize();
-    virtual StatusCode execute   (xAOD::MissingETContainer* metCont, xAOD::MissingETAssociationMap* metMap) const;
-    virtual StatusCode finalize  ();
+    virtual StatusCode initialize() override;
+    virtual StatusCode execute (xAOD::MissingETContainer* metCont, xAOD::MissingETAssociationMap* metMap) const override;
 
     ///////////////////////////////////////////////////////////////////
     // Protected methods:
@@ -87,10 +86,6 @@ namespace met {
     ToolHandle<xAOD::ITrackIsolationTool> m_trkIsolationTool;
     ToolHandle<xAOD::ICaloTopoClusterIsolationTool> m_caloIsolationTool;
 
-    std::string m_input_data_key;
-    std::string m_pvcoll;
-    std::string m_trkcoll;
-    std::string m_clcoll;
     std::string m_neutralFELinksKey; 
     std::string m_chargedFELinksKey; 
     std::string m_neutralPFOLinksKey; 
@@ -98,13 +93,12 @@ namespace met {
     bool m_usePFOLinks; 
     bool m_useFELinks; 
 
-    SG::ReadHandleKey<xAOD::VertexContainer>  m_pvcollKey;
-    SG::ReadHandleKey<xAOD::IParticleContainer>  m_clcollKey;
-    SG::ReadHandleKey<xAOD::TrackParticleContainer>  m_trkcollKey;
+    SG::ReadHandleKey<xAOD::VertexContainer>  m_pvcollKey{this,"PrimVxColl","PrimaryVertices","Primary Vertex Collection"};
+    SG::ReadHandleKey<xAOD::IParticleContainer>  m_clcollKey{this,"ClusColl","CaloCalTopoClusters","Topo cluster Collection"};
+    SG::ReadHandleKey<xAOD::TrackParticleContainer>  m_trkcollKey{this,"TrkColl","InDetTrackParticles","Track particle Collection"};
     SG::ReadHandleKey<xAOD::PFOContainer>  m_pfcollKey{this,"PFlowColl","","PFO Collection"};
-    SG::ReadHandleKey<xAOD::FlowElementContainer>  m_fecollKey{this,"FlowElementCollection","CHSParticleFlowObjects","FlowElement Collection (overrides PFO if not empty)"};
-    SG::ReadHandleKey<xAOD::IParticleContainer>  m_forcollKey;
-    SG::ReadHandleKey<xAOD::IParticleContainer>  m_hybridContKey;
+    SG::ReadHandleKey<xAOD::FlowElementContainer>  m_fecollKey{this,"FlowElementCollection","","FlowElement Collection (overrides PFO if not empty)"};
+    SG::ReadHandleKey<xAOD::IParticleContainer>  m_hybridContKey{this,"HybridKey","","Hybrid Collection"};
 
     bool m_pflow;
     bool m_useTracks;

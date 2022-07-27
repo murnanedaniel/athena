@@ -23,7 +23,7 @@ namespace top {
     /**
      * @brief Design patterns 101.  A singleton getter function.
      */
-    static ConfigurationSettings* get();
+    static ConfigurationSettings* get(bool reset=false);
 
     /**
      * @brief The user wants to know the value for the specified key
@@ -125,6 +125,7 @@ namespace top {
 
   std::ostream& operator << (std::ostream& os, const ConfigurationSettings& settings);
   std::ostream& operator << (std::ostream& os, const SelectionConfigurationData& data);
+
 }
 
 

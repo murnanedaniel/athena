@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include <cmath>
@@ -47,7 +47,7 @@ unsigned int TSU::Kinematics::calcInvMassBWLegacy(const TCS::GenericTOB* tob1, c
   TSU::L1TopoDataTypes<11,0> bit_Et1(tob1->Et());
   TSU::L1TopoDataTypes<11,0> bit_Et2(tob2->Et());
   auto bit_invmass2 = bit_Et1*bit_Et2*(bit_cosheta - bit_cosphi)*2;
-  return int(bit_invmass2) ;
+  return static_cast<unsigned>(bit_invmass2) ;
 }
 
 unsigned int TSU::Kinematics::calcTMassBWLegacy(const TCS::GenericTOB* tob1, const TCS::GenericTOB* tob2) {
@@ -55,7 +55,7 @@ unsigned int TSU::Kinematics::calcTMassBWLegacy(const TCS::GenericTOB* tob1, con
   TSU::L1TopoDataTypes<11,0> bit_Et1(tob1->Et());
   TSU::L1TopoDataTypes<11,0> bit_Et2(tob2->Et());
   TSU::L1TopoDataTypes<22,0> bit_tmass2 = 2*bit_Et1*bit_Et2*(1.  - bit_cosphi);
-  return int(bit_tmass2) ;
+  return static_cast<unsigned>(bit_tmass2) ;
   // end bitwise implementation
 }
 
@@ -72,11 +72,11 @@ unsigned int TSU::Kinematics::calcDeltaR2BWLegacy(const TCS::GenericTOB* tob1, c
 }
 
 float TSU::Kinematics::calcCosLegacy(unsigned phi){
-  return float(TSU::L1TopoDataTypes<9,7>(TSU::Trigo::Cosleg.at(phi)));
+  return static_cast<float>(TSU::L1TopoDataTypes<9,7>(TSU::Trigo::Cosleg.at(phi)));
 }
 
 float TSU::Kinematics::calcSinLegacy(unsigned phi){
-  return float(TSU::L1TopoDataTypes<9,7>(TSU::Trigo::Sinleg.at(phi)));
+  return static_cast<float>(TSU::L1TopoDataTypes<9,7>(TSU::Trigo::Sinleg.at(phi)));
 }
 
 unsigned int TSU::Kinematics::calcDeltaPhiBW(const TCS::GenericTOB* tob1, const TCS::GenericTOB* tob2){
@@ -96,7 +96,7 @@ unsigned int TSU::Kinematics::calcDeltaEtaBW(const TCS::GenericTOB* tob1, const 
 
 unsigned int TSU::Kinematics::calcInvMassBW(const TCS::GenericTOB* tob1, const TCS::GenericTOB* tob2){
 
-  auto bit_cosheta = TSU::L1TopoDataTypes<14,10>(TSU::Hyperbolic::Cosh.at(std::abs(tob1->eta() - tob2->eta())));
+  auto bit_cosheta = TSU::L1TopoDataTypes<25,10>(TSU::Hyperbolic::Cosh.at(std::abs(tob1->eta() - tob2->eta())));
   //In case of EM objects / jets / taus the phi angle goes between 0 and 128 while muons are between -128 and 128, applying a shift to keep delta-phi in the allowed range. 
   //those cases should happen only in mixed EM/jets/tau plus mu triggers, if both phi's are in [0,2pi] will not get in
   int phi_tob1 = tob1->phi();
@@ -107,11 +107,16 @@ unsigned int TSU::Kinematics::calcInvMassBW(const TCS::GenericTOB* tob1, const T
       if(phi_tob2 >= 64) phi_tob2 = phi_tob2-128;
     }
   auto bit_cosphi = TSU::L1TopoDataTypes<12,10>(TSU::Trigo::Cos.at(std::abs( phi_tob1 - phi_tob2 )));
-  TSU::L1TopoDataTypes<11,0> bit_Et1(tob1->Et());
-  TSU::L1TopoDataTypes<11,0> bit_Et2(tob2->Et());
+  TSU::L1TopoDataTypes<15,0> bit_Et1(tob1->Et());
+  TSU::L1TopoDataTypes<15,0> bit_Et2(tob2->Et());
   auto bit_invmass2 = bit_Et1*bit_Et2*(bit_cosheta - bit_cosphi)*2;
-  
-  return int(bit_invmass2) ;
+
+  auto u_invmass2 = static_cast<unsigned long long>(bit_invmass2);
+
+  if (u_invmass2 > std::numeric_limits<int>::max())
+    {return std::numeric_limits<int>::max();}
+  else
+    {return u_invmass2;}
 }
 
 unsigned int TSU::Kinematics::calcTMassBW(const TCS::GenericTOB* tob1, const TCS::GenericTOB* tob2) {
@@ -119,7 +124,7 @@ unsigned int TSU::Kinematics::calcTMassBW(const TCS::GenericTOB* tob1, const TCS
   TSU::L1TopoDataTypes<11,0> bit_Et1(tob1->Et());
   TSU::L1TopoDataTypes<11,0> bit_Et2(tob2->Et());
   TSU::L1TopoDataTypes<22,0> bit_tmass2 = 2*bit_Et1*bit_Et2*(1.  - bit_cosphi);
-  return int(bit_tmass2) ;
+  return static_cast<unsigned>(bit_tmass2) ;
   // end bitwise implementation
 }
 
@@ -169,35 +174,35 @@ unsigned long TSU::Kinematics::quadraticSumBW(int i1, int i2){
 unsigned int TSU::Kinematics::calcXi1(const TCS::GenericTOB* tob1, const TCS::GenericTOB* tob2) {
   double scale = 1.4; // this will be converted MeV and unsigned when unit is right
   double shift = 20; // this will be converted MeV and unsigned when unit is right
-  TSU::L1TopoDataTypes<11,0> bit_Et1(static_cast<unsigned>(scale*tob1->Et()+shift));
-  TSU::L1TopoDataTypes<11,0> bit_Et2(static_cast<unsigned>(scale*tob2->Et()+shift));
+  TSU::L1TopoDataTypes<15,0> bit_Et1(static_cast<unsigned>(scale*tob1->Et()+shift));
+  TSU::L1TopoDataTypes<15,0> bit_Et2(static_cast<unsigned>(scale*tob2->Et()+shift));
   auto bit_eeta1 = TSU::L1TopoDataTypes<20,10>(TSU::Expo::E.at(tob1->eta()));
   auto bit_eeta2 = TSU::L1TopoDataTypes<20,10>(TSU::Expo::E.at(tob2->eta()));
 
   auto xi_bit = bit_Et1*bit_eeta1+bit_Et2*bit_eeta2;
 
-  return int(xi_bit);
+  return static_cast<unsigned>(xi_bit);
 }
 
 unsigned int TSU::Kinematics::calcXi2(const TCS::GenericTOB* tob1, const TCS::GenericTOB* tob2) {
   double scale = 1.4; // this will be converted MeV and unsigned when unit is right
   double shift = 20; // this will be converted MeV and unsigned when unit is right
-  TSU::L1TopoDataTypes<11,0> bit_Et1(static_cast<unsigned>(scale*tob1->Et()+shift));
-  TSU::L1TopoDataTypes<11,0> bit_Et2(static_cast<unsigned>(scale*tob2->Et()+shift));
+  TSU::L1TopoDataTypes<15,0> bit_Et1(static_cast<unsigned>(scale*tob1->Et()+shift));
+  TSU::L1TopoDataTypes<15,0> bit_Et2(static_cast<unsigned>(scale*tob2->Et()+shift));
   auto bit_eeta1 = TSU::L1TopoDataTypes<20,10>(TSU::Expo::E.at(-tob1->eta()));
   auto bit_eeta2 = TSU::L1TopoDataTypes<20,10>(TSU::Expo::E.at(-tob2->eta()));
 
   auto xi_bit = bit_Et1*bit_eeta1+bit_Et2*bit_eeta2;
 
-  return int(xi_bit);
+  return static_cast<unsigned>(xi_bit);
 }
 
 float TSU::Kinematics::calcCos(unsigned phi){
-  return float(TSU::L1TopoDataTypes<12,10>(TSU::Trigo::Cos.at(phi)));
+  return static_cast<float>(TSU::L1TopoDataTypes<12,10>(TSU::Trigo::Cos.at(phi)));
 }
 
 float TSU::Kinematics::calcSin(unsigned phi){
-  return float(TSU::L1TopoDataTypes<12,10>(TSU::Trigo::Sin.at(phi)));
+  return static_cast<float>(TSU::L1TopoDataTypes<12,10>(TSU::Trigo::Sin.at(phi)));
 }
 
 /*------------------------------------------ NON-BITWISE --------------------------------------------------*/

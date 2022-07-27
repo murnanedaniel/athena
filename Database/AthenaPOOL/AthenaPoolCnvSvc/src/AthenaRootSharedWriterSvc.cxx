@@ -220,7 +220,11 @@ StatusCode AthenaRootSharedWriterSvc::share(int/* numClients*/, bool motherClien
                ATH_MSG_INFO("ROOT Monitor add client: " << m_rootClientIndex << ", " << client);
             } else {
                TMessage* message = nullptr;
-               socket->Recv(message);
+               Int_t result = socket->Recv(message);
+               if (result < 0) {
+                  ATH_MSG_ERROR("ROOT Monitor got an error while receiving the message from the socket: " << result);
+                  return StatusCode::FAILURE;
+               }
                if (message == nullptr) {
                   ATH_MSG_WARNING("ROOT Monitor got no message from socket: " << socket);
                } else if (message->What() == kMESS_STRING) {
@@ -232,12 +236,16 @@ StatusCode AthenaRootSharedWriterSvc::share(int/* numClients*/, bool motherClien
                   socket->Close();
                   --m_rootClientCount;
                   if (m_rootMonitor->GetActive() == 0 || m_rootClientCount == 0) {
-                     if(!motherClient) {
-                       anyActiveClients = false;
-                       ATH_MSG_INFO("ROOT Monitor: No more active clients...");
+                     if (!motherClient) {
+                        anyActiveClients = false;
+                        ATH_MSG_INFO("ROOT Monitor: No more active clients...");
                      } else {
-                       motherClient = false;
-                       ATH_MSG_INFO("ROOT Monitor: Mother process is done...");
+                        motherClient = false;
+                        ATH_MSG_INFO("ROOT Monitor: Mother process is done...");
+                        if (!m_cnvSvc->commitCatalog().isSuccess()) {
+                           ATH_MSG_FATAL("Failed to commit file catalog.");
+                           return StatusCode::FAILURE;
+                        }
                      }
                   }
                } else if (message->What() == kMESS_ANY) {
@@ -269,6 +277,10 @@ StatusCode AthenaRootSharedWriterSvc::share(int/* numClients*/, bool motherClien
          sc = m_cnvSvc->commitOutput("", false);
          if (sc.isFailure() && !sc.isRecoverable()) {
             ATH_MSG_INFO("commitOutput failed, metadata done.");
+            if (anyActiveClients && m_rootClientCount == 0) {
+              ATH_MSG_INFO("ROOT Monitor: No clients, terminating the loop...");
+              anyActiveClients = false;
+            }
          }
       }
    }

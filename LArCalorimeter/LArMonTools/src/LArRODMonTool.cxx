@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // ********************************************************************
@@ -21,10 +21,8 @@
 #include "CaloIdentifier/CaloCell_ID.h"
 #include "TH1F.h"
 #include "TH2F.h"
-#include "TMath.h"
 #include "TProfile2D.h"
 #include "CaloIdentifier/CaloGain.h"
-#include "xAODEventInfo/EventInfo.h"
 #include "LArRawEvent/LArDigit.h"
 #include "LArRawEvent/LArDigitContainer.h"
 #include "LArRawEvent/LArRawChannel.h"
@@ -39,8 +37,7 @@
 #include "AthenaKernel/errorcheck.h"
 #include <cmath>
 
-const int max_dump=100;
-int ndump=0;
+const unsigned max_dump=100;
 
 /*---------------------------------------------------------*/
 LArRODMonTool::LArRODMonTool(const std::string& type, 
@@ -50,6 +47,7 @@ LArRODMonTool::LArRODMonTool(const std::string& type,
     m_LArOnlineIDHelper(nullptr),
     m_counter(0),
     m_eventsCounter(0),
+    m_ndump(0),
     m_histos(N_PARTITIONS),
     m_errcounters(N_PARTITIONS),
     m_BC(0),
@@ -228,10 +226,16 @@ LArRODMonTool::initialize() {
 
   ManagedMonitorToolBase::initialize().ignore();
 
-  m_hsize = m_history_size/m_history_granularity;
-  if(m_history_granularity <= 0 || m_history_size < 1 || m_hsize < 1) {
-   ATH_MSG_ERROR("Wrong history size or granularity "<<m_history_granularity << " " <<m_history_size<<" "<<m_hsize);
+  
+  if(m_history_granularity <= 0 || m_history_size < 1 ) {
+   ATH_MSG_ERROR("Wrong history size ("<<m_history_size<<") or granularity ("<<m_history_granularity<<")");
    return StatusCode::FAILURE;
+  } else {
+    m_hsize = m_history_size/m_history_granularity;
+    if (m_hsize < 1){
+      ATH_MSG_ERROR("Wrong hsize in initialize"<<m_hsize);
+      return StatusCode::FAILURE;
+    }
   }
   ATH_MSG_INFO("Resetting history size: "<<m_hsize);
   m_hdone.assign(m_hsize,false);
@@ -1114,7 +1118,7 @@ StatusCode LArRODMonTool::compareChannels(const CaloDetDescrManager* /*ddman*/,
   bool keepQ = true;
 
   float DiffQ = 65535.0; 
-  if (rcDig.quality() > 0.) DiffQ = (rcDig.quality() - q_fB)/TMath::Sqrt(rcDig.quality());
+  if (rcDig.quality() > 0.) DiffQ = (rcDig.quality() - q_fB)/std::sqrt(rcDig.quality());
 
   // If q is not calculated online/offline, don't keep event ?
   if (m_skipNullQT && (q_fB <= 0 ||  rcDig.quality()<= 0)) {
@@ -1170,7 +1174,7 @@ StatusCode LArRODMonTool::compareChannels(const CaloDetDescrManager* /*ddman*/,
         hg.m_hOut_E_FT_vs_SLOT_shadow[(m_curr_lb % m_history_size) / m_history_granularity ]->Fill(slot_fD,feedthrough_fD);
       }
       //adding dumper
-      if(m_IsOnline && ndump<max_dump) {
+      if(m_IsOnline && m_ndump<max_dump) {
          const int channel=m_LArOnlineIDHelper->channel(chid);
          const HWIdentifier febid=m_LArOnlineIDHelper->feb_Id(chid);
          ATH_MSG_INFO( "Channel: " << channel << " of FEB " << febid );
@@ -1182,12 +1186,12 @@ StatusCode LArRODMonTool::compareChannels(const CaloDetDescrManager* /*ddman*/,
              ATH_MSG_INFO( "   Eonl = " << en_fB << " , Eoff = " << rcDig.energy()
 	     		        << " , Eoff - Eonl = " << rcDig.energy() - en_fB );
              ATH_MSG_INFO( "   Qonl = " << q_fB << " , Qoff = " << rcDig.quality()
-	     		        << " (Qoff - Qnl)/sqrt(Qoff) = " << (rcDig.quality() - q_fB)/TMath::Sqrt(rcDig.quality())  );
+	     		        << " (Qoff - Qnl)/sqrt(Qoff) = " << (rcDig.quality() - q_fB)/std::sqrt(rcDig.quality())  );
          }
          if(keepQ && (fabs(DiffQ) > DQCut)) {
              ATH_MSG_INFO( "DSP Quality Error : " << m_LArOnlineIDHelper->channel_name(chid) );
              ATH_MSG_INFO( "   Qonl = " << q_fB << " , Qoff = " << rcDig.quality()
-	     		        << " (Qoff - Qnl)/sqrt(Qoff) = " << (rcDig.quality() - q_fB)/TMath::Sqrt(rcDig.quality())  );
+	     		        << " (Qoff - Qnl)/sqrt(Qoff) = " << (rcDig.quality() - q_fB)/std::sqrt(rcDig.quality())  );
              ATH_MSG_INFO( "   Eonl = " << en_fB << " , Eoff = " << rcDig.energy()
 	     		        << " , Eoff - Eonl = " << rcDig.energy() - en_fB );
          }
@@ -1230,7 +1234,7 @@ StatusCode LArRODMonTool::compareChannels(const CaloDetDescrManager* /*ddman*/,
          emon *= escale;
          emon += ramp0;
          ATH_MSG_INFO( "intercept + Escale*Sum[(sample-ped)*OFCa] "<<emon);
-       ++ndump;
+       ++m_ndump;
       } // DE cut
     } // dumper
   }// end energy histograms

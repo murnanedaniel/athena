@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // This file is basically a concatenation of all the *.cxx files.
@@ -33,7 +33,6 @@
 #include "GeoModelInterfaces/StoredMaterialManager.h"
 #include "Identifier/Identifier.h"
 #include "StoreGate/StoreGateSvc.h"
-#include "AthenaKernel/getMessageSvc.h"
 #include "GaudiKernel/Bootstrap.h"
 #include "GaudiKernel/ISvcLocator.h"
 
@@ -1600,16 +1599,16 @@ OraclePixGeoManager::OraclePixGeoManager()
   // Get service locator from Bootstrap
   ISvcLocator* svcLocator = Gaudi::svcLocator(); // from Bootstrap
 
-  if(msgLvl(MSG::DEBUG)) msg(MSG::DEBUG) << "Using ORACLE PIXEL GEOMETRY MANAGER" << endmsg;
+  ATH_MSG_DEBUG("Using ORACLE PIXEL GEOMETRY MANAGER");
 
   // Get the DetStore 
   StatusCode sc = svcLocator->service("DetectorStore", m_pDetStore );
-  if (sc.isFailure()) msg(MSG::FATAL) << "Could not locate DetectorStore" << endmsg;  
+  if (sc.isFailure()) ATH_MSG_FATAL("Could not locate DetectorStore");
 
  
   IRDBAccessSvc *rdbSvc;
   sc = svcLocator->service("RDBAccessSvc",rdbSvc);
-  if (sc.isFailure()) msg(MSG::FATAL) << "Could not locate RDBAccessSvc" << endmsg;
+  if (sc.isFailure()) ATH_MSG_FATAL("Could not locate RDBAccessSvc");
 
 
   // Get version tag and node for Pixel.
@@ -1626,7 +1625,7 @@ OraclePixGeoManager::OraclePixGeoManager()
 //
 /////////////////////////////////////////////////////////
 
-  if(msgLvl(MSG::INFO)) msg(MSG::INFO) << "Retrieving Record Sets from database ..." << endmsg;
+  ATH_MSG_INFO("Retrieving Record Sets from database ...");
 
   DecodeVersionKey versionKeyAtlas("Pixel");
   m_atls = rdbSvc->getRecordsetPtr("AtlasMother",versionKeyAtlas.tag(), versionKeyAtlas.node());
@@ -1649,7 +1648,7 @@ OraclePixGeoManager::OraclePixGeoManager()
   m_plor = rdbSvc->getRecordsetPtr("PLOR",     detectorKey, detectorNode);
   m_plrn = rdbSvc->getRecordsetPtr("PLRN",     detectorKey, detectorNode);
    
-  if(msgLvl(MSG::INFO)) msg(MSG::INFO) << "... Record Sets retrieved." << endmsg;
+  ATH_MSG_INFO("... Record Sets retrieved.");
 
   // cache the number of inner frames
   
@@ -1658,7 +1657,7 @@ OraclePixGeoManager::OraclePixGeoManager()
  //
  // Get the mat manager from the store:
  //
- const StoredMaterialManager* materialManager = nullptr;
+ StoredMaterialManager* materialManager = nullptr;
  if (StatusCode::SUCCESS == m_pDetStore->retrieve(materialManager, std::string("MATERIALS"))) {
    m_pMatMgr = materialManager;
  }
@@ -1670,7 +1669,7 @@ OraclePixGeoManager::OraclePixGeoManager()
  //cout << "Endcap Version " << this->PixelEndcapMajorVersion() << "." << this->PixelEndcapMinorVersion() << endl;
 }
 
-const StoredMaterialManager* OraclePixGeoManager::getMaterialManager()
+StoredMaterialManager* OraclePixGeoManager::getMaterialManager()
 {
   return m_pMatMgr;
 }
@@ -2264,7 +2263,8 @@ OraclePixGeoManager::getIdHelper()
 
 using namespace std;
 
-PixelGeometryManager::PixelGeometryManager()
+PixelGeometryManager::PixelGeometryManager() :
+  AthMessaging("PixelGeometryManager")
 {
 }
 PixelGeometryManager::~PixelGeometryManager()

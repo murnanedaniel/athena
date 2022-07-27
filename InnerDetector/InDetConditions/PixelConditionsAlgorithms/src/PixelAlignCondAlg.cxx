@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "PixelAlignCondAlg.h"
@@ -18,9 +18,6 @@ StatusCode PixelAlignCondAlg::initialize()
 {
   ATH_MSG_DEBUG("initialize " << name());
 
-  // CondSvc
-  ATH_CHECK(m_condSvc.retrieve());
-
   // Read Handles
   // Static
   ATH_CHECK(m_readKeyStatic.initialize(!m_useDynamicAlignFolders.value()));
@@ -32,9 +29,6 @@ StatusCode PixelAlignCondAlg::initialize()
 
   // Write Handles
   ATH_CHECK(m_writeKey.initialize());
-
-  // Register write handle
-  ATH_CHECK(m_condSvc->regHandle(this, m_writeKey));
 
   ATH_CHECK(detStore()->retrieve(m_detManager, m_detManagerName));
 
@@ -66,7 +60,6 @@ StatusCode PixelAlignCondAlg::execute()
 
   // ____________ Construct new Write Cond Object ____________
   std::unique_ptr<GeoAlignmentStore> writeCdo{std::make_unique<GeoAlignmentStore>()};
-  EventIDRange rangeW;
 
   if (not m_useDynamicAlignFolders.value()) { // Static
     // ____________ Get Read Cond Object ____________
@@ -76,17 +69,13 @@ StatusCode PixelAlignCondAlg::execute()
       ATH_MSG_FATAL("Null pointer to the read conditions object of " << m_readKeyStatic.key());
       return StatusCode::FAILURE;
     }
+    writeHandle.addDependency(readHandleStatic);
 
     // ____________ Apply alignments to Pixel GeoModel ____________
     // Construct Container for read CDO.
     InDetDD::RawAlignmentObjects readCdoContainerStatic;
     readCdoContainerStatic.emplace(m_readKeyStatic.key(), readCdoStatic);
     ATH_CHECK(m_detManager->align(readCdoContainerStatic, writeCdo.get()));
-
-    if (not readHandleStatic.range(rangeW)) {
-      ATH_MSG_FATAL("Failed to retrieve validity range for " << readHandleStatic.key());
-      return StatusCode::FAILURE;
-    }
 
     // IBL
     if (!m_readKeyIBLDist.empty()) {
@@ -98,18 +87,12 @@ StatusCode PixelAlignCondAlg::execute()
         ATH_MSG_FATAL("Null pointer to the read conditions object of " << readHandleIBLDist.key());
         return StatusCode::FAILURE;
       }
+      writeHandle.addDependency(readHandleIBLDist);
 
       InDetDD::RawAlignmentObjects readCdoContainerIBLDist;
       readCdoContainerIBLDist.emplace(m_readKeyIBLDist.key(), readCdoIBLDist);
       ATH_CHECK(m_detManager->align(readCdoContainerIBLDist, writeCdo.get()));
 
-      EventIDRange rangeWIBL;
-      if (not readHandleIBLDist.range(rangeWIBL)) {
-       ATH_MSG_FATAL("Failed to retrieve validity range for " << readHandleIBLDist.key());
-       return StatusCode::FAILURE;
-      }
-
-      rangeW = EventIDRange::intersect(rangeW, rangeWIBL);
     }
   } else { // Dynamic
     // ____________ Get Read Cond Object ____________
@@ -119,6 +102,7 @@ StatusCode PixelAlignCondAlg::execute()
       ATH_MSG_FATAL("Null pointer to the read conditions object of " << m_readKeyDynamicL1.key());
       return StatusCode::FAILURE;
     }
+    writeHandle.addDependency(readHandleDynamicL1);
 
     SG::ReadCondHandle<CondAttrListCollection> readHandleDynamicL2{m_readKeyDynamicL2, ctx};
     const CondAttrListCollection* readCdoDynamicL2{*readHandleDynamicL2};
@@ -126,6 +110,7 @@ StatusCode PixelAlignCondAlg::execute()
       ATH_MSG_FATAL("Null pointer to the read conditions object of " << readHandleDynamicL2.key());
       return StatusCode::FAILURE;
     }
+    writeHandle.addDependency(readHandleDynamicL2);
 
     SG::ReadCondHandle<AlignableTransformContainer> readHandleDynamicL3{m_readKeyDynamicL3, ctx};
     const AlignableTransformContainer* readCdoDynamicL3{*readHandleDynamicL3};
@@ -133,7 +118,7 @@ StatusCode PixelAlignCondAlg::execute()
       ATH_MSG_FATAL("Null pointer to the read conditions object of " << readHandleDynamicL3.key());
       return StatusCode::FAILURE;
     }
-
+    writeHandle.addDependency(readHandleDynamicL3);
 
     // ____________ Apply alignments to Pixel GeoModel ____________
     // Construct Container for read CDO-s.
@@ -149,24 +134,6 @@ StatusCode PixelAlignCondAlg::execute()
     readCdoContainerDynamicL3.emplace(m_readKeyDynamicL3.key(), readCdoDynamicL3);
     ATH_CHECK(m_detManager->align(readCdoContainerDynamicL3, writeCdo.get()));
 
-    // Define validity of the output cond object and record it
-    EventIDRange rangeWL1;
-    if (not readHandleDynamicL1.range(rangeWL1)) {
-      ATH_MSG_FATAL("Failed to retrieve validity range for " << readHandleDynamicL1.key());
-      return StatusCode::FAILURE;
-    }
-
-    EventIDRange rangeWL2;
-    if (not readHandleDynamicL2.range(rangeWL2)) {
-      ATH_MSG_FATAL("Failed to retrieve validity range for " << readHandleDynamicL2.key());
-      return StatusCode::FAILURE;
-    }
-
-    EventIDRange rangeWL3;
-    if (not readHandleDynamicL3.range(rangeWL3)) {
-      ATH_MSG_FATAL("Failed to retrieve validity range for " << readHandleDynamicL3.key());
-      return StatusCode::FAILURE;
-    }
 
     // IBL
     if (!m_readKeyIBLDist.empty()) {
@@ -178,21 +145,12 @@ StatusCode PixelAlignCondAlg::execute()
         ATH_MSG_FATAL("Null pointer to the read conditions object of " << readHandleIBLDist.key());
         return StatusCode::FAILURE;
       }
-
+      writeHandle.addDependency(readHandleIBLDist);
       InDetDD::RawAlignmentObjects readCdoContainerIBLDist;
       readCdoContainerIBLDist.emplace(m_readKeyIBLDist.key(), readCdoIBLDist);
-      ATH_CHECK(m_detManager->align(readCdoContainerIBLDist, writeCdo.get()));
-
-      EventIDRange rangeWIBL;
-      if (not readHandleIBLDist.range(rangeWIBL)) {
-       ATH_MSG_FATAL("Failed to retrieve validity range for " << readHandleIBLDist.key());
-       return StatusCode::FAILURE;
-      }
-
-      rangeW = EventIDRange::intersect(rangeWL1, rangeWL2, rangeWL3, rangeWIBL);
-    } else {
-      rangeW = EventIDRange::intersect(rangeWL1, rangeWL2, rangeWL3);
+      ATH_CHECK(m_detManager->align(readCdoContainerIBLDist, writeCdo.get()));  
     }
+    
   }
   
   // Set (default) absolute transforms in alignment store by calling them.
@@ -201,14 +159,13 @@ StatusCode PixelAlignCondAlg::execute()
     oldEl->getMaterialGeom()->getDefAbsoluteTransform(writeCdo.get());
   }
 
-  if (writeHandle.record(rangeW, std::move(writeCdo)).isFailure()) {
+  if (writeHandle.record(std::move(writeCdo)).isFailure()) {
     ATH_MSG_FATAL("Could not record GeoAlignmentStore " << writeHandle.key()
-                  << " with EventRange " << rangeW
+                  << " with EventRange " << writeHandle.getRange()
                   << " into Conditions Store");
     return StatusCode::FAILURE;
   }
-  ATH_MSG_INFO("recorded new CDO " << writeHandle.key() << " with range " << rangeW << " into Conditions Store");
+  ATH_MSG_INFO("recorded new CDO " << writeHandle.key() << " with range " << writeHandle.getRange() << " into Conditions Store");
 
   return StatusCode::SUCCESS;
 }
-

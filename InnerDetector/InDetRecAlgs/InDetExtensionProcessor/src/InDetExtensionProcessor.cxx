@@ -9,7 +9,7 @@
 // version 0.0 Markus Elsing
 ///////////////////////////////////////////////////////////////////
 
-#include "InDetExtensionProcessor/InDetExtensionProcessor.h"
+#include "InDetExtensionProcessor.h"
 #include "TrkFitterInterfaces/ITrackFitter.h"
 #include "TrkParameters/TrackParameters.h"
 #include "TrkPrepRawData/PrepRawData.h"
@@ -80,8 +80,7 @@ InDet::InDetExtensionProcessor::initialize() {
   ATH_CHECK(m_trackFitter.retrieve());
   ATH_MSG_DEBUG("Retrieved tool " << m_trackFitter);
   // Configuration of the material effects
-  Trk::ParticleSwitcher particleSwitch;
-  m_particleHypothesis = particleSwitch.particle[m_matEffects];
+  m_particleHypothesis = Trk::ParticleSwitcher::particle[m_matEffects];
   //
   ATH_CHECK(m_trackSummaryTool.retrieve(DisableTool {m_trackSummaryTool.name().empty()}));
   ATH_CHECK(m_scoringTool.retrieve());

@@ -74,11 +74,11 @@ for par in ["HEC","FCal"]:
     lArDQGlobals.HVphi_HECFcal[par+"C"]=lArDQGlobals.HVphi_HECFcal[par+"A"]
 #Lumi block ranges
 lArDQGlobals.LB_Bins=3000
-lArDQGlobals.LB_Min=0
+lArDQGlobals.LB_Min=-0.5
 lArDQGlobals.LB_Max=lArDQGlobals.LB_Bins+lArDQGlobals.LB_Min
 #bunch crossing id ranges
 lArDQGlobals.BCID_Bins=3564
-lArDQGlobals.BCID_Min=0.5
+lArDQGlobals.BCID_Min=-0.5
 lArDQGlobals.BCID_Max=lArDQGlobals.BCID_Min+lArDQGlobals.BCID_Bins
 #LArCollisionTime (A-C) ranges
 lArDQGlobals.colTime_BinWidth = 0.25*Units.nanosecond
@@ -161,14 +161,14 @@ lArDQGlobals.Partitions=["EMBC","EMBA","EMECC","EMECA","HECC","HECA","FCalC","FC
 lArDQGlobals.N_SubDet=4
 lArDQGlobals.SubDet=["EMB","EMEC","HEC","FCal"]
 lArDQGlobals.N_Gains=3
-lArDQGlobals.Gains=["HIGH","MEDIUM","LOW"]
+lArDQGlobals.Gains=["High Gain","Medium Gain","Low Gain"]
 
 #digits summary
 lArDQGlobals.N_DigitsSummary=4
 lArDQGlobals.DigitsSummary=["OutOfRange","Saturation","Null Digits","Mean Time"]
 
 #samples range
-lArDQGlobals.Samples_Bins=32
+lArDQGlobals.Samples_Bins=33
 lArDQGlobals.Samples_Min=-0.5
 lArDQGlobals.Samples_Max=lArDQGlobals.Samples_Bins-0.5
 
@@ -271,10 +271,6 @@ lArDQGlobals.defaultStreamNames = ["express","Main","CosmicCalo","L1Calo","L1Top
 lArDQGlobals.noisyFEB_Bins=51
 lArDQGlobals.noisyFEB_Min=-0.5
 lArDQGlobals.noisyFEB_Max=50.5
-
-
-#Gains
-lArDQGlobals.Gains=["Low Gain","Medium Gain","High Gain"]
 
 #Creation of the dictionnary
 lArDQGlobals.Cell_Variables={}

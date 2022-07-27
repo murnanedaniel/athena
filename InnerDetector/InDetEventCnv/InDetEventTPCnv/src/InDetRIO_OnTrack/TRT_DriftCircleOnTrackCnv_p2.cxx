@@ -16,7 +16,7 @@
 void TRT_DriftCircleOnTrackCnv_p2::persToTrans( const InDet::TRT_DriftCircleOnTrack_p2 *persObj, InDet::TRT_DriftCircleOnTrack *transObj, MsgStream &log ) {
 
     ElementLinkToIDCTRT_DriftCircleContainer rio;
-    m_elCnv.persToTrans(&persObj->m_prdLink,&rio,log);  
+    m_elCnv.persToTrans(&persObj->m_prdLink,&rio,log);
 
     Trk::LocalParameters localParams;
     fillTransFromPStore( &m_localParCnv, persObj->m_localParams, &localParams, log );
@@ -66,6 +66,14 @@ void TRT_DriftCircleOnTrackCnv_p2::transToPers( const InDet::TRT_DriftCircleOnTr
   static const SG::InitializedReadHandleKey<InDet::TRT_DriftCircleContainer> trtCircleContName ("TRT_DriftCircles");
   ElementLink<InDet::TRT_DriftCircleContainer>::index_type hashAndIndex{0};
   bool isFound{m_eventCnvTool->getHashAndIndex<InDet::TRT_DriftCircleContainer, InDet::TRT_DriftCircleOnTrack>(transObj, trtCircleContName, hashAndIndex)};
-  persObj->m_prdLink.m_contName = (isFound ? trtCircleContName.key() : "");
+  if(m_eventCnvTool->doTrackOverlay()){
+    persObj->m_prdLink.m_contName = (isFound ? "Bkg_TRT_DriftCircles" : "");
+    if(!isFound){ //in this case the input collection is called Bkg_TRT_DriftCircles as well
+      static const SG::InitializedReadHandleKey<InDet::TRT_DriftCircleContainer> trtCircleContName("Bkg_TRT_DriftCircles");
+      isFound=m_eventCnvTool->getHashAndIndex<InDet::TRT_DriftCircleContainer, InDet::TRT_DriftCircleOnTrack>(transObj, trtCircleContName, hashAndIndex);
+      persObj->m_prdLink.m_contName = (isFound ? "Bkg_TRT_DriftCircles" : "");
+    }
+  }
+  else persObj->m_prdLink.m_contName = (isFound ? trtCircleContName.key() : "");
   persObj->m_prdLink.m_elementIndex = hashAndIndex;
 }

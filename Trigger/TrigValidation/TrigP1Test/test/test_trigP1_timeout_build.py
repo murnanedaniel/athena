@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-# Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # art-description: athenaHLT test of timeout handling
 # art-type: build
 # art-include: master/Athena
+# art-include: 22.0/Athena
 # Skipping art-output which has no effect for build tests.
 # If you create a grid version, check art-output in existing grid tests.
 
@@ -42,6 +43,14 @@ event_count_step.file_name_base = output_name_base
 event_count_step.regex = r'Global_ID'
 event_count_step.comparator = lambda num: num == ex.max_events
 test.check_steps.append(event_count_step)
+
+# Step checking if useful debug metadata is written for all events
+meta_count_step = TrigBSDumpGrepStep('MetaCount')
+meta_count_step.args += '--confKeys --runtimeMetadata'
+meta_count_step.file_name_base = output_name_base
+meta_count_step.regex = r'TrigConfKeys\|hostname'
+meta_count_step.comparator = lambda num: num == 2*ex.max_events
+test.check_steps.append(meta_count_step)
 
 import sys
 sys.exit(test.run())

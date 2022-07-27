@@ -1,10 +1,10 @@
 //Dear emacs, this is -*-c++-*-
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /**
-  @brief This conditions algo produces both LArHVData and LArAffectedRegions
+  @brief This conditions algo produces both LArHVCorr and LArAffectedRegions
 
 */
 
@@ -12,7 +12,7 @@
 #define LARHVCONDALG_H
 
 
-#include "AthenaBaseComps/AthReentrantAlgorithm.h"
+#include "AthenaBaseComps/AthAlgorithm.h"
 #include "StoreGate/DataHandle.h" 
 #include "Identifier/Identifier.h"
 #include "AthenaBaseComps/AthAlgTool.h"
@@ -31,9 +31,11 @@
 #include "StoreGate/ReadCondHandleKey.h"
 #include "StoreGate/WriteCondHandleKey.h"
 #include "StoreGate/CondHandleKeyArray.h"
-#include "GaudiKernel/ICondSvc.h"
 
 #include "LArHVScaleCorrTool.h"
+
+#include <atomic>
+#include <functional>
 
 // forward declaration
 class CondAttrListCollection;
@@ -49,17 +51,17 @@ class LArHVLineID;
 class HWIdentifier;
 class LArOnlineID;
 
-class LArHVCondAlg: public AthReentrantAlgorithm
+class LArHVCondAlg: public AthAlgorithm
 {
  
   public: 
   
-  using AthReentrantAlgorithm::AthReentrantAlgorithm;
+  using AthAlgorithm::AthAlgorithm;
 
   virtual ~LArHVCondAlg() = default;
 
   virtual StatusCode initialize() override;
-  StatusCode execute(const EventContext& ctx) const override;
+  StatusCode execute() override;
 
 
 private:
@@ -89,13 +91,11 @@ private:
   Gaudi::Property<bool> m_undoOnlineHVCorr{this,"UndoOnlineHVCorr",true,"Undo the HVCorr done online"};
   Gaudi::Property<bool> m_useCurrentEMB{this,"UseCurrentsInHVEM",false,"Use currents in EMB as well"};
   Gaudi::Property<bool> m_useCurrentFCAL1{this,"UseCurrentsInHVFCAL1",false,"Use currents in FCAL1 as well"};
-  Gaudi::Property<bool> m_useCurrentOthers{this,"UseCurrentsInHVOthers", "Use currents in other partitions as well"};
+  Gaudi::Property<bool> m_useCurrentOthers{this,"UseCurrentsInHVOthers", false, "Use currents in other partitions as well"};
   bool m_doR = true; //will be set depending on the above properties
 
   Gaudi::Property<bool> m_doAffected{this,"doAffected",true,"create affected region info"};
   Gaudi::Property<bool> m_doAffectedHV{this,"doAffectedHV",true,"include HV non nominal regions info"};
-
-  ServiceHandle<ICondSvc> m_condSvc{this,"CondSvc","CondSvc"};
 
   Gaudi::Property<std::vector<std::string> > m_fixHVStrings{this,"fixHVCorr"};
 
@@ -133,8 +133,18 @@ private:
 
   typedef std::vector<voltageCell_t> voltagePerCell_t;
 
-  ///Internal strucutre for HV pathologies
+  ///Internal structure for HV pathologies
   typedef std::vector<std::vector<unsigned short> > pathVec;
+
+  StatusCode makeHVScaleCorr (const EventContext& ctx,
+                              voltagePerLine_t& voltagePerLine) const;
+  StatusCode makeAffectedRegionInfo (const EventContext& ctx,
+                                     voltagePerLine_t& voltagePerLine) const;
+
+  using addDepFcn_t = std::function<const EventIDRange& (SG::ReadCondHandle<CondAttrListCollection>& h)>;
+  StatusCode getVoltagePerLine (const EventContext& ctx,
+                                voltagePerLine_t& voltagePerLine,
+                                addDepFcn_t addDep) const;
 
   /// Add voltage/weight for a sub-gap of a cell 
   void addHV(voltageCell_t& v, float hv, float weight) const;
@@ -187,6 +197,9 @@ private:
 
   float HV_nominal(const char *identification,const float eta) const;
   std::vector<int> returnProblem(const float eta, const float phi, const float delta_eta, const float delta_phi);
+
+
+  mutable std::atomic<unsigned> m_nPathologies{0};
 
 };
 

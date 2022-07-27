@@ -10,8 +10,6 @@
 #include "StgcData.h"
 #include "SuperPointData.h"
 
-#define NCHAMBER 11
-
 namespace TrigL2MuonSA {
 
 class TrackPattern
@@ -20,23 +18,23 @@ class TrackPattern
  TrackPattern() :
    pt(0),
    charge(0),
-   etaVtx(0),
-   phiVtx(0),
-   deltaPt(0),
-   deltaEtaVtx(0),
-   deltaPhiVtx(0),
-   s_address(-1),
-   phiMS(0),
-   phiMSDir(0),
-   etaMap(0),
-   phiMap(0),
-   etaBin(0),
-   phiBin(0),
-   phiBinEE(0),
+   etaVtx(99999.),
+   phiVtx(99999.),
+   deltaPt(99999.),
+   deltaEtaVtx(99999.),
+   deltaPhiVtx(99999.),
+   s_address(99999),
+   phiMS(99999.),
+   phiMSDir(99999.),
+   etaMap(99999.),
+   phiMap(99999.),
+   etaBin(99999),
+   phiBin(99999),
+   phiBinEE(99999),
    barrelRadius(0),
-   barrelSagitta(0),
-   endcapAlpha(0),
-   endcapBeta(0),
+   barrelSagitta(99999.),
+   endcapAlpha(99999.),
+   endcapBeta(99999.),
    endcapRadius(0),
    endcapRadius3P(0),
    cscGamma(0),
@@ -54,13 +52,12 @@ class TrackPattern
    hashID_CSC(999)
    {};
    
-    ~TrackPattern() {};
-    
  public:
-    TrigL2MuonSA::MdtHits    mdtSegments[NCHAMBER]; // MDT hits associated with the track
+    static constexpr int s_NCHAMBER = 11;
+    TrigL2MuonSA::MdtHits    mdtSegments[s_NCHAMBER]; // MDT hits associated with the track
     TrigL2MuonSA::MmHits     mmSegment; // MM hits associated with the track
     TrigL2MuonSA::StgcHits   stgcSegment; // sTGC hits associated with the track
-    TrigL2MuonSA::SuperPoint superPoints[NCHAMBER]; // Super points at each station
+    TrigL2MuonSA::SuperPoint superPoints[s_NCHAMBER]; // Super points at each station
 
     double pt;
     double charge;

@@ -121,7 +121,7 @@ TCS::TopoSteeringStructure::printParameters(std::ostream & o) const {
 
 
 TCS::StatusCode
-TCS::TopoSteeringStructure::setupFromMenu(const TrigConf::L1Menu& l1menu, bool legacy, bool debug) {
+TCS::TopoSteeringStructure::setupFromMenu ATLAS_NOT_THREAD_SAFE (const TrigConf::L1Menu& l1menu, bool legacy, bool debug) {
 
    if(debug)
       cout << "/***************************************************************************/" << endl
@@ -242,14 +242,14 @@ TCS::TopoSteeringStructure::setupFromMenu(const TrigConf::L1Menu& l1menu, bool l
 
 	      string *foundAlgo = std::find(std::begin(AvailableMultAlgs), std::end(AvailableMultAlgs), algo_klass);
 	      if (foundAlgo == std::end(AvailableMultAlgs)) cout << "TopoSteeringStructure: No L1Topo algorithm matching the configured multiplicity algorithm in the menu! Algorithm: " << algo_klass  << endl;
-
-	      if ( (algo_klass != "eEmMultiplicity") && (algo_klass != "eTauMultiplicity") && (algo_klass != "jTauMultiplicity") && (algo_klass != "jJetMultiplicity") 
-		   && (algo_klass != "jLJetMultiplicity") && (algo_klass != "cTauMultiplicity") && (algo_klass != "EnergyThreshold") ) continue; // Only available multiplicity algorithms so far
-         
-         //Temporarily remove the trigger items that rely on EnergyThreshold but are not yet implemented
-         if ( (algo_klass == "EnergyThreshold") && (algo.inputs().at(0) != "jXE") ) continue;
-	      
-         auto it = find(storedConn.begin(), storedConn.end(), algo.name());
+ 
+              //Temporarily remove the trigger items that rely on EnergyThreshold but are not yet implemented
+              if ( (algo_klass == "EnergyThreshold") && 
+                   (algo.inputs().at(0) != "jXE" && algo.inputs().at(0) != "gXEJWOJ" && algo.inputs().at(0) != "gMHT" &&
+                    algo.inputs().at(0) != "gXENC" && algo.inputs().at(0) != "gXERHO" &&
+                    algo.inputs().at(0) != "jTE" && algo.inputs().at(0) != "gTE") ) continue;
+     
+              auto it = find(storedConn.begin(), storedConn.end(), algo.name());
 	      if (it == storedConn.end()) { // Algorithm/Connector does not exist: create and store it
 
 		storedConn.push_back(algo.name());
@@ -325,7 +325,7 @@ TCS::TopoSteeringStructure::setupFromMenu(const TrigConf::L1Menu& l1menu, bool l
 
       if(debug)
          cout << "TopoSteeringStructure: Parameters for algorithm with name " << l1algoName << " going to be configured." << endl;
-      ConfigurableAlg * alg = AlgFactory::instance().algorithm(l1algoName);
+      ConfigurableAlg * alg = AlgFactory::mutable_instance().algorithm(l1algoName);
      
       if(alg->isDecisionAlg())
          ( dynamic_cast<DecisionAlg *>(alg) )->setNumberOutputBits(l1algo.outputs().size());
@@ -379,13 +379,13 @@ TCS::TopoSteeringStructure::setupFromMenu(const TrigConf::L1Menu& l1menu, bool l
 
       auto & l1algo = l1menu.algorithm(multAlgo, "MULTTOPO");
       
-      if ( (l1algo.klass() != "eEmMultiplicity") && (l1algo.klass() != "eEmVarMultiplicity") && (l1algo.klass() != "eTauMultiplicity") && (l1algo.klass() != "jTauMultiplicity")
-	   && (l1algo.klass() != "jJetMultiplicity") && (l1algo.klass() != "jLJetMultiplicity") && (l1algo.klass() != "cTauMultiplicity") && (l1algo.klass() != "EnergyThreshold") ) continue; // Only available multiplicities for now
-
       //Temporarily remove the trigger items that rely on EnergyThreshold but are not yet implemented
-      if ( (l1algo.klass() == "EnergyThreshold") && (l1algo.inputs().at(0) != "jXE") ) continue;
+      if ( (l1algo.klass() == "EnergyThreshold") && 
+           (l1algo.inputs().at(0) != "jXE" && l1algo.inputs().at(0) != "gXEJWOJ" && l1algo.inputs().at(0) != "gMHT" &&
+            l1algo.inputs().at(0) != "gXENC" && l1algo.inputs().at(0) != "gXERHO" &&
+            l1algo.inputs().at(0) != "jTE" && l1algo.inputs().at(0) != "gTE") ) continue;
 
-      ConfigurableAlg * alg = AlgFactory::instance().algorithm(l1algo.name());
+      ConfigurableAlg * alg = AlgFactory::mutable_instance().algorithm(l1algo.name());
 
       // Get L1Threshold object and pass it to CountingAlg, from where it will be propagated to and decoded in each algorithm
       // The output of each algorithm and the threshold name is the same - use output name to retrieve L1Threshold object
@@ -442,7 +442,7 @@ TopoSteeringStructure::linkConnectors() {
 
 
 TCS::StatusCode
-TCS::TopoSteeringStructure::instantiateAlgorithms(bool debug) {
+TCS::TopoSteeringStructure::instantiateAlgorithms ATLAS_NOT_THREAD_SAFE (bool debug) {
 
    for(TCS::Connector* conn: m_connectors) {
 
@@ -455,11 +455,11 @@ TCS::TopoSteeringStructure::instantiateAlgorithms(bool debug) {
       std::string algType(alg, 0, alg.find('/'));
       std::string algName(alg, alg.find('/')+1);
 
-      ConfigurableAlg * algInstance = TCS::AlgFactory::instance().algorithm(algName);
+      ConfigurableAlg * algInstance = TCS::AlgFactory::mutable_instance().algorithm(algName);
       if(algInstance==0) {
          if(debug)
             cout << "Instantiating " << alg << endl;
-         algInstance = TCS::AlgFactory::create(algType, algName);
+         algInstance = TCS::AlgFactory::mutable_instance().create(algType, algName);
       } else {
          if(algInstance->className() != algType) {
             TCS_EXCEPTION("L1 TopoSteering: duplicate algorithm names:  algorithm " << algName << " has already been instantiated but with different type");

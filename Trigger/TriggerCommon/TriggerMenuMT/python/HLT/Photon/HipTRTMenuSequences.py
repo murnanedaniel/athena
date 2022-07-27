@@ -1,5 +1,5 @@
 #
-#  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+#  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #
 
 from AthenaConfiguration.AllConfigFlags import ConfigFlags
@@ -38,8 +38,7 @@ def TRTHitGeneratorSequence(ConfigFlags):
     # view data verifier
     ViewVerify = CfgMgr.AthViews__ViewDataVerifier("TRTHitGeneratorViewDataVerifier")
     ViewVerify.DataObjects = [('TrigRoiDescriptorCollection' , 'StoreGateSvc+TRTHitGenerator'),
-                              #('TRT_RDO_Container' , 'StoreGateSvc+TRT_RDOs'),        
-     ]
+                             ]
     if not globalflags.InputFormat.is_bytestream():
         ViewVerify.DataObjects += [( 'TRT_RDO_Container' , 'StoreGateSvc+TRT_RDOs' )]
 

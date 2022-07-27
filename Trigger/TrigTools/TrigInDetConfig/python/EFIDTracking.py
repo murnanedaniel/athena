@@ -1,4 +1,4 @@
-#  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+#  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #
 #           Setup of offline pattern recognition tracking for ID Trigger
 #Heavily inspired by the offline version:
@@ -68,7 +68,7 @@ def get_idtrig_view_verifier(name):
      topSequence.SGInputLoader.Load += [( 'PixelRDO_Container' , InDetKeys.PixelRDOs() ),
                                         ( 'SCT_RDO_Container' , InDetKeys.SCT_RDOs() ),
                                         ]
-   
+
    return viewDataVerifier
 
 

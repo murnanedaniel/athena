@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef STOREGATE_WRITECONDHANDLE_H
@@ -97,7 +97,6 @@ namespace SG {
 
     EventIDRange m_range{};
     bool m_rangeSet {false};
-    
   };
   
   //---------------------------------------------------------------------------
@@ -123,12 +122,8 @@ namespace SG {
     }
 
     if (! m_hkey.isInit()) {
-      MsgStream msg(Athena::getMessageSvc(), "WriteCondHandle");
-      msg << MSG::ERROR 
-          << "WriteCondHandleKey " << key.objKey() << " was not initialized"
-          << endmsg;
-      throw std::runtime_error("WriteCondHandle: WriteCondHandleKey was not initialized");
-
+      throw SG::ExcUninitKey (key.clid(), key.key(), key.storeHandle().name(),
+                              "", "WriteCond");
     }
     
   }
@@ -284,6 +279,15 @@ namespace SG {
       m_range = EventIDRange::intersect(m_range, range);
     }
     m_rangeSet = true;
+    using KeyType = CondContBase::KeyType;
+    if (m_cc->keyType()==KeyType::RUNLBN && (range.start().isTimeStamp() || range.stop().isTimeStamp())) {
+      MsgStream msg(Athena::getMessageSvc(), "WriteCondHandle");
+      msg << MSG::ERROR << "Adding a time-stamp dependency on a run-lumi indexed CondCont. Consider a mixed ConditionsContainer for type " << fullKey() <<  endmsg;
+    }
+     if (m_cc->keyType()==KeyType::TIMESTAMP && (range.start().isRunLumi() || range.stop().isRunLumi())) {
+       MsgStream msg(Athena::getMessageSvc(), "WriteCondHandle");
+       msg << MSG::ERROR << "Adding a run-lumi dependency on a timestamp-indexed CondCont. Consider a mixed ConditionsContainer for type " << fullKey() <<  endmsg;
+    }
   }
 
   // Can't take a const RCH, as RCH.range() can load the ptr.
@@ -291,6 +295,8 @@ namespace SG {
   template< typename R>
   void
   WriteCondHandle<T>::addDependency(SG::ReadCondHandle<R>& rch) {
+    CondContBase* dep_cc = rch.getCC();
+    dep_cc->addDeps (std::vector<CondContBase*> { m_cc });
     return addDependency(rch.getRange());
   }
 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef XAOD_ANALYSIS
@@ -45,7 +45,7 @@ StatusCode TauPi0ClusterCreator::executePi0ClusterCreator(xAOD::TauJet& tau,
   std::map<unsigned, const xAOD::CaloCluster*> shotToClusterMap = getShotToClusterMap(shotPFOs, pi0ClusterContainer, tau);
 
   // We will always perform the vertex correction
-  const xAOD::Vertex* vertex = tauRecTools::getTauVertex(tau);
+  const xAOD::Vertex* vertex = tau.vertex();
   
   // Tau custom PFO reconstruction is only used in offline reconstrution
   TLorentzVector tauAxis = tauRecTools::getTauAxis(tau);
@@ -94,6 +94,10 @@ StatusCode TauPi0ClusterCreator::executePi0ClusterCreator(xAOD::TauJet& tau,
     
     const xAOD::CaloCluster& cluster = vertexedCluster.clust();
     const CaloClusterCellLink* cellLinks = cluster.getCellLinks();
+    if (!cellLinks) {
+      ATH_MSG_WARNING("The cell links of the tau cluster is unavailable.");
+      continue;
+    }
     CaloClusterCellLink::const_iterator cellLink = cellLinks->begin();
     for (; cellLink != cellLinks->end(); ++cellLink) {
       const CaloCell* cell = static_cast<const CaloCell*>(*cellLink);
@@ -140,7 +144,7 @@ std::map<unsigned, const xAOD::CaloCluster*> TauPi0ClusterCreator::getShotToClus
     const IdentifierHash seedHash = static_cast<const IdentifierHash>(seedHashInt);
 
     // We will always perform the vertex correction
-    const xAOD::Vertex* vertex = tauRecTools::getTauVertex(tau);
+    const xAOD::Vertex* vertex = tau.vertex();
   
     // Tau custom PFO reconstruction is only used in offline reconstrution
     TLorentzVector tauAxis = tauRecTools::getTauAxis(tau);

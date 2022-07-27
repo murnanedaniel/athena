@@ -5,7 +5,6 @@ logging.getLogger().info("Importing %s", __name__)
 
 from AthenaCommon.GlobalFlags import globalflags
 from AthenaCommon.DetFlags import DetFlags
-from AthenaCommon.AthenaCommonFlags import athenaCommonFlags
 from AthenaCommon import CfgMgr
 from AthenaCommon.BeamFlags import jobproperties
 beamFlags = jobproperties.Beam
@@ -39,7 +38,8 @@ def MuonClusterOnTrackCreator(name="MuonClusterOnTrackCreator",**kwargs):
     return CfgMgr.Muon__MuonClusterOnTrackCreator(name,**kwargs)
 
 def MMClusterOnTrackCreator(name="MMClusterOnTrackCreator",**kwargs):
-    return CfgMgr.Muon__MMClusterOnTrackCreator(name,**kwargs)
+    kwargs.setdefault("NSWCalibTool", "NSWCalibTool")
+    return  CfgMgr.Muon__MMClusterOnTrackCreator(name,**kwargs) 
 
 def getMuonRIO_OnTrackErrorScalingCondAlg() :
     error_scaling_def=["CSCRIO_OnTrackErrorScaling:/MUON/TrkErrorScalingCSC"]
@@ -148,7 +148,7 @@ class MuonRotCreator(Trk__RIO_OnTrackCreator,ConfiguredBase):
 
     def __init__(self,name="MuonRotCreator",**kwargs):
         self.applyUserDefaults(kwargs,name)
-        setup_mm =  MuonGeometryFlags.hasMM() and muonRecFlags.doMicromegas()
+        setup_mm =  MuonGeometryFlags.hasMM() and muonRecFlags.doMMs()
         kwargs.setdefault("ToolMuonDriftCircle", getPublicTool("MdtDriftCircleOnTrackCreator"))
         kwargs.setdefault("ToolMuonCluster", getPublicTool("MuonClusterOnTrackCreator"))
         if setup_mm:
@@ -257,6 +257,14 @@ def MuonTrackSummaryHelperTool(name="MuonTrackSummaryHelperTool",**kwargs):
 
 # end of factory function MuonTrackSummaryHelper
 
+def MuonPRDSelectionTool(name="MuonPRDSelectionTool", **kwargs):
+    kwargs.setdefault("MdtDriftCircleOnTrackCreator", getPublicTool("MdtDriftCircleOnTrackCreator"))
+    kwargs.setdefault("MuonClusterOnTrackCreator", getPublicTool("MuonClusterOnTrackCreator"))
+    reco_stgcs = muonRecFlags.dosTGCs() and MuonGeometryFlags.hasSTGC()
+    reco_mm =  muonRecFlags.doMMs() and MuonGeometryFlags.hasMM()  
+    if reco_stgcs or reco_mm:
+        kwargs.setdefault("MmClusterOnTrackCreator", getPublicTool("MMClusterOnTrackCreator"))
+    return CfgMgr.Muon__MuonPRDSelectionTool(name,**kwargs)
 
 from TrkTrackSummaryTool.TrkTrackSummaryToolConf import Trk__TrackSummaryTool
 class MuonTrackSummaryTool(Trk__TrackSummaryTool,ConfiguredBase):
@@ -300,19 +308,21 @@ def MuonChi2TrackFitter(name='MuonChi2TrackFitter',**kwargs):
     kwargs.setdefault("TrackingGeometryReadKey",cond_alg.TrackingGeometryWriteKey)
     return Trk__GlobalChi2Fitter(name,**kwargs)
 
+try:
+    from MuonSegmentMomentum.MuonSegmentMomentumConf import MuonSegmentMomentumFromField as MuonSegMomField
+    class MuonSegmentMomentumFromField(MuonSegMomField,ConfiguredBase):
+        __slots__ = ()
 
-from MuonSegmentMomentum.MuonSegmentMomentumConf import MuonSegmentMomentumFromField as MuonSegMomField
-class MuonSegmentMomentumFromField(MuonSegMomField,ConfiguredBase):
-    __slots__ = ()
+        def __init__(self,name="MuonSegmentMomentumFromField",**kwargs):
+            self.applyUserDefaults(kwargs,name)
+            super(MuonSegmentMomentumFromField,self).__init__(name,**kwargs)
 
-    def __init__(self,name="MuonSegmentMomentumFromField",**kwargs):
-        self.applyUserDefaults(kwargs,name)
-        super(MuonSegmentMomentumFromField,self).__init__(name,**kwargs)
-
-MuonSegmentMomentumFromField.setDefaultProperties(
-    PropagatorTool = "MuonPropagator",
-    NavigatorTool  = TrackingCommon.getInDetNavigator()
-    )
+    MuonSegmentMomentumFromField.setDefaultProperties(
+        PropagatorTool = "MuonPropagator",
+        NavigatorTool  = TrackingCommon.getInDetNavigator()
+        )
+except ImportError:
+    pass
 
 
 def MuonPhiHitSelector(name="MuonPhiHitSelector",**kwargs):
@@ -364,20 +374,25 @@ def MdtMathT0FitSegmentFinder(name="MdtMathT0FitSegmentFinder",extraFlags=None,*
 
 def MuonClusterSegmentFinder(name="MuonClusterSegmentFinder", extraFlags=None,**kwargs):
     kwargs.setdefault("AmbiguityProcessor",getPublicTool("MuonAmbiProcessor"))
-    if ConfigFlags.Muon.MuonTrigger:
-        kwargs.setdefault("TrackToSegmentTool", getPublicTool("MuonTrackToSegmentTool") )
+    kwargs.setdefault("TrackToSegmentTool", getPublicTool("MuonTrackToSegmentTool") )
+    kwargs.setdefault("MuonPRDSelectionTool", getPublicTool("MuonPRDSelectionTool") )
     return CfgMgr.Muon__MuonClusterSegmentFinder(name,**kwargs)
 
 def MuonClusterSegmentFinderTool(name="MuonClusterSegmentFinderTool", extraFlags=None,**kwargs):
     kwargs.setdefault("SLFitter","Trk::GlobalChi2Fitter/MCTBSLFitterMaterialFromTrack")
     import MuonCombinedRecExample.CombinedMuonTrackSummary  # noqa: F401
     from AthenaCommon.AppMgr import ToolSvc
+    kwargs.setdefault("TrackToSegmentTool", getPublicTool("MuonTrackToSegmentTool") )
     if ConfigFlags.Muon.MuonTrigger:
-        kwargs.setdefault("TrackToSegmentTool", getPublicTool("MuonTrackToSegmentTool") )
         kwargs.setdefault("TrackSummaryTool", "MuonTrackSummaryTool" )
     else:
         kwargs.setdefault("TrackSummaryTool", ToolSvc.CombinedMuonTrackSummary)
     
+    reco_stgcs = muonRecFlags.dosTGCs() and MuonGeometryFlags.hasSTGC()
+    reco_mm =  muonRecFlags.doMMs() and MuonGeometryFlags.hasMM()  
+    if reco_stgcs or reco_mm:
+        kwargs.setdefault("MMClusterCreator", getPublicTool("MMClusterOnTrackCreator")) 
+        kwargs.setdefault("MuonClusterCreator", getPublicTool("MuonClusterOnTrackCreator")) 
     return CfgMgr.Muon__MuonClusterSegmentFinderTool(name,**kwargs)
 
 def DCMathSegmentMaker(name='DCMathSegmentMaker',extraFlags=None,**kwargs):
@@ -396,10 +411,7 @@ def DCMathSegmentMaker(name='DCMathSegmentMaker',extraFlags=None,**kwargs):
 
     kwargs.setdefault("TgcPrepDataContainer", 
                       'TGC_MeasurementsAllBCs' if not muonRecFlags.useTGCPriorNextBC else 'TGC_Measurements')
-    #MDT conditions information not available online
-    if(athenaCommonFlags.isOnline):
-        kwargs.setdefault("MdtCondKey","")
-
+   
     # MuonCompetingClustersCreator apparently just takes default
     kwargs.setdefault("MuonClusterCreator", getPrivateTool("MuonClusterOnTrackCreator") )
 
@@ -457,29 +469,52 @@ def MuonSegmentFittingTool(name='MuonSegmentFittingTool',extraFlags=None,**kwarg
     kwargs.setdefault("TrackCleaner", getPrivateTool('MuonTrackCleaner')  )
     return CfgMgr.Muon__MuonSegmentFittingTool(name,**kwargs)
 
+def getMuonToolSafe(name, isPublic):
+    '''Helper function for creating a public tool, if it's available
+
+    In order to make it possible to use this python module in projects in
+    which not every single reconstruction tool is available, this function
+    only instantiates the ones that can actually be instantiated.
+
+    Parameter(s):
+       name     -- The type (and instance name) of the public tool to create
+       isPublic -- Flag specifying whether the tool is public (or private)
+    '''
+
+    # If the tool is not available, don't do anything.
+    from AthenaCommon.ConfigurableDb import getConfigurable
+    if not getConfigurable(name):
+        return
+
+    # If it *is* available, leave the heavy lifting to the "unsafe" functions.
+    if isPublic:
+        getPublicTool(name)
+    else:
+        getPrivateTool(name)
+        pass
+    return
+
 if DetFlags.detdescr.Muon_on() and rec.doMuon():
     # until all clients explicitly get their tools and services, load some explicitly
-    getPublicTool("ResidualPullCalculator")
-    getPublicTool("MuonHoughPatternTool")
-    getPublicTool("MuonCombinePatternTool")
-    getPublicTool("MuonPhiHitSelector")
-    getPublicTool("MuonEDMPrinterTool")
-    getPublicTool("MuonSegmentMomentum")
-    getPublicTool("MuonClusterOnTrackCreator")
+    getMuonToolSafe("ResidualPullCalculator", True)
+    getMuonToolSafe("MuonHoughPatternTool", True)
+    getMuonToolSafe("MuonCombinePatternTool", True)
+    getMuonToolSafe("MuonPhiHitSelector", True)
+    getMuonToolSafe("MuonEDMPrinterTool", True)
+    getMuonToolSafe("MuonSegmentMomentum", True)
+    getMuonToolSafe("MuonClusterOnTrackCreator", True)
     if MuonGeometryFlags.hasCSC() and muonRecFlags.doCSCs():
-        getPrivateTool("CscClusterOnTrackCreator")
-        getPrivateTool("CscBroadClusterOnTrackCreator")
-    getPublicTool("MdtDriftCircleOnTrackCreator")
-    getPublicTool("MdtTubeHitOnTrackCreator")
-
-    #getService("SomeService")
-
+        getMuonToolSafe("CscClusterOnTrackCreator", False)
+        getMuonToolSafe("CscBroadClusterOnTrackCreator", False)
+    getMuonToolSafe("MdtDriftCircleOnTrackCreator", True)
+    getMuonToolSafe("MdtTubeHitOnTrackCreator", True)
 else: # not (DetFlags.Muon_on() and rec.doMuon())
     logMuon.warning("Muon reconstruction tools only loaded on-demand because Muons")
 
 def MuonLayerSegmentFinderTool(name='MuonLayerSegmentFinderTool',extraFlags=None,**kwargs):
     kwargs.setdefault("Csc2DSegmentMaker", getPublicTool("Csc2dSegmentMaker") if muonRecFlags.doCSCs() and MuonGeometryFlags.hasCSC() else "")
-    kwargs.setdefault("Csc4DSegmentMaker", getPublicTool("Csc4dSegmentMaker") if muonRecFlags.doCSCs() and MuonGeometryFlags.hasCSC() else "")    
+    kwargs.setdefault("Csc4DSegmentMaker", getPublicTool("Csc4dSegmentMaker") if muonRecFlags.doCSCs() and MuonGeometryFlags.hasCSC() else "")
+    kwargs.setdefault("MuonPRDSelectionTool", getPublicTool("MuonPRDSelectionTool") )
     return CfgMgr.Muon__MuonLayerSegmentFinderTool(name,**kwargs)
 
 def ExtraTreeTrackFillerTool(name="ExtraTreeTrackFillerTool",extraFlags=None,**kwargs):

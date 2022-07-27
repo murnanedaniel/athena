@@ -20,7 +20,7 @@ using namespace MuonGM;
 
 BuildNSWReadoutGeometry::BuildNSWReadoutGeometry() = default;
 
-bool BuildNSWReadoutGeometry::BuildReadoutGeometry(MuonGM::MuonDetectorManager* mgr) const {
+bool BuildNSWReadoutGeometry::BuildReadoutGeometry(MuonGM::MuonDetectorManager* mgr, const NswPassivationDbData* passivData) const {
     bool geoBuilt = true;
 
     ServiceHandle<IAGDDtoGeoSvc> svc("AGDDtoGeoSvc", "MMDetectorHelper");
@@ -51,12 +51,13 @@ bool BuildNSWReadoutGeometry::BuildReadoutGeometry(MuonGM::MuonDetectorManager* 
             mLayer = atoi((chTag.substr(7, 1)).c_str());
 
             if (chTag.substr(0, 3) == "sMD") {
-                MMReadoutElement* re = new MMReadoutElement((GeoVFullPhysVol*)vol, stName, etaIndex, phiIndex, mLayer, false, mgr);
+                MMReadoutElement* re = new MMReadoutElement((GeoVFullPhysVol*)vol, stName, etaIndex, phiIndex, mLayer, false, mgr, passivData);
                 std::string myVolName = (chTag.substr(0, 8)).c_str();
                 re->initDesign(-999., -999., -999., -999., -999.);
                 re->fillCache();
                 mgr->addMMReadoutElement(re, re->identify());
                 re->setDelta(mgr);
+                re->setBLinePar(mgr);
             } else if (chTag.substr(0, 3) == "sTG") {
                 sTgcReadoutElement* re = new sTgcReadoutElement((GeoVFullPhysVol*)vol, stName, etaIndex, phiIndex, mLayer, false, mgr);
                 std::string myVolName = (chTag.substr(0, 8)).c_str();
@@ -64,6 +65,7 @@ bool BuildNSWReadoutGeometry::BuildReadoutGeometry(MuonGM::MuonDetectorManager* 
                 re->fillCache();
                 mgr->addsTgcReadoutElement(re, re->identify());
                 re->setDelta(mgr);
+                re->setBLinePar(mgr);
             }
         }
     }

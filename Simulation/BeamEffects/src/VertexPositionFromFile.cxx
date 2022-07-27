@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // class header include
@@ -9,9 +9,6 @@
 #include "AtlasHepMC/GenEvent.h"
 // CLHEP includes
 #include "CLHEP/Vector/LorentzVector.h"
-// EventInfo
-#include "EventInfo/EventInfo.h"
-#include "EventInfo/EventID.h"
 // Athena headers
 #include "StoreGate/ReadHandle.h"
 
@@ -125,7 +122,6 @@ namespace Simulation
       ATH_MSG_ERROR("Could not open vertex positioning run/event number file: "<< m_runEventNumbersFile);
       return StatusCode::FAILURE;
     }
-    m_runEventNumbersIndex=0;
     ATH_MSG_VERBOSE("Opened vertex positioning run/event number file: " << m_runEventNumbersFile);
     //svcMgr.EvtIdModifierSvc.add_modifier(run_nbr=167776, evt_nbr=22, time_stamp=1299948350, lbk_nbr=130, nevts=1)
     int verun(0);     // run number
@@ -162,25 +158,26 @@ namespace Simulation
   }
 
   /** modifies (displaces) the given GenEvent */
-  CLHEP::HepLorentzVector *VertexPositionFromFile::generate() const
+  CLHEP::HepLorentzVector *VertexPositionFromFile::generate(const EventContext& ctx) const
   {
     unsigned int runNumber(0), eventNumber(0);
     // override the run/event number from file
     if (!m_runEventNumbersFile.empty()) {
-      ATH_MSG_DEBUG("Retrieving event info from event file, position " << m_runEventNumbersIndex);
-      runNumber   = m_vertexPositionRunNum[m_runEventNumbersIndex];
-      eventNumber = m_vertexPositionEventNum[m_runEventNumbersIndex];
-      ++m_runEventNumbersIndex; //FIXME Need to find a way of not needing to make this mutable!!
+      // This works because we iterate over the file exactly once
+      static std::atomic<size_t> runEventNumbersIndex(0);
+      ATH_MSG_DEBUG("Retrieving event info from event file, position " << runEventNumbersIndex);
+      runNumber   = m_vertexPositionRunNum[runEventNumbersIndex];
+      eventNumber = m_vertexPositionEventNum[runEventNumbersIndex];
+      ++runEventNumbersIndex;
     }
     // use run/event numbers from EventInfo class in storegate
     else {
       ATH_MSG_DEBUG("Retrieving event info from SG");
-      SG::ReadHandle<EventInfo> eventInfo(m_eventInfoKey);
+      SG::ReadHandle<xAOD::EventInfo> eventInfo(m_eventInfoKey, ctx);
       if (eventInfo.isValid()) {
         // read out run/event number
-        const EventID *curEventID = eventInfo->event_ID();
-        runNumber   = curEventID->run_number();
-        eventNumber = curEventID->event_number();
+        runNumber   = eventInfo->runNumber();
+        eventNumber = eventInfo->eventNumber();
       }
       else {
         ATH_MSG_ERROR("Could not retrieve event info from SG");

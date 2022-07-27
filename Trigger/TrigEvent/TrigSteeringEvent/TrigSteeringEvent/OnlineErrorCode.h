@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef TRIGSTEERINGEVENT_OnlineErrorCode_H
@@ -25,7 +25,9 @@ namespace HLT {
     AFTER_RESULT_SENT     = 10,
     COOL_UPDATE           = 11,
     TIMEOUT               = 12,
-    RESULT_TRUNCATION     = 13
+    RESULT_TRUNCATION     = 13,
+    MISSING_CTP_FRAGMENT  = 14,
+    BAD_CTP_FRAGMENT      = 15,
   };
 
   // There's no cleaner way to map enum to string, but watch out for C++ Reflection TS, it may come one day
@@ -48,13 +50,32 @@ namespace HLT {
       OnlineErrorCodeSwitchCase(COOL_UPDATE);
       OnlineErrorCodeSwitchCase(TIMEOUT);
       OnlineErrorCodeSwitchCase(RESULT_TRUNCATION);
-      default: return "UNDEFINED OnlineErrorCode"; break;
+      OnlineErrorCodeSwitchCase(MISSING_CTP_FRAGMENT);
+      OnlineErrorCodeSwitchCase(BAD_CTP_FRAGMENT);
+      default: return "UNDEFINED_OnlineErrorCode"; break;
     }
   }
 
-inline std::ostream& operator<< (std::ostream& os, const HLT::OnlineErrorCode code) {
-  return os << HLT::OnlineErrorCodeToString(code);
-}
+  inline std::ostream& operator<< (std::ostream& os, const HLT::OnlineErrorCode code) {
+    return os << HLT::OnlineErrorCodeToString(code);
+  }
+
+  /**
+   * @return true if @c code corresponds to an issue with event data or in processing algorithms,
+   *         false if @c code corresponds to a failure of an online framework component
+   */
+  constexpr bool isEventProcessingErrorCode(const OnlineErrorCode code) {
+    switch (code) {
+      case OnlineErrorCode::PROCESSING_FAILURE:
+      case OnlineErrorCode::TIMEOUT:
+      case OnlineErrorCode::RESULT_TRUNCATION:
+      case OnlineErrorCode::MISSING_CTP_FRAGMENT:
+      case OnlineErrorCode::BAD_CTP_FRAGMENT:
+        return true;
+      default:
+        return false;
+    }
+  }
 
 } // namespace HLT
 

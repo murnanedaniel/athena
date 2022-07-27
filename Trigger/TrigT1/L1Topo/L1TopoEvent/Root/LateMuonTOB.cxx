@@ -4,10 +4,10 @@
 
 thread_local TCS::Heap<TCS::LateMuonTOB> TCS::LateMuonTOB::fg_heap("LateMuon");
 
-const unsigned int TCS::LateMuonTOB::g_nBitsEt = 8;
+const unsigned int TCS::LateMuonTOB::g_nBitsEt = 13;
 const unsigned int TCS::LateMuonTOB::g_nBitsIsolation = 5;
-const unsigned int TCS::LateMuonTOB::g_nBitsEta = 6;
-const unsigned int TCS::LateMuonTOB::g_nBitsPhi = 6;
+const unsigned int TCS::LateMuonTOB::g_nBitsEta = 9;
+const unsigned int TCS::LateMuonTOB::g_nBitsPhi = 7;
 
 // default constructor
 TCS::LateMuonTOB::LateMuonTOB(uint32_t roiWord, const std::string& tobName) :
@@ -15,7 +15,7 @@ TCS::LateMuonTOB::LateMuonTOB(uint32_t roiWord, const std::string& tobName) :
 {}
 
 // constructor with initial values
-TCS::LateMuonTOB::LateMuonTOB(unsigned int et, unsigned int isolation, int eta, int phi, uint32_t roiWord, const std::string& tobName) :
+TCS::LateMuonTOB::LateMuonTOB(unsigned int et, unsigned int isolation, int eta, unsigned int phi, uint32_t roiWord, const std::string& tobName) :
   BaseTOB( roiWord,tobName )
    , m_Et( sizeCheck(et, nBitsEt()) )
    , m_isolation( sizeCheck( isolation, nBitsIsolation()) )

@@ -12,7 +12,6 @@
 // ****************************************************************************
 
 #include "JpsiUpsilonTools/PrimaryVertexRefitter.h"
-#include "TrkVertexFitterUtils/TrackToVertexIPEstimator.h"
 
 #include "xAODTracking/Vertex.h"
 #include "xAODTracking/TrackParticle.h"
@@ -29,20 +28,16 @@ StatusCode PrimaryVertexRefitter::initialize() {
 
 }
 
-PrimaryVertexRefitter::PrimaryVertexRefitter(const std::string& t, const std::string& n, const IInterface* p)  : AthAlgTool(t,n,p),
-   m_ntrk_min(2),
-   m_trackToVertexIPEstimator("Trk::TrackToVertexIPEstimator")
+PrimaryVertexRefitter::PrimaryVertexRefitter(const std::string& t, const std::string& n, const IInterface* p)  : 
+AthAlgTool(t,n,p)
 {
   declareInterface<PrimaryVertexRefitter>(this);
-  declareProperty("MinimumNumberOfTracksInVertex", m_ntrk_min);              
-  declareProperty("TrackToVertexIPEstimator", m_trackToVertexIPEstimator);
-
 }
 
 PrimaryVertexRefitter::~PrimaryVertexRefitter() { }
 
 // -------------------------------------------------------------------------------------------------
-const xAOD::Vertex* PrimaryVertexRefitter::refitVertex(const xAOD::Vertex* vertex, const xAOD::Vertex* excludeVertex, bool returnCopy, int* exitcode) const
+xAOD::Vertex* PrimaryVertexRefitter::refitVertex(const xAOD::Vertex* vertex, const xAOD::Vertex* excludeVertex, bool returnCopy, int* exitcode) const
 {
 
   if (vertex == 0) {
@@ -78,7 +73,7 @@ const xAOD::Vertex* PrimaryVertexRefitter::refitVertex(const xAOD::Vertex* verte
 }
 
 // -------------------------------------------------------------------------------------------------
-const xAOD::Vertex* PrimaryVertexRefitter::refitVertex(const xAOD::Vertex* vertex, const std::vector<const xAOD::TrackParticle*> &tps, bool returnCopy, int* exitcode) const
+xAOD::Vertex* PrimaryVertexRefitter::refitVertex(const xAOD::Vertex* vertex, const std::vector<const xAOD::TrackParticle*> &tps, bool returnCopy, int* exitcode) const
 {
 
   if (vertex == 0) {
@@ -104,7 +99,7 @@ const xAOD::Vertex* PrimaryVertexRefitter::refitVertex(const xAOD::Vertex* verte
     return returnCopy ? new xAOD::Vertex(*vertex) : nullptr;
   }
 
-  const xAOD::Vertex* reducedVertex(0);
+  xAOD::Vertex* reducedVertex(0);
   const xAOD::Vertex* tmpVert = vertex;
   std::vector <const xAOD::TrackParticle*>::const_iterator pb = tps.begin();
   std::vector <const xAOD::TrackParticle*>::const_iterator pe = tps.end();

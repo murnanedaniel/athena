@@ -2,19 +2,12 @@
 #  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #
 
-from AthenaCommon.CFElements import parOR, findAllAlgorithms
-
-from JetRecTools import JetRecToolsConfig as jrtcfg
+from JetRecTools import JetRecToolsConfig
+from AthenaConfiguration.AllConfigFlags import ConfigFlags
 from AthenaConfiguration.ComponentFactory import CompFactory
-from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator, conf2toConfigurable, appendCAtoAthena
-from AthenaCommon.Configurable import ConfigurableRun3Behavior
-from TrigInDetConfig.InDetTrigVertices import makeInDetTrigVertices
+from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator, conf2toConfigurable
 from TrigInDetConfig.ConfigSettings import getInDetTrigConfig
 
-# this code uses CA internally, needs to be in this context manager,
-# at least until ATLASRECTS-6635 is closed
-with ConfigurableRun3Behavior():
-    from ..Bjet.BjetFlavourTaggingConfiguration import getFastFlavourTagging
 
 from AthenaConfiguration.AccumulatorCache import AccumulatorCache
 
@@ -32,7 +25,6 @@ def retrieveJetContext(trkopt):
     if trkopt not in jetContextDic:
         # *****************
         # Set the options corresponding to trkopt to a new entry in jetContextDic 
-        from TrigInDetConfig.ConfigSettings import getInDetTrigConfig
         IDTrigConfig = getInDetTrigConfig( 'jet' )
 
         tracksname = IDTrigConfig.tracks_FTF()
@@ -61,80 +53,10 @@ def retrieveJetContext(trkopt):
         
     return jetContextDic[trkopt], jetContextDic["trackKeys"]
 
-def JetFSTrackingSequence(dummyFlags,trkopt,RoIs):
-
-    from TrigInDetConfig.ConfigSettings import getInDetTrigConfig
-    # We really want jet, but that does more stuff (Hit-based DV wants L1 JET RoIs) so try bjet for now
-    # Alternatively we could add the L1 JET RoIs to the ViewDataVerifier
-    IDTrigConfig = getInDetTrigConfig( 'jet' )
-
-    trackcollmap = None
-
-    from TrigInDetConfig.InDetTrigFastTracking import makeInDetTrigFastTrackingNoView
-    viewAlgs = makeInDetTrigFastTrackingNoView( config = IDTrigConfig, rois=RoIs)
-
-    # add the collections for the eflowRec reconstriction in the trigger
-
-    from eflowRec.PFHLTSequence import trackvtxcontainers
-    trackvtxcontainers[trkopt] =  ( IDTrigConfig.tracks_FTF(), IDTrigConfig.vertex_jet ) 
-
-    vtxAlgs = makeInDetTrigVertices( "jet", IDTrigConfig.tracks_FTF(), IDTrigConfig.vertex_jet, IDTrigConfig, IDTrigConfig.adaptiveVertex_jet )
-
-    # now run he actual vertex finders and TTVA tools
-    if IDTrigConfig.vertex_jet != IDTrigConfig.vertex:
-        vtxAlgs += makeInDetTrigVertices( "amvf", IDTrigConfig.tracks_FTF(), IDTrigConfig.vertex, IDTrigConfig, IDTrigConfig.adaptiveVertex )
-
-    jetTrkSeq = parOR( "JetFSTrackingSeq_"+trkopt, viewAlgs+vtxAlgs)
-    trackcollmap = jetTTVA( "jet", jetTrkSeq, trkopt, IDTrigConfig, verticesname=IDTrigConfig.vertex_jet,  adaptiveVertex=IDTrigConfig.adaptiveVertex_jet )
-
-    return jetTrkSeq, trackcollmap
-
-
-def JetRoITrackingSequence(dummyFlags,jetsIn,trkopt,RoIs):
-
-    IDTrigConfig = getInDetTrigConfig( 'jetSuper' )
-
-    # Note: import here is required because this isn't safe for "new"
-    # job options: it uses `include`. Apparently the new job options
-    # import this file but don't use this function, so we can hide
-    # imports here.
-    from TrigInDetConfig.InDetTrigFastTracking import makeInDetTrigFastTracking
-    viewAlgs, viewVerify = makeInDetTrigFastTracking( config = IDTrigConfig, rois=RoIs)
-    viewVerify.DataObjects += [( 'TrigRoiDescriptorCollection' , 'StoreGateSvc+%s' % RoIs ),( 'xAOD::JetContainer' , 'StoreGateSvc+%s' % jetsIn)]
-
-    IDTrigConfig = getInDetTrigConfig('jetSuper')
-    tracksIn = IDTrigConfig.tracks_FTF()
-
-    with ConfigurableRun3Behavior():
-        ca_ft_algs = getFastFlavourTagging( dummyFlags, jetsIn, "", tracksIn)
-
-    # Conversion of flavour-tagging algorithms from new to old-style
-    # 1) We need to do the algorithms manually and then remove them from the CA
-    #
-    # Please see the discussion on
-    # https://gitlab.cern.ch/atlas/athena/-/merge_requests/46951#note_4854474
-    # and the description in that merge request.
-    ft_algs = [conf2toConfigurable(alg) for alg in findAllAlgorithms(ca_ft_algs._sequence)]
-
-    jetTrkSeq = parOR( "JetRoITrackingSeq_"+trkopt, viewAlgs + ft_algs)
-
-    # you can't use accumulator.wasMerged() here because the above
-    # code only merged the algorithms. Instead we rely on this hacky
-    # looking construct.
-    ca_ft_algs._sequence = []
-    # 2) the rest is done by the generic helper
-    # this part is needed to accomodate parts of flavor tagging that
-    # aren't algorithms, e.g. JetTagCalibration.
-    appendCAtoAthena(ca_ft_algs)
-
-    return jetTrkSeq
-
-
 @AccumulatorCache
 def JetFSTrackingCfg(flags, trkopt, RoIs):
     """ Create the tracking CA and return it as well as the output name dictionary """
     acc = ComponentAccumulator()
-    from TrigInDetConfig.ConfigSettings import getInDetTrigConfig
     IDTrigConfig = getInDetTrigConfig( 'jet' )
     if trkopt == "ftf":
         from TrigInDetConfig.TrigInDetConfig import trigInDetFastTrackingCfg
@@ -196,20 +118,19 @@ def jetTTVA( signature, jetseq, trkopt, config, verticesname=None, adaptiveVerte
 
     # *****************************
     # Jet track selection algorithm
-    jettrackselalg = jrtcfg.getTrackSelAlg( trkopt )
-
-    # Track-vtx association. We create a TrackVertexAssocTool then call it through a
-    # JetAlgorithm which just calls its execute() method. In the future the plan is to
-    # convert this TrackVertexAssocTool in a simple alg just as for track selection.
-    jettvassoc       = jrtcfg.getTrackVertexAssocTool( trkopt, jetseq ,
-                                                       ttva_opts = { "WorkingPoint" : "Custom",
-                                                                     "d0_cut"       : 2.0, 
-                                                                     "dzSinTheta_cut" : 2.0, 
-                                                                     "doPVPriority": adaptiveVertex,
-                                                                    }
-                                                                 )    
-    jettrkprepalg       = CompFactory.JetAlgorithm("jetalg_TrackPrep"+trkopt,
-                                                   Tools = [  jettvassoc ])
+    jettrackselalg = JetRecToolsConfig.getTrackSelAlg( trkopt )
+    
+    # *****************************
+    # Track-vtx association.
+    jettrkprepalg = JetRecToolsConfig.getJetTrackVtxAlg(trkopt, algname="jetalg_TrackPrep"+trkopt,
+                                             # # parameters for the CP::TrackVertexAssociationTool (or the TrackVertexAssociationTool.getTTVAToolForReco function) :
+                                             #WorkingPoint = "Nonprompt_All_MaxWeight", # this is the new default in offline (see also CHS configuration in StandardJetConstits.py)
+                                             WorkingPoint = "Custom",
+                                             d0_cut       = 2.0, 
+                                             dzSinTheta_cut = 2.0, 
+                                             doPVPriority = adaptiveVertex,
+                                             add2Seq = jetseq,
+                                             )
 
     # Pseudojets for ghost tracks
     pjgalg = CompFactory.PseudoJetAlgorithm(
@@ -225,6 +146,11 @@ def jetTTVA( signature, jetseq, trkopt, config, verticesname=None, adaptiveVerte
     jetseq += conf2toConfigurable( jettrkprepalg )
     jetseq += conf2toConfigurable( pjgalg )
 
+    if ConfigFlags.Trigger.Jet.doVRJets:
+        pv0_jettvassoc, pv0_ttvatool = JetRecToolsConfig.getPV0TrackVertexAssoAlg(trkopt, jetseq)
+        pv0trackselalg = JetRecToolsConfig.getPV0TrackSelAlg(pv0_ttvatool, trkopt)
+        jetseq += conf2toConfigurable( pv0_jettvassoc )
+        jetseq += conf2toConfigurable( pv0trackselalg )
 
     # make sure we output only the key,value related to tracks (otherwise, alg duplication issues)
     outmap = { k:jetContext[k] for k in trkKeys }

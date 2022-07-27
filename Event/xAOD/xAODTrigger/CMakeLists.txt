@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # Declare the package name.
 atlas_subdir( xAODTrigger )
@@ -28,11 +28,9 @@ atlas_add_xaod_smart_pointer_dicts(
               "xAOD::EmTauRoIContainer_v2" "xAOD::TriggerMenuContainer_v1"
               "xAOD::TrigCompositeContainer_v1" "xAOD::BunchConfContainer_v1"
               "xAOD::TrigPassBitsContainer_v1" "xAOD::TriggerMenuJsonContainer_v1"
-
               "xAOD::eFexEMRoIContainer_v1"  "xAOD::eFexTauRoIContainer_v1" "xAOD::jFexSRJetRoIContainer_v1"
-	      "xAOD::jFexLRJetRoIContainer_v1" "xAOD::jFexTauRoIContainer_v1" 
+	      "xAOD::jFexLRJetRoIContainer_v1" "xAOD::jFexTauRoIContainer_v1" "xAOD::jFexFwdElRoIContainer_v1"
               "xAOD::jFexSumETRoIContainer_v1" "xAOD::jFexMETRoIContainer_v1"
-
 	      "xAOD::L1TopoSimResultsContainer_v1"
               "xAOD::gFexJetRoIContainer_v1" "xAOD::gFexGlobalRoIContainer_v1"
 
@@ -52,7 +50,7 @@ atlas_add_test( ut_xaodtrigger_bytestreamauxcontainer_v1_test
 
 atlas_add_test( ut_xaodtrigger_gFexEDM_test 
   SOURCES test/ut_xaodtrigger_gFexEDM_test.cxx
-  LINK_LIBRARIES AthContainers xAODTrigger)
+  LINK_LIBRARIES AthContainers xAODTrigger TestTools )
 
 if( NOT XAOD_STANDALONE )
    atlas_add_test( ut_xaodtrigger_trigcomposite_test

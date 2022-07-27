@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef TRKTRACKSUMMARYTOOL_H
@@ -161,22 +161,6 @@ public:
    * collection merging. */
   virtual void updateSharedHitCount(Track& track) const override final;
 
-  /** Update the shared hit counts, expected hit, PID information and eventually
-   * the detailed track summaries.
-   * @param track the track corresponding to the summary which is updated, which
-   * is not actively changed.
-   * @param prd-to-track an optional  PRD-to-track map to compute shared hits or
-   * nullptr.
-   * @param summary the summary which is updated.
-   * Will update the shared hit, expected hit, PID information and eventually
-   * the detailed track summaries. If no PRD-to-track map is given the helper
-   * tools will rely on a PRD association tool to privide the shared hit
-   * information. The method will not update the track itself unless the given
-   * summary is owned by the track.
-   */
-  virtual void updateAdditionalInfo(const Track& track,
-                                    TrackSummary& summary) const override;
-
   /** method to update additional information (PID,shared hits, dEdX), this is
    * optimised for track collection merging.
    */
@@ -201,10 +185,6 @@ private:
                      const Trk::PRDtoTrackMap* pPrdToTrackMap,
                      bool suppress_hole_search) const;
 
-  void updateAdditionalInfo(const Track& track,
-                            TrackSummary& summary,
-                            bool initialise_to_zero) const;
-
   /** use this method to update a track. this means a tracksummary is created
   for this track but not returned. the summary can then be obtained from the
   track. Because it is taken from the track the ownership stays with the track
@@ -227,13 +207,6 @@ private:
   /**tool to decipher ID RoTs*/
   ToolHandle<IExtendedTrackSummaryHelperTool>
     m_idTool{ this, "InDetSummaryHelperTool", "", "" };
-  /**tool to calculate electron probabilities*/
-  ToolHandle<ITRT_ElectronPidTool> m_eProbabilityTool{ this,
-                                                       "TRT_ElectronPidTool",
-                                                       "",
-                                                       "" };
-  /**tool to calculate dE/dx using pixel clusters*/
-  ToolHandle<IPixelToTPIDTool> m_dedxtool{ this, "PixelToTPIDTool", "", "" };
   /**tool to decipher muon RoTs*/
   ToolHandle<IExtendedTrackSummaryHelperTool>
     m_muonTool{ this, "MuonSummaryHelperTool", "", "" };
@@ -247,11 +220,11 @@ private:
      Turning this on will increase processing time.*/
   Gaudi::Property<bool> m_doSharedHits{ this, "doSharedHits", false, "" };
 
-  /** controls whether the detailed summary is added for the indet */
-  Gaudi::Property<bool> m_addInDetDetailedSummary{ this,
-                                                   "AddDetailedInDetSummary",
-                                                   true,
-                                                   "" };
+  /** controls whether the expected Hits are added during summary creation*/
+  Gaudi::Property<bool> m_addExpectedHits{ this,
+                                           "AddExpectedHits",
+                                           false,
+                                           "" };
   /** controls whether the detailed summary is added for the muons */
   Gaudi::Property<bool> m_addMuonDetailedSummary{ this,
                                                   "AddDetailedMuonSummary",

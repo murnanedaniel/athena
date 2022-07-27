@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // Class header
@@ -20,13 +20,10 @@
 #include "G4ReflectedSolid.hh"
 #include "G4Material.hh"
 #include "G4MaterialPropertyVector.hh"
-#include "AFP_Geometry/AFP_constants.h"
 
 // STL header
 #include <sstream>
 #include <cmath>
-
-#define SIDMAXCNT 1000 //FIXME Try to avoid using preprocessor constants
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -39,12 +36,11 @@ AFP_SiDSensitiveDetector::AFP_SiDSensitiveDetector(const std::string& name, cons
   , m_delta_pixel_y(0.250)
   , m_HitColl(hitCollectionName)
 {
-  AFP_CONSTANTS AfpConstants;
   for( int i=0; i < 4; i++){
     m_nNOfSIDSimHits[i] = 0;
     for( int j=0; j < 10; j++){
-      m_death_edge[i][j] = AfpConstants.SiT_DeathEdge; //in mm, it is left edge as the movement is horizontal
-      m_lower_edge[i][j] = AfpConstants.SiT_LowerEdge; //in mm,
+      m_death_edge[i][j] = AFP_CONSTANTS::SiT_DeathEdge; //in mm, it is left edge as the movement is horizontal
+      m_lower_edge[i][j] = AFP_CONSTANTS::SiT_LowerEdge; //in mm,
     }
   }
 }
@@ -173,10 +169,10 @@ bool AFP_SiDSensitiveDetector::ProcessHits(G4Step* pStep, G4TouchableHistory*)
         else
           {
             // Cut on maximum number of SID hits/station
-            if(m_nNOfSIDSimHits[nStationID] >= SIDMAXCNT) return 1;
+            if(m_nNOfSIDSimHits[nStationID] >= SiDMaxCnt) return 1;
 
             // Get the Touchable History:
-            G4TouchableHistory*  myTouch = (G4TouchableHistory*)(pPreStepPoint->GetTouchable());
+            const G4TouchableHistory* myTouch = static_cast<const G4TouchableHistory*>(pPreStepPoint->GetTouchable());
             // Calculate the local step position.
             // From a G4 FAQ:
             // http://geant4-hn.slac.stanford.edu:5090/HyperNews/public/get/geometry/17/1.html
@@ -228,10 +224,10 @@ bool AFP_SiDSensitiveDetector::ProcessHits(G4Step* pStep, G4TouchableHistory*)
                 G4cout << "AFP_SiDSensitiveDetector::ProcessHits: local, x_det_post: " << x_det_post << ", y_det_post: " << y_det_post << ", z_det_post: " << z_det_post << G4endl;
                 G4cout << "AFP_SiDSensitiveDetector::ProcessHits:  angle_phi_global in -pi:pi = "  << angle_phi_global << G4endl;
               }
-            if (angle_phi < 0.) angle_phi = 2.*M_PI + angle_phi;
+            if (angle_phi_global < 0.) angle_phi_global = 2.*M_PI + angle_phi_global;
             if(verboseLevel>5)
               {
-                G4cout << "AFP_SiDSensitiveDetector::ProcessHits: angle_phi_global in 0:2pi = "  << angle_phi << G4endl;
+                G4cout << "AFP_SiDSensitiveDetector::ProcessHits: angle_phi_global in 0:2pi = "  << angle_phi_global << G4endl;
                 G4cout << "AFP_SiDSensitiveDetector::ProcessHits: angle_phi in -pi:pi = "  << angle_phi << G4endl;
               }
             if (angle_phi < 0.) angle_phi = 2.*M_PI + angle_phi;
@@ -412,7 +408,7 @@ bool AFP_SiDSensitiveDetector::ProcessHits(G4Step* pStep, G4TouchableHistory*)
 
                     if (first == -1 ) {
                       if(verboseLevel>5) { G4cout << "AFP_SiDSensitiveDetector::ProcessHits: something is wrong here!!! " << G4endl; }
-                      exit(false);
+                      throw std::runtime_error("AFP_SiSensitiveDetector::ProcessHits: something is wrong here");
                     }
 
                     if(verboseLevel>5)
@@ -461,6 +457,7 @@ bool AFP_SiDSensitiveDetector::ProcessHits(G4Step* pStep, G4TouchableHistory*)
                           }
 
                         x_det = x_border;
+                        y_det = y_border;
 
                         x_next_pixel = x_next_pixel + sign_pixels_x*m_delta_pixel_x;
                         number_pixels_x = number_pixels_x - 1;
@@ -476,12 +473,12 @@ bool AFP_SiDSensitiveDetector::ProcessHits(G4Step* pStep, G4TouchableHistory*)
                         if(verboseLevel>5) { G4cout << "AFP_SiDSensitiveDetector::ProcessHits: cross is y, " << G4endl; }
                         y_border = y_next_pixel;
 
-                        if ((sign_pixels_y >= 0) &&  (y_border > y_det_post)) y_border = x_det_post;
-                        if ((sign_pixels_y < 0) &&  (y_border < y_det_post)) y_border = x_det_post;
+                        if ((sign_pixels_y >= 0) &&  (y_border > y_det_post)) y_border = y_det_post;
+                        if ((sign_pixels_y < 0) &&  (y_border < y_det_post)) y_border = y_det_post;
 
                         x_border = (y_border-y_det)/tan_phi + x_det;
 
-                        if (( act_pixel_y - n_lower_pixels <= 80) && (act_pixel_x -n_death_pixels <= 336) && ( act_pixel_y - n_lower_pixels >= 0) && (act_pixel_x - n_death_pixels >= 0))
+                        if (( act_pixel_y - n_lower_pixels <= 80) && (act_pixel_x -n_death_pixels <= 336) && ( act_pixel_y - n_lower_pixels > 0) && (act_pixel_x - n_death_pixels > 0))
                           {
                             pixel_track_length_XY = sqrt(pow(x_border-x_det,2)+pow(y_border-y_det,2));
 
@@ -498,8 +495,8 @@ bool AFP_SiDSensitiveDetector::ProcessHits(G4Step* pStep, G4TouchableHistory*)
                                                fEnergyDeposit*(pixel_track_length_XY/track_length_XY),
                                                fPreStepX,fPreStepY,fPreStepZ,fPostStepX,fPostStepY,fPostStepZ,
                                                fGlobalTime,nStationID,nDetectorID,bIsSIDAuxVSID,
-                                               (act_pixel_y - n_lower_pixels),
-                                               (act_pixel_x - n_death_pixels));
+                                               (act_pixel_y - n_lower_pixels - 1),
+                                               (act_pixel_x - n_death_pixels - 1));
 
                             if(verboseLevel>5) { G4cout << "AFP_SiDSensitiveDetector::ProcessHits:pixel["<< act_pixel_x - n_death_pixels <<"]["<< act_pixel_y - n_lower_pixels <<"] will be stored, with energy "
                                                         << fEnergyDeposit*(pixel_track_length_XY/track_length_XY) << G4endl; }
@@ -510,6 +507,7 @@ bool AFP_SiDSensitiveDetector::ProcessHits(G4Step* pStep, G4TouchableHistory*)
                           }
 
                         y_det = y_border;
+                        x_det = x_border;
 
                         y_next_pixel = y_next_pixel + sign_pixels_y*m_delta_pixel_y;
                         number_pixels_y = number_pixels_y - 1;

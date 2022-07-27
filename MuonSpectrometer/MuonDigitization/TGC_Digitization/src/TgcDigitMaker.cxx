@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "TgcDigitMaker.h"
@@ -28,17 +28,16 @@
 //---------------------------------------------------
 
 //----- Constructor
-TgcDigitMaker::TgcDigitMaker(TgcHitIdHelper*                    hitIdHelper,
+TgcDigitMaker::TgcDigitMaker(const TgcHitIdHelper* hitIdHelper,
 			     const MuonGM::MuonDetectorManager* mdManager,
 			     unsigned int                       runperiod)
-  : AthMessaging (Athena::getMessageSvc(), "TgcDigitMaker")
+  : AthMessaging ("TgcDigitMaker")
 {
   m_hitIdHelper             = hitIdHelper;
   m_mdManager               = mdManager;
   m_runperiod               = runperiod;
   m_idHelper                = nullptr;
   m_efficiency[kWIRE] = m_efficiency[kSTRIP] = 1.000; // 100% efficiency for TGCSimHit_p1
-  m_timeWindowOffsetSensor[kWIRE]  = m_timeWindowOffsetSensor[kSTRIP] = 0.;
   m_gateTimeWindow[kOUTER][kWIRE]  = 29.32; // 29.32ns = 26ns + 4  * 0.83ns(outer station)
   m_gateTimeWindow[kOUTER][kSTRIP] = 40.94; // 40.94ns = 26ns + 18 * 0.83ns(outer station)
   m_gateTimeWindow[kINNER][kWIRE]  = 33.47; // 33.47ns = 26ns + 9  * 0.83ns(inner station)
@@ -69,20 +68,8 @@ StatusCode TgcDigitMaker::initialize()
   // Read share/TGC_Digitization_energyThreshold.dat file and store values in m_energyThreshold. 
   ATH_CHECK(readFileOfEnergyThreshold());
 
-  // Read share/TGC_Digitization_crossTalk.dat file and store values in m_crossTalk.
-  ATH_CHECK(readFileOfCrossTalk());
-
   // Read share/TGC_Digitization_deadChamber.dat file and store values in m_isDeadChamber. 
   ATH_CHECK(readFileOfDeadChamber());
-
-  // Read share/TGC_Digitization_timeWindowOffset.dat file and store values in m_timeWindowOffset. 
-  ATH_CHECK(readFileOfTimeWindowOffset());
-
-  // Read share/TGC_Digitization_alignment.dat file and store values in m_alignmentZ, m_alignmentT, m_alignmentS, m_alignmentTHS
-  ATH_CHECK(readFileOfAlignment());
-
-  // Read share/TGC_Digitization_ASDpropTimeOffset.dat file and store values in m_ASDpropTimeOffset, m_maxch.
-  ATH_CHECK(readFileOfASDpropTimeOffset());
 
   // Read share/TGC_Digitization_StripPosition.dat file and store values in m_StripPosition.
   ATH_CHECK(readFileOfStripPosition());
@@ -96,15 +83,28 @@ StatusCode TgcDigitMaker::initialize()
 TgcDigitCollection* TgcDigitMaker::executeDigi(const TGCSimHit* hit,
                                                const double globalHitTime,
                                                const TgcDigitASDposData* ASDpos,
+                                               const TgcDigitTimeOffsetData* TOffset,
+                                               const TgcDigitCrosstalkData* Crosstalk,
                                                CLHEP::HepRandomEngine* rndmEngine)
 {
+  // timing constant parameters
+  constexpr float sensor_propagation_time = 3.3 * CLHEP::ns / CLHEP::m;  // Until MC10, 8.5*ns/m for wire, 8.7*ns/m for strip.
+                                                                         // Since MC11, 3.3*ns/m (the speed of light) is used
+                                                                         // from the Z->mumu data/MC comparison.
+  constexpr float cable_propagation_time = 5.0 * CLHEP::ns / CLHEP::m;
+
+  // position constant parameters
+  constexpr float wire_pitch = 1.8 * CLHEP::mm;
+  constexpr float zwidth_frame = 17. * CLHEP::mm;
+
+  ATH_MSG_DEBUG("executeDigi() Got HIT Id.");
+
   //////////  convert ID for this digitizer system 
   int         Id         = hit->TGCid();
   std::string stationName= m_hitIdHelper->GetStationName(Id);
   int         stationEta = m_hitIdHelper->GetStationEta(Id);
   int         stationPhi = m_hitIdHelper->GetStationPhi(Id);
   int         ilyr       = m_hitIdHelper->GetGasGap(Id);
-  ATH_MSG_DEBUG("executeDigi() Got HIT Id.");
 
   // Check the chamber is dead or not. 
   if(isDeadChamber(stationName, stationEta, stationPhi, ilyr)) return nullptr;
@@ -118,13 +118,6 @@ TgcDigitCollection* TgcDigitMaker::executeDigi(const TGCSimHit* hit,
     return nullptr;
   }
 
-  const Amg::Vector3D centreChamber = tgcChamber->globalPosition();
-  float height                   = tgcChamber->getRsize();
-  float hmin                     = sqrt(pow(centreChamber.x(),2)+pow(centreChamber.y(),2)) - height/2.;
-  float wirePitch   = 1.8*CLHEP::mm;
-  float frameZwidth = 17. *CLHEP::mm;
-  float frameXwidth = 20. *CLHEP::mm;
-  
   IdContext tgcContext = m_idHelper->module_context();
   IdentifierHash coll_hash;
   if(m_idHelper->get_hash(elemId, coll_hash, &tgcContext)) {
@@ -137,21 +130,23 @@ TgcDigitCollection* TgcDigitMaker::executeDigi(const TGCSimHit* hit,
   
   std::unique_ptr<TgcDigitCollection> digits = std::make_unique<TgcDigitCollection>(elemId, coll_hash);
 
+
+  const Amg::Vector3D centreChamber = tgcChamber->globalPosition();
+  float height                   = tgcChamber->getRsize();
+  float hmin                     = sqrt(pow(centreChamber.x(),2)+pow(centreChamber.y(),2)) - height/2.;
+
   // Direction cosine of incident angle of this track
   Amg::Vector3D direCos = hit->localDireCos();
   
   // local position
   Amg::Vector3D localPos = hit->localPosition();
 
-  /*** Ad hoc implementation of detector position shift */ 
-  //adHocPositionShift(stationName, stationEta, stationPhi, direCos, localPos);
-
   // Local z direction is global r direction.  
-  float distanceZ = 1.4*CLHEP::mm/direCos[0]*direCos[2];
+  float distanceZ = 1.4*CLHEP::mm / direCos[0]*direCos[2];
   float zLocal = localPos.z() + distanceZ; 
   
   // Local y direction is global phi direction.  
-  float distanceY = 1.4*CLHEP::mm/direCos[0]*direCos[1];
+  float distanceY = 1.4*CLHEP::mm / direCos[0]*direCos[1];
   // This ySign depends on the implementation of TGC geometry in G4 simulation
   // left-handed coordinate in A side(+z, stationEta>0)
   float ySign = (stationEta < 0) ? +1. : -1.; 
@@ -160,7 +155,7 @@ TgcDigitCollection* TgcDigitMaker::executeDigi(const TGCSimHit* hit,
   // Time of flight correction for each chamber
   // the offset is set to 0 for ASD located at the postion where tof is minimum in each chamber,
   // i.e. the ASD at the smallest R in each chamber
-  double tofCorrection = (sqrt(pow(hmin+frameZwidth,2)+pow(centreChamber.z(),2))/(299792458.*(CLHEP::m/CLHEP::s)));//FIXME use CLHEP::c_light
+  double tofCorrection = (sqrt(pow(hmin+zwidth_frame, 2)+pow(centreChamber.z(),2)) / (299792458.*(CLHEP::m/CLHEP::s)));//FIXME use CLHEP::c_light
 
   // bunch time
   float bunchTime = globalHitTime - tofCorrection;
@@ -170,10 +165,6 @@ TgcDigitCollection* TgcDigitMaker::executeDigi(const TGCSimHit* hit,
 
   int iStationName = getIStationName(stationName);
 
-  /////////////   wire group number calculation   ///////////////
-  TgcSensor sensor = kWIRE;
-  m_timeWindowOffsetSensor[sensor] = getTimeWindowOffset(stationName, stationEta, sensor);
-
   double energyDeposit = hit->energyDeposit(); // Energy deposit in MeV 
   // If TGCSimHit_p1 is used, energyDeposit is the default value of -9999. 
   // If TGCSimHit_p2 is used, energyDeposit is equal to or greater than 0. 
@@ -181,9 +172,11 @@ TgcDigitCollection* TgcDigitMaker::executeDigi(const TGCSimHit* hit,
   // For TGCSimHit_p1, old efficiency check with only isStrip variable is used. 
   // For TGCSimHit_p2, new efficiency check with chamber dependent energy threshold is used. 
 
-  if((energyDeposit< -1. && efficiencyCheck(sensor, rndmEngine)) || // Old efficiencyCheck for TGCSimHit_p1. 
-     (energyDeposit>=-1. && efficiencyCheck(stationName, stationEta, stationPhi, ilyr, sensor, energyDeposit)) // New efficiencyCheck for TGCSimHit_p2
-     ) {  
+
+  /////////////   wire group number calculation   ///////////////
+
+  if ((energyDeposit>=-1. && efficiencyCheck(stationName, stationEta, stationPhi, ilyr, kWIRE, energyDeposit)) ||   // efficiency check for TGCSimHit_p2 at first,
+      (energyDeposit< -1. && efficiencyCheck(kWIRE, rndmEngine))) {    // Old efficiencyCheck for TGCSimHit_p1
 
     int iWireGroup[2];
     float posInWireGroup[2] = {0., 0.};
@@ -192,28 +185,27 @@ TgcDigitCollection* TgcDigitMaker::executeDigi(const TGCSimHit* hit,
       // for chambers in which only the first wire  is not connected                                 : 1
       // for chambers in which the first and last wires are not connected OR all wires are connected : 0
 
-      double zPosInSensArea = zLocal + static_cast<double>(tgcChamber->getTotalWires(ilyr)-nWireOffset)*wirePitch/2.;
+      double zPosInSensArea = zLocal + static_cast<double>(tgcChamber->getTotalWires(ilyr)-nWireOffset)*wire_pitch/2.;
 
       // check a hit in the sensitive area
-      if(zPosInSensArea < 0. || zPosInSensArea > tgcChamber->getTotalWires(ilyr)*wirePitch) {
+      if(zPosInSensArea < 0. || zPosInSensArea > tgcChamber->getTotalWires(ilyr)*wire_pitch) {
         iWireGroup[iPosition] = 0;
         posInWireGroup[iPosition] = 0.;
-	      ATH_MSG_DEBUG("executeDigi(): Wire: Hit position located at outside of a sensitive volume, "
-						 << " id: " << stationName << "/" << stationEta << "/" << stationPhi << "/" << ilyr
-						 << " position: " << zPosInSensArea
-						 << " xlocal: " << zLocal 
-						 << " dir cosine: " << direCos[0] << "/" << direCos[1] << "/" << direCos[2]
-						 << " active region: " << height-frameZwidth*2.);
-      }
-      else {
+        ATH_MSG_DEBUG("executeDigi(): Wire: Hit position located at outside of a sensitive volume, "
+		   << " id: " << stationName << "/" << stationEta << "/" << stationPhi << "/" << ilyr
+		   << " position: " << zPosInSensArea
+		   << " xlocal: " << zLocal 
+		   << " dir cosine: " << direCos[0] << "/" << direCos[1] << "/" << direCos[2]
+		   << " active region: " << height - zwidth_frame*2.);
+      } else {
 	int igang      = 1;
 	int wire_index = 0;
-	while(wirePitch*(static_cast<float>(wire_index)) < zPosInSensArea
+	while(wire_pitch*(static_cast<float>(wire_index)) < zPosInSensArea
 	      && igang <= tgcChamber -> getNGangs(ilyr)) {
 	  wire_index += tgcChamber->getNWires(ilyr,igang);
 	  igang++;
 	}
-	posInWireGroup[iPosition] = (zPosInSensArea/wirePitch-(static_cast<float>(wire_index)))/(static_cast<float>(tgcChamber->getNWires(ilyr,igang-1)))+1.;
+	posInWireGroup[iPosition] = (zPosInSensArea/wire_pitch-(static_cast<float>(wire_index)))/(static_cast<float>(tgcChamber->getNWires(ilyr,igang-1)))+1.;
 
 	iWireGroup[iPosition] = ((1==igang) ? 1 : igang-1);
       }
@@ -223,71 +215,68 @@ TgcDigitCollection* TgcDigitMaker::executeDigi(const TGCSimHit* hit,
      			   (iWireGroup[0]<=iWireGroup[1]) ? (unsigned int)(1) : (unsigned int)(0)};
     int iWG[2] = {iWireGroup[jWG[0]], iWireGroup[jWG[1]]};
     float posInWG[2] = {posInWireGroup[jWG[0]], posInWireGroup[jWG[1]]};
-    if(iWG[0]!=iWG[1]) {
+    if (iWG[0] != iWG[1]) {
       ATH_MSG_DEBUG("executeDigi(): Multihits found in WIRE GROUPs:" << iWG[0] << " " << iWG[1]);
     }
 
-    for(int iwg=iWG[0]; iwg<=iWG[1]; iwg++) {
+    // === BC tagging from the hit timing ===
+    for(int iwg=iWG[0]; iwg <= iWG[1]; iwg++) {
       if(1<=iwg && iwg<=tgcChamber->getNGangs(ilyr)) {
+        // timing window offset
+        float wire_timeOffset = (TOffset != nullptr) ? this->getTimeOffset(TOffset, iStationName, stationEta, kWIRE) : 0.;
+        // EI/FI has different offset between two ASDs.
+        if (iStationName > 46) wire_timeOffset += (iwg < 17) ? 0.5 * CLHEP::ns : -0.5 * CLHEP::ns;
+
 	// TGC response time calculation
 	float jit = timeJitter(direCos, rndmEngine);
 	if(jit < jitter) jitter = jit;
-	const float wirePropagationTime = 3.3*CLHEP::ns/CLHEP::m; // 3.7*ns/m was used until MC10.
 	float ySignPhi = (stationPhi%2==1) ? -1. : +1.; 
 	// stationPhi%2==0 : +1. : ASD attached at the smaller phi side of TGC 
 	// stationPhi%2==1 : -1. : ASD attached at the larger phi side of TGC
-  float wTimeDiffByRadiusOfInner = this->timeDiffByCableRadiusOfInner(iStationName, stationPhi, iwg);
-	float wDigitTime = bunchTime + jit + wirePropagationTime*(ySignPhi*yLocal + tgcChamber->chamberWidth(zLocal)/2.) + wTimeDiffByRadiusOfInner;
-  float wOffset = m_timeWindowOffsetSensor[sensor];
-  float wASDDis{-1000};
-  float wSigPropTimeDelay{-1000};
-  if (ASDpos != nullptr) {
-    wASDDis = this->getDistanceToAsdFromSensor(ASDpos, iStationName, abs(stationEta), stationPhi, sensor, iwg, zLocal);
-    float wCableDis = wASDDis + (ySignPhi*yLocal + tgcChamber->chamberWidth(zLocal)/2.)/1000.;
-    wSigPropTimeDelay = this->getSigPropTimeDelay(wCableDis);
-    wDigitTime += wSigPropTimeDelay + wASDDis * 5;
-    wOffset += getASDpropTimeOffset(elemId, (int)sensor, iwg);
-  }
+        float wTimeDiffByRadiusOfInner = this->timeDiffByCableRadiusOfInner(iStationName, stationPhi, iwg);
+        double digit_time = bunchTime + jitter + wTimeDiffByRadiusOfInner;
+        float wASDDis{-1000.};
+        if (ASDpos != nullptr) {
+          wASDDis = this->getDistanceToAsdFromSensor(ASDpos, iStationName, abs(stationEta), stationPhi, kWIRE, iwg, zLocal);
+          float wCableDis = wASDDis + (ySignPhi*yLocal + tgcChamber->chamberWidth(zLocal)/2.);
+          float wPropTime = sensor_propagation_time * (ySignPhi*yLocal + tgcChamber->chamberWidth(zLocal)/2.) + cable_propagation_time * wASDDis;
+          digit_time += this->getSigPropTimeDelay(wCableDis) + wPropTime;
+        }
 
 	TgcStation station = (m_idHelper->stationName(elemId) > 46) ? kINNER : kOUTER;
-        uint16_t bctag = bcTagging(wDigitTime,m_gateTimeWindow[station][sensor],wOffset);
+        uint16_t bctag = bcTagging(digit_time, m_gateTimeWindow[station][kWIRE], wire_timeOffset);
 
-    if(bctag == 0x0) {
-	    ATH_MSG_DEBUG("WireGroup: digitized time is outside of time window. " << wDigitTime
-			     << " bunchTime: " << bunchTime << " time jitter: " << jitter 
-			     << " propagation time: " << wirePropagationTime*(ySignPhi*yLocal + height/2. + frameXwidth)
-			     << " signal delay time: " << wSigPropTimeDelay
-			     << " time difference by cable radius of inner station: " << wTimeDiffByRadiusOfInner
-			     << " propagation time to the ASD from the sensor: " << wASDDis * 5);
-	}
-	else {
-	  Identifier newId = m_idHelper -> channelID(stationName,stationEta,stationPhi,
-						     ilyr, (int)sensor, iwg);
-	  addDigit(newId,bctag, digits.get());
+        if(bctag == 0x0) {
+          ATH_MSG_DEBUG("WireGroup: digitized time " << digit_time << " ns is outside of time window from " << wire_timeOffset
+		     << ". bunchTime: " << bunchTime << " time jitter: " << jitter 
+		     << " propagation time: " << sensor_propagation_time*(ySignPhi*yLocal + tgcChamber->chamberWidth(zLocal)/2.) + cable_propagation_time * wASDDis
+		     << " time difference by cable radius of inner station: " << wTimeDiffByRadiusOfInner);
+	} else {
+	  Identifier newId = m_idHelper->channelID(stationName,stationEta,stationPhi,
+						   ilyr, (int)kWIRE, iwg);
+	  addDigit(newId, bctag, digits.get());
 
 	  if(iwg==iWG[0]) {
-	    randomCrossTalk(elemId, ilyr, sensor, iwg, posInWG[0], wDigitTime, rndmEngine, digits.get());
+            randomCrossTalk(Crosstalk, elemId, ilyr, kWIRE, iwg, posInWG[0], digit_time, wire_timeOffset, rndmEngine, digits.get());
 	  }	 
- 
+
 	  ATH_MSG_DEBUG("WireGroup: newid breakdown digitTime x/y/z direcos height_gang bctag: "
-						   << newId << " " << stationName << "/" << stationEta << "/" << stationPhi << "/" << ilyr << "/"
-						   << sensor << "/" << iwg << " " 
-						   << wDigitTime << " " << localPos.x() << "/"  << localPos.y() << "/" << localPos.z() << " "
-						   << direCos.x() << "/"  << direCos.y() << "/" << direCos.z() << " "
-						   << height << " " << tgcChamber->getNWires(ilyr,iwg) << " "
-						   << bctag);
-  }
-      }
-      else {
-	      ATH_MSG_DEBUG("Wire Gang id is out of range. id, x/y/z, height: " << iwg
-						  << " " << localPos.x() << "/"  << localPos.y() << "/" << localPos.z() << " " << height);
+		     << newId << " " << stationName << "/" << stationEta << "/" << stationPhi << "/" << ilyr << "/"
+		     << "WIRE/" << iwg << " " 
+		     << digit_time << " " << localPos.x() << "/"  << localPos.y() << "/" << localPos.z() << " "
+		     << direCos.x() << "/"  << direCos.y() << "/" << direCos.z() << " "
+		     << height << " " << tgcChamber->getNWires(ilyr,iwg) << " "
+		     << bctag);
+        }
+      } else {
+        ATH_MSG_DEBUG("Wire Gang id is out of range. id, x/y/z, height: " << iwg
+                   << " " << localPos.x() << "/"  << localPos.y() << "/" << localPos.z() << " " << height);
       }
     }
   } // end of wire group calculation
 
   //////////////  strip number calculation  //////////////
-  sensor = kSTRIP;
-  m_timeWindowOffsetSensor[sensor] = getTimeWindowOffset(stationName, stationEta, sensor);
+  TgcSensor sensor = kSTRIP;
 
   if((ilyr != 2 || (stationName.compare(0,2,"T1") != 0)) && // no stip in middle layers of T1* 
      ((energyDeposit< -1. && efficiencyCheck(sensor, rndmEngine)) || // Old efficiencyCheck for TGCSimHit_p1.
@@ -302,22 +291,20 @@ TgcDigitCollection* TgcDigitMaker::executeDigi(const TGCSimHit* hit,
     for (int iPosition = 0; iPosition < 2; iPosition++) {
 
       // check a hit in the sensitive area
-      float zPos = zLocal+height/2.-frameZwidth;
+      float zPos = zLocal+height/2. - zwidth_frame;
       if (zPos < 0.) {
         iStrip[iPosition] = 0;
         posInStrip[iPosition] = 0.;
         ATH_MSG_DEBUG("Strip: Hit position located at outside of a sensitive volume, id, position, xlocal0/1, dir cosine: "
 						 << stationName << "/" << stationEta << "/" << stationPhi << "/" << ilyr
 						 << zPos << " " << zLocal << " " << direCos[0] << "/" << direCos[1] << "/" << direCos[2]);
-      }
-      else if (zPos > height-frameZwidth*2.) {
+      } else if (zPos > height - zwidth_frame*2.) {
         iStrip[iPosition] =  tgcChamber -> getNStrips(ilyr) + 1;
         posInStrip[iPosition] = 0.;
         ATH_MSG_DEBUG("Strip: Hit position located at outside of a sensitive volume, id, position, active region: "
 						 << stationName << "/" << stationEta << "/" << stationPhi << "/" << ilyr
-						 << zPos << " " << height-frameZwidth*2.);
-      }
-      else { // sensitive area
+						 << zPos << " " << height-zwidth_frame*2.);
+      } else { // sensitive area
 
 	//
 	// for layout P03
@@ -374,48 +361,42 @@ TgcDigitCollection* TgcDigitMaker::executeDigi(const TGCSimHit* hit,
       ATH_MSG_DEBUG("Multihits found in STRIPs:" << iStr[0] << " " << iStr[1]);
     }
 
+    // BC tagging from the timing
+    float strip_timeOffset = (TOffset != nullptr) ? this->getTimeOffset(TOffset, iStationName, stationEta, kSTRIP) : 0.;
+
     for(int istr=iStr[0]; istr<=iStr[1]; istr++) {
       if(1<=istr && istr<=32) {
 	// TGC response time calculation
-	const float stripPropagationTime = 3.3*CLHEP::ns/CLHEP::m; // 8.5*ns/m was used until MC10. 
-	// Since MC11 3.3*ns/m (the speed of light) is used and was obtained with Z->mumu data/MC comparison. 
 	if(jitter > jitterInitial-0.1) {
 	  jitter = timeJitter(direCos, rndmEngine);
 	}
 	float zSignEta = (abs(stationEta)%2 == 1 && abs(stationEta) != 5) ? -1. : +1.;
 	// if(abs(stationEta)%2 == 1 && abs(stationEta) != 5) : -1. : ASD attached at the longer base of TGC
 	// else                                               : +1. : ASD attached at the shorter base of TGC   
-  float sTimeDiffByRadiusOfInner = this->timeDiffByCableRadiusOfInner(iStationName, stationPhi, istr);
-	float sDigitTime = bunchTime + jitter + stripPropagationTime*(height/2. + frameZwidth + zSignEta*zLocal) + sTimeDiffByRadiusOfInner;
-  float sOffset = m_timeWindowOffsetSensor[sensor];
-  float sASDDis{-1000};
-  float sSigPropTimeDelay{-1000};
-  if (ASDpos != nullptr) {
-    sASDDis = this->getDistanceToAsdFromSensor(ASDpos, iStationName, abs(stationEta), stationPhi, sensor, istr, getStripPosition(stationName, abs(stationEta), istr));
-    float sCableDis = sASDDis + (height/2. + frameZwidth + zSignEta*zLocal)/1000.;
-    sSigPropTimeDelay = this->getSigPropTimeDelay(sCableDis);
-    sDigitTime += sSigPropTimeDelay + sASDDis * 5;
-    sOffset += getASDpropTimeOffset(elemId, (int)sensor, istr);
-  }
+        float sTimeDiffByRadiusOfInner = this->timeDiffByCableRadiusOfInner(iStationName, stationPhi, istr);
+	float sDigitTime = bunchTime + jitter + sensor_propagation_time*(height/2. + zwidth_frame + zSignEta*zLocal) + sTimeDiffByRadiusOfInner;
+        float sASDDis{-1000};
+        if (ASDpos != nullptr) {
+          sASDDis = this->getDistanceToAsdFromSensor(ASDpos, iStationName, abs(stationEta), stationPhi, sensor, istr, getStripPosition(stationName, abs(stationEta), istr));
+          float sCableDis = sASDDis + (height/2. + zwidth_frame + zSignEta*zLocal);
+          sDigitTime += this->getSigPropTimeDelay(sCableDis) + sASDDis * cable_propagation_time;
+        }
 
 	TgcStation station = (m_idHelper->stationName(elemId) > 46) ? kINNER : kOUTER;
-	uint16_t bctag = bcTagging(sDigitTime,m_gateTimeWindow[station][sensor],sOffset);
+	uint16_t bctag = bcTagging(sDigitTime,m_gateTimeWindow[station][sensor], strip_timeOffset);
 
 	if(bctag == 0x0) {
 	  ATH_MSG_DEBUG("Strip: Digitized time is outside of time window. " << sDigitTime
 			    << " bunchTime: " << bunchTime << " time jitter: " << jitter 
-			    << " propagation time: " << stripPropagationTime*(height/2. + frameZwidth + zSignEta*zLocal)
-			    << " signal delay time: " << sSigPropTimeDelay
-			    << " time difference by cable radius of inner station: " << sTimeDiffByRadiusOfInner
-			    << " propagation time to the ASD from the sensor: " << sASDDis * 5);
-	}
-	else {
+			    << " propagation time: " << sensor_propagation_time*(height/2. + zwidth_frame + zSignEta*zLocal)
+			    << " time difference by cable radius of inner station: " << sTimeDiffByRadiusOfInner);
+        } else {
 	  Identifier newId = m_idHelper -> channelID(stationName,stationEta,stationPhi,
 						     ilyr, (int)sensor, istr);
 	  addDigit(newId, bctag, digits.get());
 
 	  if(istr==iStr[0]) {
-	    randomCrossTalk(elemId, ilyr, sensor, iStr[0], posInStr[0], sDigitTime, rndmEngine, digits.get());
+	    randomCrossTalk(Crosstalk, elemId, ilyr, sensor, iStr[0], posInStr[0], sDigitTime, strip_timeOffset, rndmEngine, digits.get());
 	  }
 
 	  ATH_MSG_DEBUG("Strip: newid breakdown digitTime x/y/z direcos r_center bctag: "
@@ -426,8 +407,7 @@ TgcDigitCollection* TgcDigitMaker::executeDigi(const TGCSimHit* hit,
 						   << height/2.+hmin << " "
 						   << bctag);
 	}
-      }
-      else {
+      } else {
 	      ATH_MSG_DEBUG("Strip id is out of range: gap, id: " << ilyr << " " << istr);
       }
     }
@@ -440,7 +420,6 @@ TgcDigitCollection* TgcDigitMaker::executeDigi(const TGCSimHit* hit,
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 StatusCode TgcDigitMaker::readFileOfTimeJitter()
 {
-
   const char* const fileName = "TGC_Digitization_timejitter.dat";
   std::string fileWithPath = PathResolver::find_file (fileName, "DATAPATH");
 
@@ -503,7 +482,7 @@ float TgcDigitMaker::timeJitter(const Amg::Vector3D& direCosLocal, CLHEP::HepRan
 
   while (prob > probRef) {
     prob   = CLHEP::RandFlat::shoot(rndmEngine, 0.0, 1.0);
-    jitter = CLHEP::RandFlat::shoot(rndmEngine, 0.0, 1.0)*40.; // trial time jitter in nsec
+    jitter = CLHEP::RandFlat::shoot(rndmEngine, 0.0, 1.0) * 40.*CLHEP::ns; // trial time jitter
     int ithJitter = static_cast<int>(jitter);
     // probability distribution calculated from weighted sum between neighboring bins of angles
     probRef = (1.-wAngle)*m_vecAngle_Time[ithAngle][ithJitter]
@@ -654,95 +633,6 @@ StatusCode TgcDigitMaker::readFileOfEnergyThreshold() {
   return StatusCode::SUCCESS;
 }
 
-StatusCode TgcDigitMaker::readFileOfCrossTalk() {
-  // Indices to be used 
-  int iStationName = -1;
-  int stationEta = -1;
-  int stationPhi = -1;
-  int gasGap = -1;
-  int isStrip = -1;
-  int iProb = -1;
-
-  for(iStationName=0; iStationName<N_STATIONNAME; iStationName++) {
-    for(stationEta=0; stationEta<N_STATIONETA; stationEta++) {
-      for(stationPhi=0; stationPhi<N_STATIONPHI; stationPhi++) {
-        for(gasGap=0; gasGap<N_GASGAP; gasGap++) {
-	  for(isStrip=0; isStrip<N_ISSTRIP; isStrip++) {
-	    for(iProb=0; iProb<N_CROSSTALK_PARAMETER; iProb++) {
-	      m_crossTalk[iStationName][stationEta][stationPhi][gasGap][isStrip][iProb] = 0.;
-	    }
-          }
-        }
-      }
-    }
-  }
-
-  // Find path to the TGC_Digitization_crossTalk.dat file 
-  const std::string fileName = "TGC_Digitization_crossTalk.dat";
-  std::string fileWithPath = PathResolver::find_file(fileName.c_str(), "DATAPATH");
-  if(fileWithPath.empty()) {
-    ATH_MSG_FATAL("readFileOfCrossTalk(): Could not find file " << fileName);
-    return StatusCode::FAILURE;
-  }
-
-  // Open the TGC_Digitization_crossTalk.dat file 
-  std::ifstream ifs;
-  ifs.open(fileWithPath.c_str(), std::ios::in);
-  if(ifs.bad()) {
-    ATH_MSG_FATAL("readFileOfCrossTalk(): Could not open file " << fileName);
-    return StatusCode::FAILURE;
-  }
-    
-  double crossTalk_10 = 0.; 
-  double crossTalk_11 = 0.; 
-  double crossTalk_20 = 0.; 
-  double crossTalk_21 = 0.; 
-  // Read the TGC_Digitization_crossTalk.dat file
-  while(ifs.good()) {
-    ifs >> iStationName >> stationEta >> /*stationPhi >>*/ gasGap >> isStrip >> crossTalk_10 >> crossTalk_11 >> crossTalk_20 >> crossTalk_21;
-    ATH_MSG_DEBUG("TgcDigitMaker::readFileOfCrossTalk" 
-		      << " stationName= " << iStationName  
-		      << " stationEta= " << stationEta 
-	//		      << " stationPhi= " << stationPhi
-		      << " gasGap= " << gasGap 
-		      << " isStrip= " << isStrip
-		      << " prob(10) " << crossTalk_10
-		      << " prob(11) " << crossTalk_11
-		      << " prob(20) " << crossTalk_20
-		      << " prob(21) " << crossTalk_21);
-
-    // Subtract offsets to use indices of crossTalk array
-    iStationName -= OFFSET_STATIONNAME;
-    stationEta   -= OFFSET_STATIONETA;
-    //    stationPhi   -= OFFSET_STATIONPHI;
-    gasGap       -= OFFSET_GASGAP;
-    isStrip      -= OFFSET_ISSTRIP;
-
-    // Check the indices are valid 
-    if(iStationName<0 || iStationName>=N_STATIONNAME) continue;
-    if(stationEta  <0 || stationEta  >=N_STATIONETA ) continue;
-    //    if(stationPhi  <0 || stationPhi  >=N_STATIONPHI ) continue;
-    if(gasGap      <0 || gasGap      >=N_GASGAP     ) continue;
-    if(isStrip     <0 || isStrip     >=N_ISSTRIP    ) continue; 
-
-    // stationPhi dependence is now omitted. 
-    // The same energy threshold value is used. 
-    for(stationPhi=0; stationPhi<N_STATIONPHI; stationPhi++) {
-      m_crossTalk[iStationName][stationEta][stationPhi][gasGap][isStrip][0] = crossTalk_10;
-      m_crossTalk[iStationName][stationEta][stationPhi][gasGap][isStrip][1] = crossTalk_11;
-      m_crossTalk[iStationName][stationEta][stationPhi][gasGap][isStrip][2] = crossTalk_20;
-      m_crossTalk[iStationName][stationEta][stationPhi][gasGap][isStrip][3] = crossTalk_21;
-    }
-
-    // If it is the end of the file, get out from while loop.   
-    if(ifs.eof()) break;
-  }
-
-  // Close the TGC_Digitization_crossTalk.dat file 
-  ifs.close();
-
-  return StatusCode::SUCCESS;
-}
 
 StatusCode TgcDigitMaker::readFileOfDeadChamber() {
   // Indices to be used 
@@ -823,209 +713,6 @@ StatusCode TgcDigitMaker::readFileOfDeadChamber() {
   return StatusCode::SUCCESS;
 }
 
-StatusCode TgcDigitMaker::readFileOfTimeWindowOffset() {
-  // Indices to be used 
-  int iStationName, stationEta, isStrip;
-
-  for(iStationName=0; iStationName<N_STATIONNAME; iStationName++) {
-    for(stationEta=0; stationEta<N_STATIONETA; stationEta++) {
-      for(isStrip=0; isStrip<N_ISSTRIP; isStrip++) {
-	m_timeWindowOffset[iStationName][stationEta][isStrip] = 0.;
-      }
-    }
-  }
-
-  // Find path to the TGC_Digitization_timeWindowOffset.dat file 
-  const std::string fileName = "TGC_Digitization_timeWindowOffset.dat";
-  std::string fileWithPath = PathResolver::find_file(fileName.c_str(), "DATAPATH");
-  if(fileWithPath.empty()) {
-    ATH_MSG_FATAL("readFileOfTimeWindowOffset(): Could not find file " << fileName);
-    return StatusCode::FAILURE;
-  }
-
-  // Open the TGC_Digitization_timeWindowOffset.dat file 
-  std::ifstream ifs;
-  ifs.open(fileWithPath.c_str(), std::ios::in);
-  if(ifs.bad()) {
-    ATH_MSG_FATAL("readFileOfTimeWindowOffset(): Could not open file " << fileName);
-    return StatusCode::FAILURE;
-  }
-    
-  // Read the TGC_Digitization_timeWindowOffset.dat file
-  double timeWindowOffset;
-  while(ifs.good()) {
-    ifs >> iStationName >> stationEta >> isStrip >> timeWindowOffset;
-    ATH_MSG_DEBUG("TgcDigitMaker::readFileOfTimeWindowOffset" 
-		      << " stationName= " << iStationName  
-		      << " stationEta= " << stationEta 
-		      << " isStrip= " << isStrip
-		      << " timeWindowOffset= " << timeWindowOffset);
-
-    // Subtract offsets to use indices of isDeadChamber array
-    iStationName -= OFFSET_STATIONNAME;
-    stationEta   -= OFFSET_STATIONETA;
-    isStrip      -= OFFSET_ISSTRIP;
-
-    // Check the indices are valid 
-    if(iStationName<0 || iStationName>=N_STATIONNAME) continue;
-    if(stationEta  <0 || stationEta  >=N_STATIONETA ) continue;
-    if(isStrip     <0 || isStrip     >=N_ISSTRIP    ) continue;
-
-    m_timeWindowOffset[iStationName][stationEta][isStrip] = timeWindowOffset;
-
-    // If it is the end of the file, get out from while loop.   
-    if(ifs.eof()) break;
-  }
-
-  // Close the TGC_Digitization_timeWindowOffset.dat file 
-  ifs.close();
-
-  return StatusCode::SUCCESS;
-}
-
-StatusCode TgcDigitMaker::readFileOfAlignment() {
-  // Indices to be used 
-  int iStationName, stationEta, stationPhi;
-
-  for(iStationName=0; iStationName<N_STATIONNAME; iStationName++) {
-    for(stationEta=0; stationEta<N_STATIONETA; stationEta++) {
-      for(stationPhi=0; stationPhi<N_STATIONPHI; stationPhi++) {
-	m_alignmentZ[iStationName][stationEta][stationPhi] = 0.;
-	m_alignmentT[iStationName][stationEta][stationPhi] = 0.;
-	m_alignmentS[iStationName][stationEta][stationPhi] = 0.;
-	m_alignmentTHS[iStationName][stationEta][stationPhi] = 0.;
-      }
-    }
-  }
-
-  // Find path to the TGC_Digitization_alignment.dat file 
-  const std::string fileName = "TGC_Digitization_alignment.dat";
-  std::string fileWithPath = PathResolver::find_file(fileName.c_str(), "DATAPATH");
-  if(fileWithPath.empty()) {
-    ATH_MSG_FATAL("readFileOfAlignment(): Could not find file " << fileName);
-    return StatusCode::FAILURE;
-  }
-
-  // Open the TGC_Digitization_alignment.dat file 
-  std::ifstream ifs;
-  ifs.open(fileWithPath.c_str(), std::ios::in);
-  if(ifs.bad()) {
-    ATH_MSG_FATAL("readFileOfAlignment(): Could not open file " << fileName);
-    return StatusCode::FAILURE;
-  }
-    
-  // Read the TGC_Digitization_alignment.dat file
-  double tmpZ;
-  double tmpT;
-  double tmpS;
-  double tmpTHS;
-  while(ifs.good()) {
-    ifs >> iStationName >> stationEta >> stationPhi >> tmpZ >> tmpT >> tmpS >> tmpTHS;
-    ATH_MSG_DEBUG("readFileOfAlignment" 
-		      << " stationName= " << iStationName  
-		      << " stationEta= " << stationEta 
-		      << " stationPhi= " << stationPhi 
-		      << " z[mm]= " << tmpZ  
-		      << " t[mm]= " << tmpT  
-		      << " s[mm]= " << tmpS
-		      << " ths[rad]= " << tmpTHS);
-
-    // Subtract offsets to use indices of m_alignmentZ, m_alignmentT, m_alignmentTHS arrays
-    iStationName -= OFFSET_STATIONNAME;
-    stationEta   -= OFFSET_STATIONETA;
-    stationPhi   -= OFFSET_STATIONPHI;
-
-    // Check the indices are valid 
-    if(iStationName<0 || iStationName>=N_STATIONNAME) continue;
-    if(stationEta  <0 || stationEta  >=N_STATIONETA ) continue;
-    if(stationPhi  <0 || stationPhi  >=N_STATIONPHI ) continue;
-
-    m_alignmentZ[iStationName][stationEta][stationPhi]   = tmpZ;
-    m_alignmentT[iStationName][stationEta][stationPhi]   = tmpT;
-    m_alignmentS[iStationName][stationEta][stationPhi]   = tmpS;
-    m_alignmentTHS[iStationName][stationEta][stationPhi] = tmpTHS;
-
-    // If it is the end of the file, get out from while loop.   
-    if(ifs.eof()) break;
-  }
-
-  // Close the TGC_Digitization_timeWindowOffset.dat file 
-  ifs.close();
-
-  return StatusCode::SUCCESS;
-}
-
-StatusCode TgcDigitMaker::readFileOfASDpropTimeOffset() {
-  // Indices to be used  
-  int iStationName = -1;
-  int stationEta = -1;
-  int isStrip = -1;
-  int asdnum = -1;
-
-  for(iStationName=0; iStationName<N_STATIONNAME; iStationName++) {
-    for(stationEta=0; stationEta<N_STATIONETA; stationEta++) {
-      for(isStrip=0; isStrip<N_ISSTRIP; isStrip++) {
-        for(asdnum=0; asdnum<N_ASDNUM; asdnum++) {
-          m_maxch[iStationName][stationEta][isStrip][asdnum] = 0.;
-          m_ASDpropTimeOffset[iStationName][stationEta][isStrip][asdnum] = 0.;
-        }
-      }
-    }
-  }
-
-  // Find path to the TGC_Digitization_ASDpropTimeOffset.dat file                                                                           
-  const std::string fileName = "TGC_Digitization_ASDpropTimeOffset.dat";
-  std::string fileWithPath = PathResolver::find_file(fileName.c_str(), "DATAPATH");
-  if(fileWithPath == "") {
-    ATH_MSG_FATAL("readFileOfASDpropTimeOffset(): Could not find file " << fileName);
-    return StatusCode::FAILURE;
-  }
-
-  // Open the TGC_Digitization_ASDpropTimeOffset.dat file    
-  std::ifstream ifs;
-  ifs.open(fileWithPath.c_str(), std::ios::in);
-  if(ifs.bad()) {
-    ATH_MSG_FATAL("readFileOfASDpropTimeOffset(): Could not open file " << fileName);
-    return StatusCode::FAILURE;
-  }
-
-  double max_ch = 0.;
-  double asd_propTimeOffset = 0.;
-  // Read the TGC_Digitization_ASDpropTimeOffset.dat file   
-  while(ifs.good()) {
-    ifs >> iStationName >> stationEta >> isStrip >> asdnum >> max_ch >> asd_propTimeOffset;
-    ATH_MSG_DEBUG("readFileOfASDpropTimeOffset"
-                      << " stationName= " << iStationName
-                      << " stationEta= " << stationEta
-                      << " isStrip= " << isStrip
-                      << " asdnum= " << asdnum
-                      << " max_ch= " << max_ch
-                      << " asd_propTimeOffset= " << asd_propTimeOffset);
-
-    // Subtract offsets to use indices of ASDpropTimeOffset array
-    iStationName -= OFFSET_STATIONNAME;
-    stationEta   -= OFFSET_STATIONETA;
-    isStrip      -= OFFSET_ISSTRIP;
-    asdnum       -= OFFSET_ASDNUM;
-
-    // Check the indices are valid
-    if(iStationName<0 || iStationName>=N_STATIONNAME) continue;
-    if(stationEta  <0 || stationEta  >=N_STATIONETA ) continue;
-    if(isStrip     <0 || isStrip     >=N_ISSTRIP    ) continue;
-    if(asdnum      <0 || asdnum      >=N_ASDNUM     ) continue;
-
-    m_maxch[iStationName][stationEta][isStrip][asdnum] = max_ch;
-    m_ASDpropTimeOffset[iStationName][stationEta][isStrip][asdnum] = asd_propTimeOffset;
-
-    // If it is the end of the file, get out from while loop.
-    if(ifs.eof()) break;
-  }
-
-  // Close the TGC_Digitization_ASDpropTimeOffset.dat file 
-  ifs.close();
-
-  return StatusCode::SUCCESS;
-}
 
 StatusCode TgcDigitMaker::readFileOfStripPosition() {
   //Indices to be used
@@ -1117,34 +804,33 @@ double TgcDigitMaker::getEnergyThreshold(const std::string& stationName, int sta
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-void TgcDigitMaker::randomCrossTalk(const Identifier elemId,
+void TgcDigitMaker::randomCrossTalk(const TgcDigitCrosstalkData* crosstalk,
+                                    const Identifier elemId,
                                     const int gasGap,
                                     const TgcSensor sensor,
                                     const int channel,
                                     const float posInChan,
-                                    const double digitTime,
+                                    const float digitTime,
+                                    const float time_offset,
                                     CLHEP::HepRandomEngine* rndmEngine,
                                     TgcDigitCollection* digits) const
 {
-  int stationName = m_idHelper->stationName(elemId) - OFFSET_STATIONNAME;
-  int stationEta  = m_idHelper->stationEta(elemId)  - OFFSET_STATIONETA;
-  int stationPhi  = m_idHelper->stationPhi(elemId)  - OFFSET_STATIONPHI;
-  int iGasGap     = gasGap                          - OFFSET_GASGAP; 
+  uint16_t station_number = m_idHelper->stationName(elemId);
+  uint16_t station_eta  = std::abs(m_idHelper->stationEta(elemId));
+  uint16_t layer = gasGap;
+  uint16_t layer_id = (station_number << 5) + (station_eta << 2) + layer;
 
-  double prob1CrossTalk  = 0.;
-  double prob11CrossTalk = 0.;
-  double prob20CrossTalk = 0.;
-  double prob21CrossTalk = 0.;
-
-  if((stationName>=0 && stationName<N_STATIONNAME) &&
-     (stationEta >=0 && stationEta <N_STATIONETA ) &&
-     (stationPhi >=0 && stationPhi <N_STATIONPHI ) &&
-     (iGasGap    >=0 && iGasGap    <N_GASGAP     )) {
-    prob1CrossTalk  = m_crossTalk[stationName][stationEta][stationPhi][iGasGap][sensor][0];
-    prob11CrossTalk = m_crossTalk[stationName][stationEta][stationPhi][iGasGap][sensor][1];
-    prob20CrossTalk = m_crossTalk[stationName][stationEta][stationPhi][iGasGap][sensor][2];
-    prob21CrossTalk = m_crossTalk[stationName][stationEta][stationPhi][iGasGap][sensor][3];
+  if (station_number < OFFSET_STATIONNAME || station_number >= OFFSET_STATIONNAME + N_STATIONNAME ||
+      station_eta <= 0 || station_eta > N_ABSSTATIONETA ||
+      layer <= 0 || layer > N_GASGAP) {
+    ATH_MSG_ERROR("Unexpected indices are provided!");
+    return;
   }
+
+  float prob1CrossTalk  = this->getCrosstalkProbability(crosstalk, layer_id, sensor, 0);
+  float prob11CrossTalk = this->getCrosstalkProbability(crosstalk, layer_id, sensor, 1);
+  float prob20CrossTalk = this->getCrosstalkProbability(crosstalk, layer_id, sensor, 2);
+  float prob21CrossTalk = this->getCrosstalkProbability(crosstalk, layer_id, sensor, 3);
 
   int nCrossTalks_neg = 0; 
   int nCrossTalks_pos = 0; 
@@ -1171,9 +857,9 @@ void TgcDigitMaker::randomCrossTalk(const Identifier elemId,
   if(nCrossTalks_neg==0 && nCrossTalks_pos==0) return; // No cross-talk case 
 
   // No time structure is implemented yet. 
-  double dt = digitTime; 
-  TgcStation station = (stationName > 46) ? kINNER : kOUTER;
-  uint16_t bctag = bcTagging(dt, m_gateTimeWindow[station][sensor], m_timeWindowOffsetSensor[sensor]);
+  float dt = digitTime; 
+  TgcStation station = (station_number > 46) ? kINNER : kOUTER;
+  uint16_t bctag = bcTagging(dt, m_gateTimeWindow[station][sensor], time_offset);
   // obtain max channel number
   Identifier thisId = m_idHelper->channelID(elemId, gasGap, (int)sensor, channel);
   int maxChannelNumber = m_idHelper->channelMax(thisId);
@@ -1217,22 +903,6 @@ bool TgcDigitMaker::isDeadChamber(const std::string& stationName, int stationEta
   return v_isDeadChamber; 
 }
 
-double TgcDigitMaker::getTimeWindowOffset(const std::string& stationName, int stationEta, const TgcSensor sensor) const {
-  // Convert std::string stationName to int iStationName from 41 to 48
-  int iStationName = getIStationName(stationName);
-
-  // Subtract offsets to use these as the indices of the energyThreshold array
-  iStationName -= OFFSET_STATIONNAME;
-  stationEta   -= OFFSET_STATIONETA;
-
-  // Check the indices are valid
-  if(iStationName<0 || iStationName>=N_STATIONNAME) return 0.;
-  if(stationEta  <0 || stationEta  >=N_STATIONETA ) return 0.;
-  
-  // Values were determined to reproduce the fraction of Previous BC hit fraction in Z->mumu data during Periods B,D,E in 2011.
-  return m_timeWindowOffset[iStationName][stationEta][sensor];
-}
-
 int TgcDigitMaker::getIStationName(const std::string& stationName) const {
   int iStationName = 0;
   if(     stationName=="T1F") iStationName = 41;
@@ -1247,67 +917,6 @@ int TgcDigitMaker::getIStationName(const std::string& stationName) const {
   return iStationName;
 }
 
-void TgcDigitMaker::adHocPositionShift(const std::string& stationName, int stationEta, int stationPhi,
-				       const Amg::Vector3D& direCos, Amg::Vector3D &localPos) const {
-  int iStationName = getIStationName(stationName);
-  iStationName -= OFFSET_STATIONNAME;
-  stationEta   -= OFFSET_STATIONETA;
-  stationPhi   -= OFFSET_STATIONPHI;
-  // Check the indices are valid
-  if(iStationName<0 || iStationName>=N_STATIONNAME) return;
-  if(stationEta  <0 || stationEta  >=N_STATIONETA ) return;
-  if(stationPhi  <0 || stationPhi  >=N_STATIONPHI ) return;
-  
-  // Local +x (-x) direction is global +z direction on A-side (C-side). 
-  double localDisplacementX = m_alignmentT[iStationName][stationEta][stationPhi]; 
-
-  // Local +z direction is global +r direction.  
-  double localDisplacementZ = m_alignmentZ[iStationName][stationEta][stationPhi]; 
-
-  // Local +s direction is global +phi direction.  
-  double localDisplacementY = m_alignmentS[iStationName][stationEta][stationPhi]; 
-
-  // Rotation around the s-axis is not implemented yet (2011/11/29).
-  // m_alignmentTHS[tmpStationName][tmpStationEta][tmpStationPhi];
-
-  // Convert local x translation to local y and z translations 
-  double localDisplacementYByX = 0.;
-  double localDisplacementZByX = 0.;
-  if(fabs(localDisplacementX)>1.0E-12) { // local y and z translations are non-zero only if local x translation is non-zero. 
-    if(fabs(direCos[0])<1.0E-12) return; // To avoid zero-division 
-    localDisplacementYByX = direCos[1]/direCos[0]*localDisplacementX;  
-    localDisplacementZByX = direCos[2]/direCos[0]*localDisplacementX;  
-  }
-  localPos.y() = localPos.y()+localDisplacementYByX+localDisplacementY; 
-  localPos.z() = localPos.z()+localDisplacementZByX-localDisplacementZ; 
-}
-
-float TgcDigitMaker::getASDpropTimeOffset(const Identifier elemId,
-					   const int isStrip,
-					   const int channel) const
-{
-  int StationName = m_idHelper->stationName(elemId) - OFFSET_STATIONNAME;
-  int stationEta  = m_idHelper->stationEta(elemId)  - OFFSET_STATIONETA;
-  int stationPhi  = m_idHelper->stationPhi(elemId)  - OFFSET_STATIONPHI;
-  int iIsStrip    = isStrip                         - OFFSET_ISSTRIP;
-
-  std::array<double, N_ASDNUM> maxch{};
-  double asdpropTimeOffset = 0.;
-
-  if((StationName>=0 && StationName<N_STATIONNAME) &&
-     (stationEta >=0 && stationEta <N_STATIONETA ) &&
-     (stationPhi >=0 && stationPhi <N_STATIONPHI )) {
-    for(int asdnum=0; asdnum<N_ASDNUM; asdnum++){
-      maxch[asdnum] = m_maxch[StationName][stationEta][iIsStrip][asdnum];
-    }
-    for(int asdnum=0; asdnum<N_ASDNUM; asdnum++){
-      if(maxch[asdnum] == 0) continue;
-      if(asdnum==0 && 1 <= channel && channel <= maxch[0]) asdpropTimeOffset = m_ASDpropTimeOffset[StationName][stationEta][iIsStrip][asdnum];
-      if(asdnum!=0 && maxch[asdnum-1] < channel && channel <= maxch[asdnum]) asdpropTimeOffset = m_ASDpropTimeOffset[StationName][stationEta][iIsStrip][asdnum];
-    }
-  }
-  return asdpropTimeOffset;
-}
 
 float TgcDigitMaker::getStripPosition(const std::string& stationName, int stationEta, int channel) const {
   // Convert std::string stationName to int iStationName from 41 to 48                              
@@ -1329,18 +938,19 @@ float TgcDigitMaker::getStripPosition(const std::string& stationName, int statio
 float TgcDigitMaker::timeDiffByCableRadiusOfInner(const int iStationName,
 						  const int stationPhi,
 						  const int channel) const {
+  float delay{0.};
+  if(iStationName != 47 && iStationName != 48) return delay;   // Big Wheel has no delay for this.
 
-  if(iStationName != 47 && iStationName != 48) return 0.0; // only EIFI station
   if(channel < 12 || (channel > 16 && channel < 27)) {
     int cablenum = (stationPhi >= 13) ? 25 - stationPhi : stationPhi;
-    return 2.3 - 0.06 * cablenum;
+    delay += 2.3*CLHEP::ns - 0.06*CLHEP::ns * float(cablenum);
   }
-  return 0.0;
+  return delay;
 }
 
-float TgcDigitMaker::getSigPropTimeDelay(const float cableDistance) const {
-
-  return 0.0049 * std::pow(cableDistance, 2) + 0.0002 * cableDistance;
+double TgcDigitMaker::getSigPropTimeDelay(const float cableDistance) const {
+  constexpr std::array<double, 2> par{0.0049 * CLHEP::ns, 0.0002 * CLHEP::ns};
+  return par[0] * std::pow(cableDistance / CLHEP::m, 2) + par[1] * cableDistance / CLHEP::m;
 }
 
 float TgcDigitMaker::getDistanceToAsdFromSensor(const TgcDigitASDposData* readCdo,
@@ -1350,23 +960,38 @@ float TgcDigitMaker::getDistanceToAsdFromSensor(const TgcDigitASDposData* readCd
 						const TgcSensor sensor,
 						const int channel,
 						const float position) const {
+  // EIFI has different parameter for phi, BW is same parameter for phi (i.e. -99 in DB).
+  int phiId = (iStationName >= 47) ? stationPhi : 0x1f;
+  uint16_t chamberId = (iStationName << 8) + (stationEta << 5) + phiId;
 
-  int phiId = (iStationName >= 47) ? stationPhi : -99;
-  int dbNum = -99;
+  unsigned int asdNo = static_cast<unsigned int>(channel-1) / TgcDigitASDposData::N_CHANNELINPUT_TOASD;
 
-  for(unsigned int i_dbNum=0;i_dbNum<readCdo->stationNum.size();i_dbNum++) {
-    if(iStationName != readCdo->stationNum.at(i_dbNum)) continue;
-    if(stationEta   != readCdo->stationEta.at(i_dbNum)) continue;
-    if(phiId        != readCdo->stationPhi.at(i_dbNum)) continue;
-    dbNum = i_dbNum;
-    break;
+  float asd_position = 0.;
+  auto it = (sensor == kSTRIP) ? readCdo->stripAsdPos.find(chamberId) : readCdo->wireAsdPos.find(chamberId);
+
+  if ((sensor == kSTRIP && it != readCdo->stripAsdPos.end()) ||
+      (sensor == kWIRE && it != readCdo->wireAsdPos.end())) {
+    asd_position = it->second[asdNo] * CLHEP::m;
+  } else {
+    ATH_MSG_WARNING("Undefined chamberID is provided! station=" << iStationName <<", eta=" << stationEta << ", phi=" << phiId);
   }
 
-  unsigned int asdNum[TgcSensor::N_SENSOR];
-  asdNum[TgcSensor::kSTRIP] = channel / TgcDigitASDposData::N_CHANNELINPUT_TOASD;
-  asdNum[TgcSensor::kWIRE]  = channel / TgcDigitASDposData::N_CHANNELINPUT_TOASD + TgcDigitASDposData::N_STRIPASDPOS;
+  float distance = fabs(position - asd_position);
+  return distance;
+}
 
-  float disToAsd = fabs( position*CLHEP::mm/CLHEP::m - readCdo->asdPos[ asdNum[sensor] ][dbNum] );
+float TgcDigitMaker::getTimeOffset(const TgcDigitTimeOffsetData* readCdo,
+				   const uint16_t station_num,
+				   const int station_eta,
+				   const TgcSensor sensor) const {
+  uint16_t chamberId = (station_num << 3) + static_cast<uint16_t>(std::abs(station_eta));
+  return ((sensor == TgcSensor::kSTRIP) ? readCdo->stripOffset.find(chamberId)->second : readCdo->wireOffset.find(chamberId)->second);
+}
 
-  return disToAsd;
+float TgcDigitMaker::getCrosstalkProbability(const TgcDigitCrosstalkData* readCdo,
+                                             const uint16_t layer_id,
+                                             const TgcSensor sensor,
+                                             const unsigned int index_prob) const {
+  if (readCdo == nullptr) return 0.;  // no crosstalk
+  return ((sensor == TgcSensor::kSTRIP) ? readCdo->getStripProbability(layer_id, index_prob) : readCdo->getWireProbability(layer_id, index_prob));
 }

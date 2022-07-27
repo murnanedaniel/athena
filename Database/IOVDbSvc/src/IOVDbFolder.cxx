@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // IOVDbFolder.cxx - helper class for IOVDbSvc to manage folder & data cache
@@ -33,7 +33,6 @@
 #include "CoraCool/CoraCoolObject.h"
 #include "CoraCool/CoraCoolObjectIter.h"
 
-#include "AthenaKernel/getMessageSvc.h"
 #include "AthenaPoolUtilities/AthenaAttributeList.h"
 #include "AthenaPoolUtilities/AthenaAttrListAddress.h"
 #include "AthenaPoolUtilities/CondAttrListCollection.h"
@@ -56,7 +55,7 @@
 #include "Cool2Json.h"
 #include "Json2Cool.h"
 #include "BasicFolder.h"
-#include "IOVDbResolveTag.h"
+
 #include "CrestFunctions.h"
 
 using namespace IOVDbNamespace;
@@ -64,10 +63,7 @@ using namespace IOVDbNamespace;
 namespace{
   const std::string fileSuffix{".json"};
   const std::string delimiter{"."};
-  std::string
-  jsonTagName(const std::string &globalTag, const std::string & folderName){
-    return resolveCrestTag(globalTag,folderName);
-  }
+ 
 }
 
 IOVDbFolder::IOVDbFolder(IOVDbConn* conn,
@@ -75,7 +71,7 @@ IOVDbFolder::IOVDbFolder(IOVDbConn* conn,
                          IClassIDSvc* clidsvc, IIOVDbMetaDataTool* metadatatool,
                          const bool checklock, const bool outputToFile,
                          const std::string & source):
-  AthMessaging(Athena::getMessageSvc(), "IOVDbFolder"),
+  AthMessaging("IOVDbFolder"),
   p_clidSvc(clidsvc),
   p_metaDataTool(metadatatool),
   m_conn(conn),
@@ -128,9 +124,9 @@ IOVDbFolder::IOVDbFolder(IOVDbConn* conn,
         throw;
     }
   }
-  if (folderprop.overridesIov()){
+  if (folderprop.overridesIov(msg)){
     m_iovoverridden=true;
-    m_iovoverride=folderprop.iovOverrideValue();
+    m_iovoverride=folderprop.iovOverrideValue(msg);
     if (m_timestamp){
       ATH_MSG_INFO( "Override timestamp to " << m_iovoverride << " for folder " << m_foldername );
     } else {
@@ -228,7 +224,7 @@ IOVDbFolder::loadCache(const cool::ValidityKey vkey,
   const auto & [cachestart, cachestop] = m_iovs.getCacheBounds();
   BasicFolder b;
   if (m_source == "CREST"){
-    const std::string  jsonFolderName=sanitiseCrestTag(m_foldername);
+    //const std::string  jsonFolderName=sanitiseCrestTag(m_foldername);
     const std::string  completeTag=jsonTagName(globalTag, m_foldername);
     ATH_MSG_INFO("Download tag would be: "<<completeTag);
     std::string reply=getPayloadForTag(completeTag);
@@ -237,7 +233,7 @@ IOVDbFolder::loadCache(const cool::ValidityKey vkey,
     //basic folder now contains the info
     Json2Cool inputJson(ss, b);
     if (b.empty()){
-      ATH_MSG_FATAL("Reading channel data from "<<jsonFolderName<<" failed.");
+      ATH_MSG_FATAL("Reading channel data from "<<m_foldername<<" failed.");
       return false;
     }
   }
@@ -839,7 +835,7 @@ IOVDbFolder::overrideOptionsFromParsedDescription(const IOVDbParser & parsedDesc
     m_addrheader=newAddrHeader;
   }
   //get clid, if it exists (set to zero otherwise)
-  m_clid=parsedDescription.classId();
+  m_clid=parsedDescription.classId(msg());
   // decode the typeName
   if (!parsedDescription.getKey("typeName","",m_typename)) {
     ATH_MSG_ERROR( "Primary type name is empty" );
@@ -879,7 +875,7 @@ IOVDbFolder::createTransientAddress(const std::vector<std::string> & symlinks){
 }
 
 std::unique_ptr<SG::TransientAddress>
-IOVDbFolder::preLoadFolder(ITagInfoMgr *tagInfoMgr , const unsigned int cacheRun, const unsigned int cacheTime) {
+IOVDbFolder::preLoadFolder(ITagInfoMgr *tagInfoMgr , const unsigned int cacheRun, const unsigned int cacheTime, const std::string& globalTag) {
   // preload Address from SG - does folder setup including COOL access
   // also set detector store location - cannot be done in constructor
   // as detector store does not exist yet in IOVDbSvc initialisation
@@ -888,7 +884,7 @@ IOVDbFolder::preLoadFolder(ITagInfoMgr *tagInfoMgr , const unsigned int cacheRun
   p_tagInfoMgr = tagInfoMgr;
   if( not m_useFileMetaData ) {
     if(m_source=="CREST"){
-      const std::string  tagName=sanitiseCrestTag(m_foldername);
+      const std::string  & tagName=resolveCrestTag(globalTag,m_foldername );
       m_folderDescription = folderDescriptionForTag(tagName);
     } else {
       //folder desc from db
@@ -912,9 +908,10 @@ IOVDbFolder::preLoadFolder(ITagInfoMgr *tagInfoMgr , const unsigned int cacheRun
   // setup channel list and folder type
   if( not m_useFileMetaData ) {
     if(m_source=="CREST"){
-        const auto & crestTag=sanitiseCrestTag(m_foldername);
+        const std::string  & crestTag=resolveCrestTag(globalTag,m_foldername );
         m_channums=channelListForTag(crestTag);
         const std::string & payloadSpec = payloadSpecificationForTag(crestTag);
+        std::cout<<"payload spec "<<payloadSpec<<std::endl;
         //determine foldertype from the description, the spec and the number of channels
         m_foldertype = IOVDbNamespace::determineFolderType(m_folderDescription, payloadSpec, m_channums);
     } else {

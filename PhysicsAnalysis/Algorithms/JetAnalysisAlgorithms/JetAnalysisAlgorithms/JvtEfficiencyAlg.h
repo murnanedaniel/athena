@@ -10,9 +10,9 @@
 
 #include <AnaAlgorithm/AnaAlgorithm.h>
 #include <JetAnalysisInterfaces/IJetJvtEfficiency.h>
-#include <SelectionHelpers/ISelectionAccessor.h>
 #include <SelectionHelpers/OutOfValidityHelper.h>
-#include <SelectionHelpers/SelectionReadHandle.h>
+#include <SelectionHelpers/SysReadSelectionHandle.h>
+#include <SelectionHelpers/SysWriteSelectionHandle.h>
 #include <SystematicsHandles/SysReadHandle.h>
 #include <SystematicsHandles/SysWriteDecorHandle.h>
 #include <SystematicsHandles/SysListHandle.h>
@@ -53,7 +53,7 @@ namespace CP
 
     /// \brief the preselection we apply to our input
   private:
-    SelectionReadHandle m_preselection {
+    SysReadSelectionHandle m_preselection {
       this, "preselection", "", "the preselection to apply"};
 
     /// \brief the truth jet collection to use
@@ -70,15 +70,12 @@ namespace CP
 
     /// \brief the accessor for \ref m_fJVTStatus
   private:
-    std::unique_ptr<ISelectionAccessor> m_fJVTStatusAccessor;
+    std::unique_ptr<ISelectionReadAccessor> m_fJVTStatusAccessor;
 
     /// \brief the decoration for the JVT selection
   private:
-    std::string m_selection;
-
-    /// \brief the accessor for \ref m_selection
-  private:
-    std::unique_ptr<ISelectionAccessor> m_selectionAccessor;
+    SysWriteSelectionHandle m_selectionHandle {
+      this, "selection", "", "the decoration for the JVT selection"};
 
     /// \brief the decoration for the JVT scale factor
   private:

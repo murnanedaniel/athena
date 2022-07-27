@@ -9,7 +9,6 @@
 //     email                : jacob.julian.kempster@cern.ch
 //  ***************************************************************************/
 
-
 #ifndef FEXAlgoSpaceDefs_H
 #define FEXAlgoSpaceDefs_H
 
@@ -26,6 +25,7 @@ namespace LVL1 {
     constexpr static int jFEX_wide_algoSpace_width = 45;
     constexpr static int jFEX_thin_algoSpace_width = 24;
     constexpr static int jFEX_algoSpace_height = 32; 
+    constexpr static int jFEX_FCAL_start = 700000; 
  
 //Array breakdown of jFEX_wide_algoSpace_width matric to indicate different eta and phi regions
 
@@ -41,8 +41,9 @@ namespace LVL1 {
     constexpr static int jFEX_algoSpace_A_lowerEM_eta = 0;
     constexpr static int jFEX_algoSpace_A_upperEM_eta = 33;
     
-    //Eta space for core and overlaps, FCAL 2 and 3
+    //Eta space for core and overlaps, FCAL 2 (33-40) and 3 (41-44)
     constexpr static int jFEX_algoSpace_A_lowerFCAL_eta = 33;
+    constexpr static int jFEX_algoSpace_A_upperFCAL2_eta = 41;
     constexpr static int jFEX_algoSpace_A_upperFCAL_eta = 45;
 
 //C side (jFEX module 0):
@@ -60,10 +61,20 @@ namespace LVL1 {
     constexpr static int jFEX_algoSpace_C_lowerEM_eta = 12;
     constexpr static int jFEX_algoSpace_C_upperEM_eta = 45;
     
-    //Eta space for core and overlaps, FCAL 2 and 3
+    //Eta space for core and overlaps, FCAL 2 (4-11) and 3 (0-3)
     constexpr static int jFEX_algoSpace_C_lowerFCAL_eta = 0;
+    constexpr static int jFEX_algoSpace_C_lowerFCAL2_eta = 4;
     constexpr static int jFEX_algoSpace_C_upperFCAL_eta = 12;
+
+    //First and second FCAL 1st layer  eta bins
+    constexpr static int jFEX_algoSpace_FCAL1_2nd =  22;
+    constexpr static int jFEX_algoSpace_A_FCAL1_1st =  21;
+    constexpr static int jFEX_algoSpace_C_FCAL1_1st =  23;
     
+    //Lowest/highest  eta for jFEX Electrons
+    constexpr static int jFEX_algoSpace_A_FwdEl_start =  14;
+    constexpr static int jFEX_algoSpace_C_FwdEl_start =  30;
+
     //Phi space breakdown
     constexpr static int jFEX_algoSpace_EMB_start_phi =  8;    
     constexpr static int jFEX_algoSpace_EMB_end_phi  = 24; 
@@ -80,6 +91,17 @@ namespace LVL1 {
       static const int jTau_etaBit = 5;
       static const int jTau_phiBit = 1;
       static const int jTau_satBit = 0;
+
+      // jFEX Forward Electrons (jEM)
+      // Data locations within word
+      static const int jEM_resBit  = 27;
+      static const int jEM_emf2Bit = 25;
+      static const int jEM_emf1Bit = 23;
+      static const int jEM_isoBit  = 21;
+      static const int jEM_etBit   = 10;
+      static const int jEM_etaBit  = 5;
+      static const int jEM_phiBit  = 1;
+      static const int jEM_satBit  = 0;
       
     // jFEX SRJets (jJ)
       // Data locations within word
@@ -110,6 +132,18 @@ namespace LVL1 {
       static const int jTE_Et_upperBit  = 16;
       static const int jTE_Et_lowerBit  = 1; 
       static const int jTE_Sat_lowerBit = 0; 
+      
+    // jFEX SRJet Et Calibration (Calculated by performancy group, Elena Michelle Villhauer's QT)
+    constexpr static int SRJ_Calib_params[6][9] =
+    {   //<20  <30  <40  <50  <65  <80 <110 <150 <inf  GeV
+        { 320, 278, 250, 237, 220, 209, 200, 185, 170 },// jFEX 0  FCal  
+        { 376, 328, 297, 278, 261, 250, 232, 220, 200 },// jFEX 1  Central  
+        { 320, 284, 261, 250, 237, 224, 213, 200, 185 },// jFEX 2  Central   
+        { 320, 284, 266, 246, 237, 220, 213, 200, 182 },// jFEX 3  Central  
+        { 376, 328, 297, 278, 261, 246, 237, 224, 200 },// jFEX 4  Central  
+        { 320, 278, 250, 237, 220, 209, 200, 185, 170 } // jFEX 5  FCal 
+    }; 
+
   
 
    //define constants needed by gFEX Jet algorithm
@@ -128,12 +162,9 @@ namespace LVL1 {
     constexpr static int gJetTOBfib = 4;
     constexpr static int BTOBFIB = 6;
     constexpr static bool ENABLE_PUC = true;
+    constexpr static bool APPLY_TRUNC = false;
     //define constants needed by gFEX JwoJ algorithm
-    constexpr static unsigned int aFPGA_A = 48;
-    constexpr static unsigned int bFPGA_A = 48;
-    constexpr static unsigned int aFPGA_B = 52;
-    constexpr static unsigned int bFPGA_B = 52;
-    constexpr static int gblockThreshold = 125;//*200 MeV = 25 GeV
+    constexpr static bool ENABLE_JWOJ_C = false;
 
 
   };

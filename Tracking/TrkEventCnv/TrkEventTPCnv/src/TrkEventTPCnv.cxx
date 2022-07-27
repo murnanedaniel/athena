@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // generate the T/P converter entries
@@ -45,7 +45,6 @@
 //-----------------------------------------------------------------------------
 #include "TrkEventTPCnv/TrkTrackSummary/TrackSummary_p1.h"
 #include "TrkEventTPCnv/TrkTrackSummary/TrackSummary_p2.h"
-#include "TrkEventTPCnv/TrkTrackSummary/InDetTrackSummary_p1.h"
 #include "TrkEventTPCnv/TrkTrackSummary/MuonTrackSummary_p1.h"
 
 //-----------------------------------------------------------------------------
@@ -206,8 +205,7 @@ DECLARE_TPCNV_FACTORY(TrackCollectionCnv_p4,
                       Trk::TrackCollection_p4,
                       Athena::TPCnvVers::Old)
 
-typedef T_TPCnv<VxContainer, Trk::VxContainer_tlp1 >
-		VxContainerARACnv_tlp1;
+using VxContainerARACnv_tlp1 = T_TPCnv<VxContainer, Trk::VxContainer_tlp1>;
 DECLARE_ARATPCNV_FACTORY(VxContainerARACnv_tlp1,
 			 VxContainer,
 			 Trk::VxContainer_tlp1,

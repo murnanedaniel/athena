@@ -1,7 +1,7 @@
 //Dear emacs, this is -*- c++ -*-
 
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 
@@ -14,6 +14,11 @@
 #ifndef LARAVERAGES2NTUPLE_H
 #define LARAVERAGES2NTUPLE_H
 #include "LArCalibTools/LArCond2NtupleBase.h"
+
+#include "CaloIdentifier/LArEM_ID.h"
+#include "LArIdentifier/LArOnlineID.h"
+#include "LArCabling/LArOnOffIdMapping.h"
+#include "LArRecConditions/LArCalibLineMapping.h"
 
 #include <fstream>
 #include <math.h>
@@ -30,9 +35,13 @@ class LArAverages2Ntuple : public LArCond2NtupleBase
   StatusCode initialize();
   StatusCode execute() ;
   StatusCode finalize(){return StatusCode::SUCCESS;}
+
  private:
+  const LArOnlineID_Base* m_onlineHelper;
+
   std::string m_ntName;
   std::string m_contKey;
+  std::vector<unsigned int> m_keepFT;
 
   unsigned int  m_Nsamples;
   bool m_keepPulsed;

@@ -1,5 +1,5 @@
 #
-#  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+#  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #
 
 '''
@@ -51,24 +51,28 @@ kwargsErrMonAlg = { 'doOnline'        : isOnline,      #Histograms for online (G
                      'doLumiBlock'     : not isOnline      #Turn on/off histograms stored every 1(20) lumi block(s)
 }
 
-kwargsMVAMonAlg = { 'calibFolder'     : 'mva01022022',
+kwargsMVAMonAlg = { 'calibFolder'     : '20220503',
                     'RDOName'         : InDetKeys.PixelRDOs(),
                     'ClusterName'     : InDetKeys.PixelClusters(),
-                    'TrackName'       : InDetKeys.Tracks()
+                    'TrackParticleContainerName' : InDetKeys.xAODTrackParticleContainer()
 }
 
 from AthenaMonitoring.DQMonFlags import DQMonFlags                                                                                                                                      
 from AthenaMonitoring import AthMonitorCfgHelperOld
 helper = AthMonitorCfgHelperOld(DQMonFlags, "NewPixelMonitoring")
 
+from AthenaMonitoring.FilledBunchFilterTool import GetFilledBunchFilterTool
+
 if doHitMonAlg:
-  pixelAthMonAlgHitMonAlg = helper.addAlgorithm(PixelAthHitMonAlg, 'PixelAthHitMonAlg')
+  pixelAthMonAlgHitMonAlg = helper.addAlgorithm(PixelAthHitMonAlg, 'PixelAthHitMonAlg', addFilterTools = [GetFilledBunchFilterTool()])
   for k, v in kwargsHitMonAlg.items():
     setattr(pixelAthMonAlgHitMonAlg, k, v)
+  pixelAthMonAlgHitMonAlg.PixelDetElStatus                      = 'PixelDetectorElementStatus'
+  pixelAthMonAlgHitMonAlg.PixelDetElStatusActiveOnly            = 'PixelDetectorElementStatusActiveOnly'
   PixelAthHitMonAlgCfg(helper, pixelAthMonAlgHitMonAlg, **kwargsHitMonAlg)
 
 if doClusterMonAlg:
-  pixelAthClusterMonAlg = helper.addAlgorithm(PixelAthClusterMonAlg, 'PixelAthClusterMonAlg')
+  pixelAthClusterMonAlg = helper.addAlgorithm(PixelAthClusterMonAlg, 'PixelAthClusterMonAlg', addFilterTools = [GetFilledBunchFilterTool()])
   for k, v in kwargsClusMonAlg.items():
     setattr(pixelAthClusterMonAlg, k, v)
   pixelAthClusterMonAlg.HoleSearchTool   = TrackingCommon.getInDetHoleSearchTool()
@@ -79,18 +83,26 @@ if doClusterMonAlg:
   pixelAthClusterMonAlg.TrackSelectionTool.maxZ0            = 150
   pixelAthClusterMonAlg.TrackSelectionTool.TrackSummaryTool = TrackingCommon.getInDetTrackSummaryTool()
   pixelAthClusterMonAlg.TrackSelectionTool.Extrapolator     = TrackingCommon.getInDetExtrapolator()
-  
-  #print getattr(pixelAthClusterMonAlg, 'onTrack') 
+  pixelAthClusterMonAlg.PixelDetElStatus                      = 'PixelDetectorElementStatus'
+  pixelAthClusterMonAlg.PixelDetElStatusActiveOnly            = 'PixelDetectorElementStatusActiveOnly'
   PixelAthClusterMonAlgCfg(helper, pixelAthClusterMonAlg, **kwargsClusMonAlg)
 
 if doErrorMonAlg:
-  pixelAthMonAlgErrorMonAlg = helper.addAlgorithm(PixelAthErrorMonAlg, 'PixelAthErrorMonAlg')
+  pixelAthMonAlgErrorMonAlg = helper.addAlgorithm(PixelAthErrorMonAlg, 'PixelAthErrorMonAlg', addFilterTools = [GetFilledBunchFilterTool()])
+  from AthenaCommon.GlobalFlags import globalflags
+  isData = (globalflags.DataSource == 'data')
+
+  kwargsErrMonAlg.setdefault(  'PixelByteStreamErrs', 'PixelByteStreamErrs')
+  kwargsErrMonAlg.setdefault(  'UseByteStreamFEI4', isData)
+  kwargsErrMonAlg.setdefault(  'UseByteStreamFEI3', isData)
+  kwargsErrMonAlg.setdefault(  'UseByteStreamRD53', False)
   for k, v in kwargsErrMonAlg.items():
     setattr(pixelAthMonAlgErrorMonAlg, k, v)
+  pixelAthMonAlgErrorMonAlg.PixelDetElStatusActiveOnly            = 'PixelDetectorElementStatusActiveOnly'
   PixelAthErrorMonAlgCfg(helper, pixelAthMonAlgErrorMonAlg, **kwargsErrMonAlg)
 
 if doMVAMonAlg:
-  pixelAthMVAMonAlg = helper.addAlgorithm(PixelAthMVAMonAlg, 'PixelAthMVAMonAlg')
+  pixelAthMVAMonAlg = helper.addAlgorithm(PixelAthMVAMonAlg, 'PixelAthMVAMonAlg', addFilterTools = [GetFilledBunchFilterTool()])
   for k, v in kwargsMVAMonAlg.items():
     setattr(pixelAthMVAMonAlg, k, v)
   pixelAthMVAMonAlg.HoleSearchTool   = TrackingCommon.getInDetHoleSearchTool()
@@ -104,7 +116,6 @@ if doMVAMonAlg:
   pixelAthMVAMonAlg.TrackSelectionTool.Extrapolator     = TrackingCommon.getInDetExtrapolator()
 
   PixelAthMVAMonAlgCfg(helper, pixelAthMVAMonAlg, **kwargsMVAMonAlg)
-
 
 topSequence += helper.result()
 

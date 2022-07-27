@@ -1,3 +1,7 @@
+/*
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+*/
+
 // C/C++
 #include <math.h>
 #include <fstream>
@@ -10,7 +14,7 @@
 #include "FourMomUtils/xAODP4Helpers.h"
 // Local
 
-#include "RpcRawDataMonitoring/RPCDQUtils.h"
+#include "RPCDQUtils.h"
 
 //========================================================================================================
 // struct RpcPanel
@@ -42,9 +46,8 @@ void RpcPanel::FillRpcId(Identifier id, const RpcIdHelper &rpcIdHelper)
 			                              doubletZ,
 			                              doubletPhi,
 			                              gasGap,
-                                    measPhi,
-			                              true,
-			                              &panel_valid);
+                                          measPhi,
+			                              panel_valid);
 
   // panel_index = stationName*6144 + stationPhi*768 + (stationEta+9)*48 + doubletR*24 + doubletPhi*12 + doubletZ*4 + gasGap*2 + measPhi;
 }
@@ -55,8 +58,7 @@ RpcPanel::RpcPanel( const Muon::IMuonIdHelperSvc    &idHelperSvc,
                     const int                        _doubletZ, 
                     const int                        _doubletPhi,
                     const int                        _gasgap,
-                    const int                        _measPhi,
-                    int                        &_panelIn):
+                    const int                        _measPhi):
   readoutEl  (_readoutEl),
   doubletR   (_readoutEl->getDoubletR()),
   doubletZ   (_doubletZ),
@@ -72,7 +74,6 @@ RpcPanel::RpcPanel( const Muon::IMuonIdHelperSvc    &idHelperSvc,
 
   stationEta  = rpcIdHelper.stationEta (readEl_id);
   stationPhi  = rpcIdHelper.stationPhi (readEl_id);
-  // panel_index = stationName*6144 + stationPhi*768 + (stationEta+9)*48 + doubletR*24 + doubletPhi*12 + doubletZ*4 + gasGap*2 + measPhi;
 
   //
   // Get Identifier for this panel
@@ -85,21 +86,31 @@ RpcPanel::RpcPanel( const Muon::IMuonIdHelperSvc    &idHelperSvc,
 			                          doubletPhi,
 			                          gasGap,
                                 measPhi,
-			                          true,
-			                          &panel_valid);
+			                          panel_valid);
   if(panel_valid) {
     panel_str = idHelperSvc.toString(panelId);
-    // Only _doubletPhi maybe different with rpcIdHelper.doubletPhi(readEl_id)
-    // cout<<"Test-rpcIdHelper.gasGap(readEl_id)      = "<<rpcIdHelper.gasGap(readEl_id)<< std::endl;
-    panel_index = _panelIn;
-    _panelIn++;
     panel_name = getOnlineConvention();
   }
   else {
     panel_str = idHelperSvc.toString(panelId) + " - INVALID ID";
   }
-
 }
+
+//========================================================================================================
+void RpcPanel::SetPanelIndex(int index)
+{
+  panel_index = index;
+}
+
+//========================================================================================================
+std::string RpcPanel::getElementStr() const
+{
+  std::ostringstream ele_key;
+
+  ele_key << stationName << "_" << stationEta << "_" << stationPhi << "_" <<doubletR << "_" << doubletZ;
+  return ele_key.str();
+}
+
 
 //========================================================================================================
 bool RpcPanel::operator ==(const RpcPanel &rhs) const
@@ -254,8 +265,7 @@ GasGapData::GasGapData(const Muon::IMuonIdHelperSvc    &idHelperSvc,
 			                      doubletZ,
 			                      doubletPhi,
 			                      gasgap,
-			                      true,
-			                      &gapid_valid);
+			                      gapid_valid);
 
   if(gapid_valid) {
     gapid_str = idHelperSvc.toString(gapid);
@@ -311,11 +321,11 @@ void GasGapData::computeTrackDistanceToGasGap(ExResult &result, const xAOD::Trac
     - do this before expensive call to extrapolator
    */
 
-  const double deta1 = std::fabs(minStripEta - track.eta());
-  const double deta2 = std::fabs(maxStripEta - track.eta());
+  const double deta1 = std::abs(minStripEta - track.eta());
+  const double deta2 = std::abs(maxStripEta - track.eta());
 
-  const double dphi1 = std::fabs(xAOD::P4Helpers::deltaPhi(minStripPhi, track.phi()));
-  const double dphi2 = std::fabs(xAOD::P4Helpers::deltaPhi(maxStripPhi, track.phi()));
+  const double dphi1 = std::abs(xAOD::P4Helpers::deltaPhi(minStripPhi, track.phi()));
+  const double dphi2 = std::abs(xAOD::P4Helpers::deltaPhi(maxStripPhi, track.phi()));
 
   result.minTrackGasGapDEta = std::min<double>(deta1, deta2);
   result.minTrackGasGapDPhi = std::min<double>(dphi1, dphi2);
@@ -342,11 +352,11 @@ void GasGapData::computeTrackDistanceToGasGap(ExResult &result, const Trk::Track
     - do this before expensive call to extrapolator
    */
 
-  const double deta1 = std::fabs(minStripEta - trackParam->position().eta());
-  const double deta2 = std::fabs(maxStripEta - trackParam->position().eta());
+  const double deta1 = std::abs(minStripEta - trackParam->position().eta());
+  const double deta2 = std::abs(maxStripEta - trackParam->position().eta());
 
-  const double dphi1 = std::fabs(xAOD::P4Helpers::deltaPhi(minStripPhi, trackParam->position().phi()));
-  const double dphi2 = std::fabs(xAOD::P4Helpers::deltaPhi(maxStripPhi, trackParam->position().phi()));
+  const double dphi1 = std::abs(xAOD::P4Helpers::deltaPhi(minStripPhi, trackParam->position().phi()));
+  const double dphi2 = std::abs(xAOD::P4Helpers::deltaPhi(maxStripPhi, trackParam->position().phi()));
 
   result.minTrackGasGapDEta = std::min<double>(deta1, deta2);
   result.minTrackGasGapDPhi = std::min<double>(dphi1, dphi2);
@@ -363,4 +373,3 @@ void GasGapData::computeTrackDistanceToGasGap(ExResult &result, const Trk::Track
   result.minTrackGasGapDR = std::sqrt(result.minTrackGasGapDEta*result.minTrackGasGapDEta + 
 				                              result.minTrackGasGapDPhi*result.minTrackGasGapDPhi);
 }
-

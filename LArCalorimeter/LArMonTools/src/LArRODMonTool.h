@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 //Dear emacs, this is -*-c++-*-
@@ -14,26 +14,31 @@
 #define LARMONTOOLS_LARRODMONTOOL_H
 
 #include "AthenaMonitoring/ManagedMonitorToolBase.h"
-#include "LArElecCalib/ILArPedestal.h"
-#include "LArElecCalib/ILArOFC.h"
-#include "LArElecCalib/ILArShape.h"
-#include "LArElecCalib/ILArHVScaleCorr.h"
-#include "GaudiKernel/ToolHandle.h"
-#include "LArIdentifier/LArOnlineID.h"
-#include "LArRawConditions/LArADC2MeV.h"
+#include "LArElecCalib/ILArPedestal.h"  //in template
+#include "LArElecCalib/ILArOFC.h"  //in template
+#include "LArElecCalib/ILArShape.h"  //in template
+#include "LArElecCalib/ILArHVScaleCorr.h"  //in template
+#include "LArIdentifier/LArOnlineID.h"  //inline usage
+#include "LArRawConditions/LArADC2MeV.h"  //in template
 #include "StoreGate/ReadCondHandleKey.h"
 #include "StoreGate/ReadHandleKey.h"
-#include "CaloDetDescr/CaloDetDescrManager.h"
+#include "CaloDetDescr/CaloDetDescrManager.h"  //in template
 
 //Events infos:
 
-#include "LArRawEvent/LArFebHeaderContainer.h"
+#include "LArRawEvent/LArFebHeaderContainer.h"  //in template
 //Events infos:
-#include "xAODEventInfo/EventInfo.h"
+#include "xAODEventInfo/EventInfo.h"  //in template
 
-#include "LArRecConditions/LArBadChannelMask.h"
-#include "LArRecConditions/LArBadChannelCont.h"
+#include "LArRecConditions/LArBadChannelMask.h"  //member
+#include "LArRecConditions/LArBadChannelCont.h"  //in template
 
+#include <iosfwd>
+#include <cstdio>  //FILE* typedef
+#include <ios>  //for std::hex
+#include <fstream> //for std::ofstream
+#include <set>
+#include <vector>
 
 class LArRawChannel;
 class HWIdentifier;
@@ -41,17 +46,9 @@ class LArOnOffIdMapping;
 class LArRawChannelContainer;
 class LArDigitContainer;
 
-
-#include "TH2I.h"
-#include "TH2F.h"
-
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <set>
-
 class LArEM_ID;
 class TH1F;
+class TH2I;
 class TH2F;
 class TProfile2D;
 class LArDigit;
@@ -118,8 +115,9 @@ class LArRODMonTool: public ManagedMonitorToolBase
   
 private:
   const LArOnlineID* m_LArOnlineIDHelper;
-  unsigned  m_counter;
+  unsigned m_counter;
   unsigned m_eventsCounter;
+  unsigned m_ndump;
   enum PARTITION {EMBC=0,EMBA,EMECC,EMECA,HECC,HECA,FCALC,FCALA,N_PARTITIONS};
 
   

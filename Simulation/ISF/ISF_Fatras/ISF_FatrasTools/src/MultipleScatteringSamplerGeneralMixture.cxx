@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////////////////////////////////////////////////////////////
@@ -11,10 +11,11 @@
 
 #include "MultipleScatteringSamplerGeneralMixture.h"
 #include "CLHEP/Random/RandGaussZiggurat.h"
+#include "TrkEventPrimitives/ParticleHypothesis.h"
+
 
 // static particle masses
-Trk::ParticleMasses iFatras::MultipleScatteringSamplerGeneralMixture::s_particleMasses;
-// static doubles
+//  doubles
 
 double iFatras::MultipleScatteringSamplerGeneralMixture::s_main_RossiGreisen = 17.5*Gaudi::Units::MeV;
 double iFatras::MultipleScatteringSamplerGeneralMixture::s_log_RossiGreisen  =  0.125;
@@ -41,7 +42,7 @@ iFatras::MultipleScatteringSamplerGeneralMixture::MultipleScatteringSamplerGener
 
 // destructor
 iFatras::MultipleScatteringSamplerGeneralMixture::~MultipleScatteringSamplerGeneralMixture()
-{}
+= default;
 
 // Athena standard methods
 // initialize
@@ -90,7 +91,7 @@ double iFatras::MultipleScatteringSamplerGeneralMixture::simTheta(const Trk::Mat
   double dOverX0 = pathcorrection * mat.thicknessInX0();
 
   // kinematics (relativistic)
-  double m    = s_particleMasses.mass[particle];
+  double m    = Trk::ParticleMasses::mass[particle];
   double E    = sqrt(p*p + m*m);
   double beta = p/E;
   
@@ -147,7 +148,7 @@ double iFatras::MultipleScatteringSamplerGeneralMixture::simTheta(const Trk::Mat
   return theta*s_projectionFactor;
 }
 
-std::vector<double> iFatras::MultipleScatteringSamplerGeneralMixture::getGaussian(double beta, double p,double dOverX0, double scale) const{
+std::vector<double> iFatras::MultipleScatteringSamplerGeneralMixture::getGaussian(double beta, double p,double dOverX0, double scale) {
   std::vector<double> scattering_params(4);
   scattering_params[0]=15./beta/p*sqrt(dOverX0)*scale; //Total standard deviation of mixture
   scattering_params[1]=1.0; //Variance of core
@@ -156,7 +157,7 @@ std::vector<double> iFatras::MultipleScatteringSamplerGeneralMixture::getGaussia
   return scattering_params;
 }
 
-std::vector<double> iFatras::MultipleScatteringSamplerGeneralMixture::getGaussmix(double beta, double p,double dOverX0,double Z, double scale) const{  
+std::vector<double> iFatras::MultipleScatteringSamplerGeneralMixture::getGaussmix(double beta, double p,double dOverX0,double Z, double scale) {  
   std::vector<double> scattering_params(4);
   scattering_params[0]=15./beta/p*sqrt(dOverX0)*scale; //Total standard deviation of mixture
   double d1=log(dOverX0/(beta*beta));
@@ -173,7 +174,7 @@ std::vector<double> iFatras::MultipleScatteringSamplerGeneralMixture::getGaussmi
   return scattering_params;
 }
 
-std::vector<double> iFatras::MultipleScatteringSamplerGeneralMixture::getSemigauss(double beta,double p,double dOverX0,double Z, double scale) const{
+std::vector<double> iFatras::MultipleScatteringSamplerGeneralMixture::getSemigauss(double beta,double p,double dOverX0,double Z, double scale) {
   std::vector<double> scattering_params(6);
   double N=dOverX0*1.587E7*pow(Z,1.0/3.0)/(beta*beta)/(Z+1)/log(287/sqrt(Z));
   scattering_params[4]=15./beta/p*sqrt(dOverX0)*scale; //Total standard deviation of mixture

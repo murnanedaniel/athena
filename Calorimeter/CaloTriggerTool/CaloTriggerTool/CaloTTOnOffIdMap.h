@@ -65,5 +65,4 @@ private:
 
 #include "AthenaKernel/CLASS_DEF.h"
 CLASS_DEF( CaloTTOnOffIdMap,267570070,1)
-
 #endif

@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 from TrigFastTrackFinder.TrigFastTrackFinderConf import TrigFastTrackFinder
 
@@ -93,14 +93,17 @@ def TrigFastTrackFinderMonitoring(name, doResMon=False):
             montool.defineHistogram('trk_a0',     path='EXPERT',type='TH1F',title="a0",xbins = 100, xmin=-300, xmax=300)
             montool.defineHistogram('trk_a0beam', path='EXPERT',type='TH1F',title="a0beam",xbins = 100, xmin=-300, xmax=300)
             montool.defineHistogram('trk_z0',     path='EXPERT',type='TH1F',title="z0",xbins = 100, xmin=-800, xmax=800)
+            montool.defineHistogram('trk_z0beam', path='EXPERT',type='TH1F',title="z0beam",xbins = 100, xmin=-800, xmax=800)
         elif name=='fullScanLRT':
             montool.defineHistogram('trk_a0',     path='EXPERT',type='TH1F',title="a0",xbins = 100, xmin=-300, xmax=300)
             montool.defineHistogram('trk_a0beam', path='EXPERT',type='TH1F',title="a0beam",xbins = 100, xmin=-300, xmax=300)
             montool.defineHistogram('trk_z0',     path='EXPERT',type='TH1F',title="z0",xbins = 100, xmin=-550, xmax=550)
+            montool.defineHistogram('trk_z0beam', path='EXPERT',type='TH1F',title="z0beam",xbins = 100, xmin=-550, xmax=550)
         else:
             montool.defineHistogram('trk_a0',     path='EXPERT',type='TH1F',title="a0",xbins = 200, xmin=-10, xmax=10)
             montool.defineHistogram('trk_a0beam', path='EXPERT',type='TH1F',title="a0beam",xbins = 200, xmin=-10, xmax=10)
             montool.defineHistogram('trk_z0',     path='EXPERT',type='TH1F',title="z0",xbins = 200, xmin=-400, xmax=400)
+            montool.defineHistogram('trk_z0beam', path='EXPERT',type='TH1F',title="z0beam",xbins = 200, xmin=-400, xmax=400)
 
     def addResidualHistograms(self):
         montool.defineHistogram('layer_IBL',                 path='EXPERT',type='TH1F',title="IBL layer",xbins = 10, xmin=0., xmax=10.)
@@ -320,8 +323,9 @@ class TrigFastTrackFinderBase(TrigFastTrackFinder):
         if config.doHitDV:
             self.doHitDV_Seeding = True
             self.RecJetRoI = "HLT_RecJETRoIs"
-            self.HitDVTrk  = "HLT_HitDVTrk" # not 'recordable' due to HLT truncation (ATR-23958)
-            self.HitDVSP   = "HLT_HitDVSP"  # not 'recordable' due to HLT truncation (ATR-23958)
+            self.HitDVSeed = "HLT_HitDVSeed" # not 'recordable' due to HLT truncation (ATR-23958)
+            self.HitDVTrk  = "HLT_HitDVTrk"  # not 'recordable' due to HLT truncation (ATR-23958)
+            self.HitDVSP   = "HLT_HitDVSP"   # not 'recordable' due to HLT truncation (ATR-23958)
 
         self.doDisappearingTrk = config.doDisappearingTrk
         if config.doDisappearingTrk:
@@ -390,8 +394,6 @@ class TrigFastTrackFinderBase(TrigFastTrackFinder):
         if remapped_type=="cosmics":
           TrackMaker_FTF.CosmicTrack=True
 
-        self.useBeamSpotForRoiZwidth = config.useBeamSpotForRoiZwidth
-        
         ToolSvc += TrackMaker_FTF
         self.initialTrackMaker = TrackMaker_FTF
 
@@ -436,9 +438,6 @@ class TrigFastTrackFinderBase(TrigFastTrackFinder):
 
         if not config.doZFinderOnly:
 
-          TrackMaker_FTF.InputClusterContainerName = ""
-          TrackMaker_FTF.InputHadClusterContainerName = ""
-          
           from InDetTrigRecExample.InDetTrigConfigRecLoadTools import InDetTrigFastTrackSummaryTool
           self.TrackSummaryTool = InDetTrigFastTrackSummaryTool
 

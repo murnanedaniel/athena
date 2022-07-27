@@ -60,13 +60,14 @@ ElectronIsolationWPs HighPtCaloOnly TightTrackOnly_VarRad TightTrackOnly_FixedRa
 ElectronIsolation Tight_VarRad
 ElectronIsolationSF None
 ElectronIsolationLoose None
+ElectronTriggerEfficiencyConfig SINGLE_E_2015_e24_lhmedium_L1EM20VH_OR_e60_lhmedium_OR_e120_lhloose_2016_2018_e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0
 
 ### Photon configuration
 PhotonPt 25000
 PhotonEta 2.5
 PhotonID Tight
 PhotonIDLoose Loose
-PhotonIsolationWPs FixedCutTight FixedCutLoose FixedCutTightCaloOnly
+PhotonIsolationWPs FixedCutTight FixedCutLoose TightCaloOnly
 PhotonIsolation FixedCutTight
 PhotonIsolationLoose FixedCutLoose
 
@@ -100,6 +101,7 @@ DoLoose Data
 
 ### B-tagging configuration
 BTaggingCaloJetWP DL1r:FixedCutBEff_77 DL1r:Continuous
+BTaggingCaloJetUncalibWP DL1dv00:FixedCutBEff_77
 BTaggingTrackJetWP DL1r:FixedCutBEff_77 DL1r:Continuous
 # Example of how to remove systematics from b-tag EV
 

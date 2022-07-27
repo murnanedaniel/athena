@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef MUONMmRdoToPrepDataToolCore_H
@@ -44,6 +44,7 @@ namespace Muon
     virtual StatusCode decode( const std::vector<uint32_t>& robIds ) const override;
     
     StatusCode processCollection(Muon::MMPrepDataContainer* mmPrepDataContainer,
+                                 const std::vector<IdentifierHash>& idsToDecode,
                                  const MM_RawDataCollection *rdoColl, 
    				 std::vector<IdentifierHash>& idWithDataVect) const;
 
@@ -57,23 +58,26 @@ namespace Muon
     const MM_RawDataContainer* getRdoContainer() const;
 
     void processRDOContainer( Muon::MMPrepDataContainer* mmPrepDataContainer,
+                              const std::vector<IdentifierHash>& idsToDecode,
                               std::vector<IdentifierHash>& idWithDataVect ) const;
 
     SG::ReadCondHandleKey<MuonGM::MuonDetectorManager> m_muDetMgrKey {this, "DetectorManagerKey", "MuonDetectorManager", "Key of input MuonDetectorManager condition data"}; 
     
     ServiceHandle<Muon::IMuonIdHelperSvc> m_idHelperSvc {this, "MuonIdHelperSvc", "Muon::MuonIdHelperSvc/MuonIdHelperSvc"};
-    
+ 
     /// MdtPrepRawData containers
-    SG::WriteHandleKey<Muon::MMPrepDataContainer> m_mmPrepDataContainerKey;
-    SG::ReadHandleKey<MM_RawDataContainer> m_rdoContainerKey;
+    SG::WriteHandleKey<Muon::MMPrepDataContainer> m_mmPrepDataContainerKey{this, "OutputCollection", "MM_Measurements"};
+    SG::ReadHandleKey<MM_RawDataContainer> m_rdoContainerKey{this, "InputCollection", "MMRDO"};
 
     std::string m_outputCollectionLocation;            
-    bool m_merge; 
+    Gaudi::Property<bool> m_merge{this, "MergePrds", true}; 
 
     ToolHandle<IMMClusterBuilderTool> m_clusterBuilderTool{this,"ClusterBuilderTool","Muon::SimpleMMClusterBuilderTool/SimpleMMClusterBuilderTool"};
-    ToolHandle<INSWCalibTool> m_calibTool{this,"NSWCalibTool","Muon::NSWCalibTool/NSWCalibTool"};
+    ToolHandle<INSWCalibTool> m_calibTool{this,"NSWCalibTool", ""};
 
-    float m_singleStripChargeCut;
+    // charge cut is temporarily disabled for comissioning studies. Should be reenabled at some point. pscholer 13.05.2022
+    Gaudi::Property<float> m_singleStripChargeCut {this,"singleStripChargeCut", FLT_MIN /*6241 * 0.4*/}; // 0.4 fC from BB5 cosmics
+
   }; 
 } // end of namespace
 

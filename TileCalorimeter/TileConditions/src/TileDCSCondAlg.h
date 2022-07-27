@@ -1,7 +1,7 @@
 //Dear emacs, this is -*- c++ -*-
 
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef TILECONDITIONS_TILEDCSCONDALG_H
@@ -17,8 +17,6 @@
 #include "StoreGate/ReadCondHandleKey.h"
 #include "StoreGate/WriteCondHandleKey.h"
 #include "AthenaPoolUtilities/CondAttrListCollection.h"
-
-#include "GaudiKernel/ICondSvc.h"
 
 class TileCablingService;
 
@@ -190,20 +188,13 @@ class TileDCSCondAlg: public AthReentrantAlgorithm {
         "DCSChStatesInCOOL", "DCSChStatesInCOOL.dat",
         "File name with mapping Tile DCS STATES DB COOL channels to ROS and drawer"};
 
-
-   /**
-    * @brief Name of conditions service
-    */
-    ServiceHandle<ICondSvc> m_condSvc{this,
-        "CondSvc", "CondSvc", "The conditions service"};
-
    /**
     * @brief Name of Tile cabling service
     */
     ServiceHandle<TileCablingSvc> m_cablingSvc{ this,
         "TileCablingSvc", "TileCablingSvc", "The Tile cabling service" };
 
-    const TileCablingService* m_cabling;
+    const TileCablingService* m_cabling{};
 
     std::vector<std::pair<int, int>> m_rosDrawerHV;
     std::vector<std::pair<int, int>> m_rosDrawerHVSet;
@@ -211,9 +202,9 @@ class TileDCSCondAlg: public AthReentrantAlgorithm {
 
     std::map<int, std::pair<float,float> > m_knownBadHV;
 
-    int m_channel2pmt[2][NUMBER_OF_HVSET_CHANNELS];
-    int m_pmt2channel[2][NUMBER_OF_HVSET_CHANNELS];
-    bool m_isChannelUsed[4][NUMBER_OF_CHANNELS]; // 0=LB, 1=EB, 2=EB without D4, 3=EB with special C10
+    int m_channel2pmt[2][NUMBER_OF_HVSET_CHANNELS] = {};
+    int m_pmt2channel[2][NUMBER_OF_HVSET_CHANNELS] = {};
+    bool m_isChannelUsed[4][NUMBER_OF_CHANNELS] = {}; // 0=LB, 1=EB, 2=EB without D4, 3=EB with special C10
 
 };
 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef IEXTENDEDTRACKSUMMARYHELPERTOOL
@@ -85,25 +85,11 @@ namespace Trk {
       (void)ctx;
       addDetailedTrackSummary(track,summary);
     };
-
-    virtual void updateExpectedHitInfo(const EventContext& ctx, 
-                                       const Trk::Track& track,
-                                       Trk::TrackSummary& summary) const{
-
-      (void)ctx;
-      updateExpectedHitInfo(track,summary);
-    }
  
     virtual void updateSharedHitCount(
       const Trk::Track&,
       const Trk::PRDtoTrackMap*,
       Trk::TrackSummary&) const {};
-
-   virtual void updateAdditionalInfo(Trk::TrackSummary&,
-                                      std::vector<float>&,
-                                      float&,
-                                      int&,
-                                      int&) const {};
 
     /*
      * Implement the ITrackSummaryHelperTool part
@@ -148,13 +134,6 @@ namespace Trk {
     {
       addDetailedTrackSummary(Gaudi::Hive::currentContext(), track, summary);
     }
-  
-     virtual void updateExpectedHitInfo(const Trk::Track& track,
-                                       Trk::TrackSummary& summary) const override{
-
-      updateExpectedHitInfo(Gaudi::Hive::currentContext(),track,summary);
-    }
-  
 
   };
 

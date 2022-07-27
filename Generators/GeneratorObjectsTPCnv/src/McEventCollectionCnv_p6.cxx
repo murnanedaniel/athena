@@ -1,7 +1,7 @@
 ///////////////////////// -*- C++ -*- /////////////////////////////
 
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // McEventCollectionCnv_p6.cxx
@@ -19,6 +19,7 @@
 #include "HepMcDataPool.h"
 #include "GenInterfaces/IHepMCWeightSvc.h"
 #include "McEventCollectionCnv_utils.h"
+#include "GaudiKernel/ThreadLocalContext.h"
 
 
 ///////////////////////////////////////////////////////////////////
@@ -58,6 +59,8 @@ void McEventCollectionCnv_p6::persToTrans( const McEventCollection_p6* persObj,
                                            McEventCollection* transObj,
                                            MsgStream& msg )
 {
+  const EventContext& ctx = Gaudi::Hive::currentContext();
+
   msg << MSG::DEBUG << "Loading McEventCollection from persistent state..."
       << endmsg;
 
@@ -104,6 +107,7 @@ void McEventCollectionCnv_p6::persToTrans( const McEventCollection_p6* persObj,
     genEvt->add_attribute("event_scale", std::make_shared<HepMC3::DoubleAttribute>(persEvt.m_eventScale));
     genEvt->add_attribute("alphaQCD", std::make_shared<HepMC3::DoubleAttribute>(persEvt.m_alphaQCD));
     genEvt->add_attribute("alphaQED", std::make_shared<HepMC3::DoubleAttribute>(persEvt.m_alphaQED));
+    genEvt->add_attribute("filterWeight", std::make_shared<HepMC3::DoubleAttribute>(persEvt.m_filterWeight));
     genEvt->weights()= persEvt.m_weights;
     genEvt->add_attribute("random_states", std::make_shared<HepMC3::VectorLongIntAttribute>(persEvt.m_randomStates));
 
@@ -112,7 +116,7 @@ void McEventCollectionCnv_p6::persToTrans( const McEventCollection_p6* persObj,
 
     //restore weight names from the dedicated svc (which was keeping them in metadata for efficiency)
     if(!genEvt->run_info()) genEvt->set_run_info(std::make_shared<HepMC3::GenRunInfo>());
-    genEvt->run_info()->set_weight_names(name_index_map_to_names(m_hepMCWeightSvc->weightNames()));
+    genEvt->run_info()->set_weight_names(m_hepMCWeightSvc->weightNameVec(ctx));
     for (unsigned int i = 0; i < persEvt.m_r_attribute_name.size(); ++i) {
       genEvt->run_info()->add_attribute(persEvt.m_r_attribute_name[i], std::make_shared<HepMC3::StringAttribute>(persEvt.m_r_attribute_string[i]));
     }
@@ -152,23 +156,24 @@ void McEventCollectionCnv_p6::persToTrans( const McEventCollection_p6* persObj,
 
 
 
-       // pdfinfo restore
-      if (!persEvt.m_pdfinfo.empty())
-        {
-          const std::vector<double>& pdf = persEvt.m_pdfinfo;
-              HepMC3::GenPdfInfoPtr pi = std::make_shared<HepMC3::GenPdfInfo>();
-              pi->set(
-              static_cast<int>(pdf[6]), // id1
-              static_cast<int>(pdf[5]), // id2
+    // pdfinfo restore
+    if (!persEvt.m_pdfinfo.empty())
+    {
+      const std::vector<double>& pdf = persEvt.m_pdfinfo;
+      HepMC3::GenPdfInfoPtr pi = std::make_shared<HepMC3::GenPdfInfo>();
+      pi->set(static_cast<int>(pdf[8]), // id1
+              static_cast<int>(pdf[7]), // id2
               pdf[4],                   // x1
               pdf[3],                   // x2
               pdf[2],                   // scalePDF
               pdf[1],                   // pdf1
-              pdf[0] );                 // pdf2
-              genEvt->set_pdf_info(pi);
-        }
+              pdf[0],                   // pdf2
+              static_cast<int>(pdf[6]), // pdf_id1
+              static_cast<int>(pdf[5]));// pdf_id2
+      genEvt->set_pdf_info(pi);
+    }
     transObj->push_back( genEvt );
-
+    
     // create a temporary map associating the barcode of an end-vtx to its
     // particle.
     // As not all particles are stable (d'oh!) we take 50% of the number of
@@ -225,7 +230,7 @@ void McEventCollectionCnv_p6::persToTrans( const McEventCollection_p6* persObj,
     genEvt->m_position_unit         = static_cast<HepMC::Units::LengthUnit>(persEvt.m_lengthUnit);
 
     //restore weight names from the dedicated svc (which was keeping them in metadata for efficiency)
-    genEvt->m_weights.m_names = m_hepMCWeightSvc->weightNames();
+    genEvt->m_weights.m_names = m_hepMCWeightSvc->weightNames(ctx);
 
     // cross-section restore
     if( genEvt->m_cross_section )
@@ -347,6 +352,8 @@ void McEventCollectionCnv_p6::transToPers( const McEventCollection* transObj,
                                            McEventCollection_p6* persObj,
                                            MsgStream& msg )
 {
+  const EventContext& ctx = Gaudi::Hive::currentContext();
+
   msg << MSG::DEBUG << "Creating persistent state of McEventCollection..."
       << endmsg;
   persObj->m_genEvents.reserve( transObj->size() );
@@ -366,11 +373,11 @@ void McEventCollectionCnv_p6::transToPers( const McEventCollection* transObj,
    //save the weight names to metadata via the HepMCWeightSvc
       if (genEvt->run_info()) {
         if (!genEvt->run_info()->weight_names().empty()) {
-          m_hepMCWeightSvc->setWeightNames(  names_to_name_index_map(genEvt->weight_names()) ).ignore();
+          m_hepMCWeightSvc->setWeightNames(  names_to_name_index_map(genEvt->weight_names()), ctx ).ignore();
         } else {
           //AV : This to be decided if one would like to have default names.
           //std::vector<std::string> names{"0"};
-          //m_hepMCWeightSvc->setWeightNames( names_to_name_index_map(names) );
+          //m_hepMCWeightSvc->setWeightNames( names_to_name_index_map(names), ctx );
         }
       }
 
@@ -379,6 +386,7 @@ void McEventCollectionCnv_p6::transToPers( const McEventCollection* transObj,
       auto A_event_scale=genEvt->attribute<HepMC3::DoubleAttribute>("event_scale");
       auto A_alphaQCD=genEvt->attribute<HepMC3::DoubleAttribute>("alphaQCD");
       auto A_alphaQED=genEvt->attribute<HepMC3::DoubleAttribute>("alphaQED");
+      auto A_filterWeight=genEvt->attribute<HepMC3::DoubleAttribute>("filterWeight");
       auto signal_process_vertex = HepMC::signal_process_vertex(genEvt);
       auto A_random_states=genEvt->attribute<HepMC3::VectorLongIntAttribute>("random_states");
       auto beams=genEvt->beams();
@@ -389,6 +397,7 @@ void McEventCollectionCnv_p6::transToPers( const McEventCollection* transObj,
                               A_event_scale?(A_event_scale->value()):0.0,
                               A_alphaQCD?(A_alphaQCD->value()):0.0,
                               A_alphaQED?(A_alphaQED->value()):0.0,
+                              A_filterWeight?(A_filterWeight->value()):1.0,
                               signal_process_vertex?HepMC::barcode(signal_process_vertex):0,
                               beams.size()>0?HepMC::barcode(beams[0]):0,
                               beams.size()>1?HepMC::barcode(beams[1]):0,
@@ -506,7 +515,7 @@ void McEventCollectionCnv_p6::transToPers( const McEventCollection* transObj,
       : 0;
 
    //save the weight names to metadata via the HepMCWeightSvc
-   m_hepMCWeightSvc->setWeightNames( genEvt->m_weights.m_names ).ignore();
+   m_hepMCWeightSvc->setWeightNames( genEvt->m_weights.m_names, ctx ).ignore();
 
 
     persObj->m_genEvents.
@@ -770,9 +779,12 @@ void McEventCollectionCnv_p6::writeGenVertex( HepMC::ConstGenVertexPtr vtx,
                                               McEventCollection_p6& persEvt ) const
 {
   const HepMC::FourVector& position = vtx->position();
-  auto A_weights=vtx->attribute<HepMC3::VectorDoubleAttribute>("weights");
+  auto A_weights=vtx->attribute<HepMC3::VectorFloatAttribute>("weights");
   auto A_barcode=vtx->attribute<HepMC3::IntAttribute>("barcode");
-  std::vector<double> weights=A_weights?(A_weights->value()):std::vector<double>();
+  std::vector<float> weights;
+  if (A_weights) {
+    weights = A_weights->value();
+  }
   persEvt.m_genVertices.push_back(
                                   GenVertex_p6( position.x(),
                                                 position.y(),

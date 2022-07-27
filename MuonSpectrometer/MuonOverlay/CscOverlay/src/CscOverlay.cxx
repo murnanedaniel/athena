@@ -2,7 +2,7 @@
   Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
 */
 
-#include "CscOverlay/CscOverlay.h"
+#include "CscOverlay.h"
 
 #include "StoreGate/ReadHandle.h"
 #include "StoreGate/WriteHandle.h"
@@ -327,7 +327,7 @@ void CscOverlay::mergeCollections(const CscRawDataCollection *bkgCollection,
        uint32_t hash      = std::min( sigHash, ovlHash );
        uint32_t address   = std::min( sigAddress, ovlAddress );
        if (sigSamples.size()!=0 && ovlSamples.size()!=0 && needtoflip(address)){
-         ATH_MSG_DEBUG("Looking for overlap of hashes and addresses within witdths because needtoflip");
+         ATH_MSG_DEBUG("Looking for overlap of hashes and addresses within widths because needtoflip");
          msg() << MSG::VERBOSE ;
          std::set<int> sig;  int lastindex=-1;
          for (std::map< int,std::vector<uint16_t> >::const_iterator si=sigSamples.begin(); si!=sigSamples.end(); ++si) {
@@ -408,7 +408,7 @@ void CscOverlay::mergeCollections(const CscRawDataCollection *bkgCollection,
           else{     continue;     }
 
           //keep count
-          clusterCounts[spuID] += 1;
+          if (spuID <10) clusterCounts[spuID] += 1;
           if ( spuID <= 4 ) rpuCount[0] = 5;
           else if ( spuID > 4 && spuID <= 9 ) rpuCount[1] = 11;
        }//loop over datum

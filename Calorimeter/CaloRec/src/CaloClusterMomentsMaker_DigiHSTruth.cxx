@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 //-----------------------------------------------------------------------
 // File and Version Information:
@@ -15,12 +15,10 @@
 //-----------------------------------------------------------------------
 
 #include "CaloClusterMomentsMaker_DigiHSTruth.h"
-#include "CaloEvent/CaloCell.h"
 #include "CaloEvent/CaloClusterContainer.h"
 #include "CaloEvent/CaloCluster.h"
 #include "CaloGeoHelpers/proxim.h"
 #include "CaloEvent/CaloPrefetch.h"
-#include "CaloInterface/ILArHVFraction.h"
 #include "CaloGeoHelpers/CaloPhiRange.h"
 #include "CaloIdentifier/CaloCell_ID.h"
 #include "AthAllocators/ArenaPoolSTLAllocator.h"
@@ -53,7 +51,7 @@ struct MomentName
 
 
 // Must be sorted by name.
-MomentName moment_names[] = {
+const MomentName moment_names[] = {
   { "ENERGY_DigiHSTruth",            xAOD::CaloCluster::ENERGY_DigiHSTruth },
   { "ETA_DigiHSTruth",               xAOD::CaloCluster::ETA_DigiHSTruth },
   { "PHI_DigiHSTruth",               xAOD::CaloCluster::PHI_DigiHSTruth },
@@ -92,7 +90,7 @@ MomentName moment_names[] = {
   { "SIGNIFICANCE_DigiHSTruth",      xAOD::CaloCluster::SIGNIFICANCE_DigiHSTruth },
 };
 
-MomentName* moment_names_end =
+const MomentName* const moment_names_end =
   moment_names + sizeof(moment_names)/sizeof(moment_names[0]);
 
 #if 0
@@ -282,9 +280,7 @@ CaloClusterMomentsMaker_DigiHSTruth::execute(const EventContext& ctx,
 
   ATH_MSG_DEBUG("Executing " << name());
 
-  const CaloCellContainer *signalCells = nullptr;
-  StatusCode sc = evtStore()->retrieve(signalCells,"AllCalo_DigiHSTruth");
-  if (sc.isFailure()) ATH_MSG_WARNING( "Could not retrieve AllCalo_DigiHSTruth container ");
+  SG::ReadHandle<CaloCellContainer> signalCells(m_signalCellKey,ctx);
 
   // Maps cell IdentifierHash to cluster index in cluster collection.
   // Only used when cluster isolation moment is calculated.

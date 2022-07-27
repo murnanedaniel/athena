@@ -1,7 +1,7 @@
 // -*- C++ -*-
 
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef SCT_CONDITIONSALGORITHMS_SCT_DETECTORELEMENTCONDALG_H
@@ -15,8 +15,6 @@
 #include "StoreGate/ReadCondHandleKey.h"
 #include "StoreGate/WriteCondHandleKey.h"
 #include "StoreGate/CondHandleKeyArray.h"
-
-#include "GaudiKernel/ICondSvc.h"
 
 //dependencies to limit lifetime of SiDetElColl for TrackingGeometry
 #include "MuonReadoutGeometry/MuonDetectorManager.h"
@@ -32,11 +30,10 @@ class SCT_DetectorElementCondAlg : public AthReentrantAlgorithm
   SCT_DetectorElementCondAlg(const std::string& name, ISvcLocator* pSvcLocator);
   virtual ~SCT_DetectorElementCondAlg() override = default;
 
-  virtual StatusCode initialize() override;
-  virtual StatusCode execute(const EventContext& ctx) const override;
-  virtual StatusCode finalize() override;
-  /** Make this algorithm clonable. */
-  virtual bool isClonable() const override { return true; };
+  virtual StatusCode initialize() override final;
+  virtual StatusCode execute(const EventContext& ctx) const override final;
+  virtual StatusCode finalize() override final;
+  virtual bool isReEntrant() const override final { return false; }
 
  private:
   SG::ReadCondHandleKey<GeoAlignmentStore> m_readKey;
@@ -51,7 +48,6 @@ class SCT_DetectorElementCondAlg : public AthReentrantAlgorithm
   SG::ReadCondHandleKey<GeoAlignmentStore> m_pixelReadKey
     {this, "PixelAlignmentStore", "", "PixelAlignmentStore ReadKey for IOV Range intersection"};
 
-  ServiceHandle<ICondSvc> m_condSvc{this, "CondSvc", "CondSvc"};
   std::string m_detManagerName;
   const InDetDD::SCT_DetectorManager* m_detManager{nullptr};
 };

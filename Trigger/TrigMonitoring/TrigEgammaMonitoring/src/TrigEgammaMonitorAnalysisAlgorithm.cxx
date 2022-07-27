@@ -79,7 +79,7 @@ void TrigEgammaMonitorAnalysisAlgorithm::fillEfficiencies( const std::vector< st
         auto acceptData = m_emulatorTool->emulate( pairObj.second, info.trigger , valid);
         // skip this probe since the emulation is not possible. Avoid diff denominators between emulation and efficiecy
         if(!valid) {
-            ATH_MSG_WARNING("Emulation fail. Skip this probe...");
+            ATH_MSG_DEBUG("Emulation fail. Skip this probe...");
             continue;
         } 
         emu_accept_vec.push_back( acceptData );
@@ -427,8 +427,8 @@ void TrigEgammaMonitorAnalysisAlgorithm::fillDistributions( const std::vector< s
       }
       // HLT Electron
       {
-          std::string key = match()->key("Electrons");
-          if(info.gsf) key = match()->key("Electrons_GSF");
+          std::string key = match()->key("Electrons_GSF");
+          if(info.nogsf) key = match()->key("Electrons");
           if(info.lrt) key = match()->key("Electrons_LRT");
          
           std::vector<const xAOD::Electron*> el_vec;
@@ -963,8 +963,8 @@ void TrigEgammaMonitorAnalysisAlgorithm::fillHLTElectronResolution(const std::st
     // Check for zero before filling
     ATH_MSG_DEBUG("Fill Resolution");
 
-    std::string key = match()->key("Electrons");
-    if(info.gsf) key = match()->key("Electrons_GSF");
+    std::string key = match()->key("Electrons_GSF");
+    if(info.nogsf) key = match()->key("Electrons");
     if(info.lrt) key = match()->key("Electrons_LRT");
 
     for ( const auto & pairObj : pairObjs ){

@@ -1,5 +1,5 @@
 #
-#  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+#  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #
 
 '''@file AthMonitorCfgHelper.py
@@ -33,10 +33,11 @@ class AthMonitorCfgHelper(object):
         self.monSeq.StopOverride=True
         self.resobj = ComponentAccumulator()
         self.resobj.addSequence(self.monSeq)
-        from .TriggerInterface import TrigDecisionToolCfg
-        self.resobj.merge(TrigDecisionToolCfg(inputFlags))
+        if self.inputFlags.DQ.useTrigger:
+            from .TriggerInterface import TrigDecisionToolCfg
+            self.resobj.merge(TrigDecisionToolCfg(inputFlags))
 
-    def addAlgorithm(self, algClassOrObj, name = None, *args, **kwargs):
+    def addAlgorithm(self, algClassOrObj, name = None, addFilterTools = [], *args, **kwargs):
         '''
         Instantiate/add a monitoring algorithm
 
@@ -53,6 +54,7 @@ class AthMonitorCfgHelper(object):
         Returns:
         algObj -- an algorithm Configurable object
         '''
+        from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
         from inspect import isclass
         if isclass(algClassOrObj):
             if name is None:
@@ -66,7 +68,7 @@ class AthMonitorCfgHelper(object):
         algObj.DataType = self.inputFlags.DQ.DataType
         if self.inputFlags.DQ.useTrigger:
             algObj.TrigDecisionTool = self.resobj.getPublicTool("TrigDecisionTool")
-        algObj.TriggerTranslatorTool = self.resobj.popToolsAndMerge(getTriggerTranslatorToolSimple(self.inputFlags))
+            algObj.TriggerTranslatorTool = self.resobj.popToolsAndMerge(getTriggerTranslatorToolSimple(self.inputFlags))
 
         if self.inputFlags.DQ.enableLumiAccess:
             algObj.EnableLumi = True
@@ -79,6 +81,19 @@ class AthMonitorCfgHelper(object):
                 self.resobj.merge (TrigLiveFractionCondAlgCfg (self.inputFlags))
         else:
             algObj.EnableLumi = False
+
+        # add some optional filters?
+        for obj in addFilterTools:
+            # accept either ComponentAccumulators or tools (trusting that user has already merged CA)
+            if isinstance(obj, ComponentAccumulator):
+                filter = self.resobj.popToolsAndMerge(obj)
+            elif hasattr(obj, 'getGaudiType') and obj.getGaudiType() == 'AlgTool':
+                filter = obj
+            else:
+                raise ValueError(f'Object {obj} passed to addFilterTools is not a ComponentAccumulator or an AlgTool')
+            algObj.FilterTools += [filter]
+
+
         self.resobj.addEventAlgo(algObj, sequenceName=self.monSeq.name)
         return algObj
 
@@ -173,7 +188,7 @@ class AthMonitorCfgHelperOld(object):
         self.monName = monName
         self.monSeq = AthSequencer('AthMonSeq_' + monName)
 
-    def addAlgorithm(self, algClassOrObj, name = None, *args, **kwargs):
+    def addAlgorithm(self, algClassOrObj, name = None, addFilterTools = [], *args, **kwargs):
         '''
         Instantiate/add a monitoring algorithm
 
@@ -217,6 +232,10 @@ class AthMonitorCfgHelperOld(object):
             algObj.EnableLumi = True
         else:
             algObj.EnableLumi = False
+
+        # add some optional filters
+        for obj in addFilterTools:
+            algObj.FilterTools += [obj]
 
         self.monSeq+=algObj
         return algObj
@@ -329,7 +348,7 @@ def getTriggerTranslatorToolSimple(inputFlags):
     from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
     from AthenaConfiguration.ComponentFactory import CompFactory
     from TrigHLTMonitoring.HLTMonTriggerList import HLTMonTriggerList
-    import collections
+    import collections.abc
 
     TriggerTranslatorToolSimple=CompFactory.TriggerTranslatorToolSimple
     
@@ -337,7 +356,7 @@ def getTriggerTranslatorToolSimple(inputFlags):
     tdt_local_hltconfig = HLTMonTriggerList()
     tdt_mapping = {}
     for tdt_menu, tdt_menu_item in tdt_local_hltconfig.__dict__.items():
-        if not isinstance(tdt_menu_item, collections.Iterable):
+        if not isinstance(tdt_menu_item, collections.abc.Iterable):
             continue
         # work around possibly buggy category items
         if isinstance(tdt_menu_item, str):

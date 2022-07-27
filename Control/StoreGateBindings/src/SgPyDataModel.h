@@ -1,7 +1,7 @@
 // -*- C++ -*-
 
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef STOREGATEBINDINGS_SGPYDATAMODEL_H
@@ -21,11 +21,11 @@
 #include "AthenaKernel/DataBucketBase.h"
 #include "AthenaKernel/BaseInfo.h"
 
-extern CLID PyCLID;
+extern const CLID PyCLID;
 
 // ROOT includes
 #include "TClass.h"
-#include "RootUtils/TClassEditRootUtils.h"
+#include "TClassEdit.h"
 #include "TClassRef.h"
 #include "TROOT.h"
 #include "TMethod.h"
@@ -36,6 +36,10 @@ extern CLID PyCLID;
 #include "CPyCppyy/PyException.h"
 
 #include <unordered_map>
+
+// Called from python, so only excuted single-threaded (GIL).
+#include "CxxUtils/checker_macros.h"
+ATLAS_NO_CHECK_FILE_THREAD_SAFETY;
 
 // fwd declares
 namespace SG { struct PyProxyMgr; }
@@ -172,13 +176,6 @@ namespace SG {
     /// pointer to the @c SG::BaseInfoBase structure holding the converter
     /// functions for objects held by StoreGate
     const SG::BaseInfoBase* m_bib;
-
-    /// Pointer to the @ IClassIDSvc to be able to cast objects based on
-    /// the @a clid.
-    static IClassIDSvc* s_clidSvc;
-
-    /// Access (and initialize) the pointer to the @c IClassIDSvc
-    static IClassIDSvc* clidSvc();
   };
 
   /**
@@ -277,8 +274,15 @@ namespace SG {
       // FIXME: get rid of this massaging when/if ROOT finally
       // standardize on keeping the std:: namespace...
       std::string tpstr = RootUtils::PyGetString(tp).first;
-      std::string tn = TClassEdit::ShortType(tpstr.c_str(),
-                                             TClassEdit::kDropAllDefault);
+      std::string tn;
+      {
+        // Protect against data race inside TClassEdit.
+        // https://github.com/root-project/root/issues/10353
+        // Should be fixed in root 6.26.02.
+        R__WRITE_LOCKGUARD(ROOT::gCoreMutex);
+        tn = TClassEdit::ShortType(tpstr.c_str(),
+                                   TClassEdit::kDropAllDefault);
+      }
       m_clidSvc->getIDOfTypeName(tn, id).ignore();
       if ( id == CLID_NULL ) {
         // try an alias...
@@ -302,8 +306,15 @@ namespace SG {
       // FIXME: get rid of this massaging when/if ROOT finally
       // standardize on keeping the std:: namespace...
       std::string tpstr = RootUtils::PyGetString(tp).first;
-      std::string tn = TClassEdit::ShortType(tpstr.c_str(),
-                                             TClassEdit::kDropAllDefault);
+      std::string tn;
+      {
+        // Protect against data race inside TClassEdit.
+        // https://github.com/root-project/root/issues/10353
+        // Should be fixed in root 6.26.02.
+        R__WRITE_LOCKGUARD(ROOT::gCoreMutex);
+        tn = TClassEdit::ShortType(tpstr.c_str(),
+                                   TClassEdit::kDropAllDefault);
+      }
       m_clidSvc->getIDOfTypeInfoName(tn, id).ignore();
       if ( id == CLID_NULL ) {
         // try an alias...

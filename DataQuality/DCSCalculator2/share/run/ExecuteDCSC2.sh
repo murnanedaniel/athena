@@ -1,6 +1,7 @@
 #! /usr/bin/env bash
 
-DCSC2_SYSTEMS="-sMDT -sTile -sTGC -sRPC -sTDQ -sCSC -sMagnets -sGlobal -sTRT -sSCT -sLAr -sLucid -sTrigger"
+
+DCSC2_SYSTEMS="-sMDT -sTile -sTGC -sRPC -sTDQ -sMagnets -sGlobal -sTRT -sSCT -sLAr -sLucid -sTrigger -sAFP"
 #DCSC2_SYSTEMS="-sMDT -sTile -sTGC -sRPC -sTDQ -sCSC -sMagnets -sGlobal -sPixels -sTRT -sLAr -sLucid" #outdated
 #DEST_DB=COOLOFL_GLOBAL/COMP200 #outdated
 DEST_DB=COOLOFL_GLOBAL/CONDBR2
@@ -17,12 +18,8 @@ echo "Running for $RUN"
 
 export AtlasSetup=/afs/cern.ch/atlas/software/dist/AtlasSetup
 pushd /afs/cern.ch/user/a/atlasdqm/ws/DCSCalc/prodarea > /dev/null
-#source $AtlasSetup/scripts/asetup.sh 17.2.8.6,slc5
-#source $AtlasSetup/scripts/asetup.sh 20.7.8.1,here
-#source $AtlasSetup/scripts/asetup.sh 21.0.20.1,here
-#source $AtlasSetup/scripts/asetup.sh 21.0.69,Athena
-source $AtlasSetup/scripts/asetup.sh 22.0.45,Athena
-source /afs/cern.ch/user/a/atlasdqm/DQCalculators/DCSCalc/prodarea/build/x86_64-centos7-gcc8-opt/setup.sh
+source $AtlasSetup/scripts/asetup.sh 22.0.72,Athena
+source /afs/cern.ch/user/a/atlasdqm/DQCalculators/DCSCalc/prodarea/build/x86_64-centos7-gcc11-opt/setup.sh
 
 CORAL_AUTH_PATH=/afs/cern.ch/user/a/atlasdqm/private
 CORAL_DBLOOKUP_PATH=/afs/cern.ch/user/a/atlasdqm/private

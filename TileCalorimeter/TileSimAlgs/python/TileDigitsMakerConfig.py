@@ -15,15 +15,15 @@ def TileDigitsMakerCfg(flags, **kwargs):
         name -- name of TileDigitsMaker algorithm. Defaults to TileDigitsMaker.
         UseCoolPulseShapes -- flag to use pulse shape from database. Defaults to True.
         RndmEvtOverlay -- flag to add PileUp or noise by overlaying random events.
-                          True if Common.ProductionStep equals to ProductionStep.Overlay.
+                          True if flag.Common.isOverlay equals to True.
         MaskBadChannels -- flag to mask channels tagged bad. Defaults to False.
     """
 
     kwargs.setdefault('name', 'TileDigitsMaker')
     kwargs.setdefault('UseCoolPulseShapes', True)
     kwargs.setdefault('MaskBadChannels', False)
-    kwargs.setdefault('RndmEvtOverlay', flags.Common.ProductionStep == ProductionStep.Overlay)
-    kwargs.setdefault('OnlyUseContainerName', flags.Common.ProductionStep != ProductionStep.Overlay)
+    kwargs.setdefault('RndmEvtOverlay', flags.Common.isOverlay)
+    kwargs.setdefault('OnlyUseContainerName', not flags.Common.isOverlay)
 
     acc = TileHitVecToCntCfg(flags)
 
@@ -53,6 +53,9 @@ def TileDigitsMakerCfg(flags, **kwargs):
     from TileConditions.TileEMScaleConfig import TileEMScaleCondAlgCfg
     acc.merge( TileEMScaleCondAlgCfg(flags) )
 
+    from TileConditions.TileSamplingFractionConfig import TileSamplingFractionCondAlgCfg
+    acc.merge( TileSamplingFractionCondAlgCfg(flags) )
+
     if kwargs['RndmEvtOverlay']:
         tileNoise = False
         tileCoherNoise = False
@@ -60,15 +63,18 @@ def TileDigitsMakerCfg(flags, **kwargs):
         if flags.Overlay.DataOverlay:
             from ByteStreamCnvSvc.ByteStreamConfig import ByteStreamReadCfg
             acc.merge(ByteStreamReadCfg(flags, type_names=[
-                'TileDigitsContainer/' + flags.Overlay.BkgPrefix + 'TileDigitsCnt',
-                'TileRawChannelContainer/' + flags.Overlay.BkgPrefix + 'TileRawChannelCnt']
+                f'TileDigitsContainer/{flags.Overlay.BkgPrefix}TileDigitsCnt',
+                f'TileRawChannelContainer/{flags.Overlay.BkgPrefix}TileRawChannelCnt']
             ))
 
         from TileRecUtils.TileDQstatusConfig import TileDQstatusAlgCfg
         acc.merge(TileDQstatusAlgCfg(flags))
 
-        kwargs['InputTileDigitContainer'] = flags.Overlay.BkgPrefix + 'TileDigitsCnt'
+        kwargs['InputTileDigitContainer'] = f'{flags.Overlay.BkgPrefix}TileDigitsCnt'
         kwargs['TileDQstatus'] = 'TileDQstatus'
+
+        from SGComps.SGInputLoaderConfig import SGInputLoaderCfg
+        acc.merge(SGInputLoaderCfg(flags, [f'TileDigitsContainer#{kwargs["InputTileDigitContainer"]}']))
 
     if tileNoise or tileCoherNoise or kwargs['RndmEvtOverlay']:
         if 'RndmSvc' not in kwargs:
@@ -155,8 +161,6 @@ def TileDigitsMakerOutputCfg(flags, **kwargs):
 
 if __name__ == "__main__":
 
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior = 1
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
     from AthenaConfiguration.TestDefaults import defaultTestFiles
     from AthenaCommon.Logging import log
@@ -170,6 +174,7 @@ if __name__ == "__main__":
     ConfigFlags.Output.RDOFileName = 'myRDO.pool.root'
     ConfigFlags.IOVDb.GlobalTag = 'OFLCOND-MC16-SDR-16'
     ConfigFlags.Digitization.PileUp = False
+    ConfigFlags.Exec.MaxEvents = 3
 
     ConfigFlags.fillFromArgs()
 
@@ -194,7 +199,7 @@ if __name__ == "__main__":
     acc.printConfig(withDetails = True, summariseProps = True)
     acc.store( open('TileDigitsMaker.pkl','wb') )
 
-    sc = acc.run(maxEvents=3)
+    sc = acc.run()
     # Success should be 0
     import sys
     sys.exit(not sc.isSuccess())

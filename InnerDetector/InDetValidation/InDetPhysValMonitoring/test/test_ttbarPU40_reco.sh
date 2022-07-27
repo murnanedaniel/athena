@@ -1,12 +1,16 @@
 #!/bin/bash
 # art-description: Standard test for Run2 with ttbar input, PU=40
-# art-input: user.keli:user.keli.mc16_13TeV.410471.PhPy8EG_A14_ttbar_hdamp258p75_allhad.e6337_e5984_ridart
+# art-input: user.keli:user.keli.mc16_13TeV.410471.PhPy8EG_A14_ttbar_hdamp258p75_allhad.e6337_e5984_Rel22073
 # art-input-nfiles: 10
 # art-type: grid
 # art-include: master/Athena
+# art-include: 22.0/Athena
 # art-output: physval*.root
 # art-output: *.xml
 # art-output: dcube*
+
+#RDO is made at rel 22.0.73
+#reference plots are made at rel 22.0.73
 
 # Fix ordering of output in logfile
 exec 2>&1
@@ -30,6 +34,7 @@ run Reco_tf.py \
   --maxEvents       100 \
   --valid           True \
   --validationFlags doInDet \
+  --postExec 'condSeq.TileSamplingFractionCondAlg.G4Version = -1' \
   --preExec 'from InDetRecExample.InDetJobProperties import InDetFlags; \
   InDetFlags.doSlimming.set_Value_and_Lock(False); rec.doTrigger.set_Value_and_Lock(False); \
   from InDetPhysValMonitoring.InDetPhysValJobProperties import InDetPhysValFlags; \
@@ -54,13 +59,13 @@ if [ $rec_tf_exit_code -eq 0 ]  ;then
   run art.py download --user=artprod --dst="$lastref_dir" "$ArtPackage" "$ArtJobName"
   run ls -la "$lastref_dir"
 
-  echo "compare with R21"
+  echo "compare with Rel 22.0.73"
   $ATLAS_LOCAL_ROOT/dcube/current/DCubeClient/python/dcube.py \
     -p -x dcube \
     -c ${dcubeXml} \
     -r ${dcubeRef} \
     physval.ntuple.root
-  echo "art-result: $? plots"
+  echo "art-result: $? dcube"
   
   echo "compare with last build"
   $ATLAS_LOCAL_ROOT/dcube/current/DCubeClient/python/dcube.py \
@@ -68,6 +73,6 @@ if [ $rec_tf_exit_code -eq 0 ]  ;then
     -c ${dcubeXml} \
     -r ${lastref_dir}/physval.ntuple.root \
     physval.ntuple.root
-  echo "art-result: $? plots"
+  echo "art-result: $? dcube_last"
 fi
 

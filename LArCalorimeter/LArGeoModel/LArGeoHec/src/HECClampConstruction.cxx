@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2018 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 //  HECClampConstruction.cxx 1.0.0
@@ -94,7 +94,7 @@ GeoPhysVol* LArGeo::HECClampConstruction::GetClampingBar(bool rail,bool left)
   
 
   // Get access to the material manager:
-  const StoredMaterialManager* materialManager = nullptr;
+  StoredMaterialManager* materialManager = nullptr;
   if (StatusCode::SUCCESS != detStore->retrieve(materialManager, std::string("MATERIALS"))) {
     throw std::runtime_error("Error in HECModuleConstruction(ClampBar), cannot access Material Manager");
   }  
@@ -162,6 +162,7 @@ GeoPhysVol* LArGeo::HECClampConstruction::GetClampingBar(bool rail,bool left)
   double    clampThick  = shrinkCold *   50.*mm;
   double    notchLevel  = shrinkCold *   25.*mm;
   double    notchHeight = shrinkCold *   15.*mm;
+  // cppcheck-suppress duplicateAssignExpression
   double    notchWidth  = shrinkCold *   20.*mm;
   double    slotWidth   = shrinkCold *   20.*mm;
   double    clampLength = shrinkCold *  815.*mm;  
@@ -359,6 +360,7 @@ void LArGeo::HECClampConstruction::AddClamps(GeoFullPhysVol* physiHECWheel)
 
   std::string clampName = "LAr::HEC::Clamp";
   std::string larName   = "LAr::HEC::Clamp::LiquidArgon";
+  // cppcheck-suppress duplicateAssignExpression
   double    clampLength =  shrinkCold * 815.*mm;  
   double    railLength  =  shrinkCold * 815.*mm;  
   double    railOffset  =  shrinkCold * 0.*mm;  

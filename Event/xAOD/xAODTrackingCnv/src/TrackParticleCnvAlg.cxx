@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // $Id: TrackParticleCnvAlg.cxx 298303 2013-12-05 08:41:30Z emoyse $
@@ -14,55 +14,18 @@
 
 #include "EventPrimitives/EventPrimitivesHelpers.h"
 #include "EventPrimitives/EventPrimitivesToStringConverter.h"
-#include "TrkToolInterfaces/ITrackParticleCreatorTool.h"
-
 #include "AthenaMonitoringKernel/Monitored.h"
-#include "AthenaMonitoringKernel/GenericMonitoringTool.h"
+
 
 // Local include(s):
 #include "TrackParticleCnvAlg.h"
-#include "xAODTrackingCnv/IRecTrackParticleContainerCnvTool.h"
-#include "xAODTrackingCnv/ITrackCollectionCnvTool.h"
+
 
 
 namespace xAODMaker {
 TrackParticleCnvAlg::TrackParticleCnvAlg(const std::string& name,
                                          ISvcLocator* svcLoc)
-  : AthReentrantAlgorithm(name, svcLoc)
-  , m_particleCreator("Trk::TrackParticleCreatorTool/TrackParticleCreatorTool")
-  , m_TrackCollectionCnvTool(
-      "xAODMaker::TrackCollectionCnvTool/TrackCollectionCnvTool",
-      this)
-  , m_RecTrackParticleContainerCnvTool(
-      "xAODMaker::RecTrackParticleContainerCnvTool/"
-      "RecTrackParticleContainerCnvTool",
-      this)
-  , m_aod("TrackParticleCandidate")
-  , m_tracks("Tracks")
-  , m_xaodout("InDetTrackParticles")
-  , m_xaodTrackParticlesout("ConvertedTrackParticleCandidate")
-  , m_truthParticleLinkVec("xAODTruthLinks")
-  , m_aodTruth("")
-  , m_trackTruth("")
-{
-  declareProperty("AODContainerName", m_aod);
-  declareProperty("xAODContainerName", m_xaodTrackParticlesout);
-  declareProperty("TrackParticleCreator", m_particleCreator);
-  declareProperty("AddTruthLink", m_addTruthLink = false);
-  declareProperty("AODTruthContainerName", m_aodTruth);
-  declareProperty("TrackTruthContainerName", m_trackTruth);
-  declareProperty("xAODTruthLinkVector", m_truthParticleLinkVec);
-  declareProperty("TrackContainerName", m_tracks);
-  declareProperty("xAODTrackParticlesFromTracksContainerName", m_xaodout);
-  declareProperty("ConvertTrackParticles", m_convertAODTrackParticles = true);
-  declareProperty("ConvertTracks", m_convertTracks = false);
-  declareProperty("TrackCollectionCnvTool", m_TrackCollectionCnvTool);
-  declareProperty("RecTrackParticleContainerCnvTool",
-                  m_RecTrackParticleContainerCnvTool);
-  declareProperty("DoMonitoring", m_doMonitoring = false);
-  declareProperty("AugmentObservedTracks", m_augmentObservedTracks = false, "augment observed tracks");
-  declareProperty("TracksMapName", m_tracksMap, "name of observed tracks map saved in store");
-}
+  : AthReentrantAlgorithm(name, svcLoc) {}
 
 StatusCode
 TrackParticleCnvAlg::initialize()
@@ -96,7 +59,19 @@ TrackParticleCnvAlg::initialize()
   ATH_CHECK(
     m_aodTruth.initialize(m_addTruthLink && m_convertAODTrackParticles));
   ATH_CHECK(m_trackTruth.initialize(m_addTruthLink && m_convertTracks));
-
+  if (m_addTruthLink) {
+     const std::string container_key = m_convertTracks ? m_xaodout.key() : m_xaodTrackParticlesout.key();
+     m_xaodTruthOriginKey = container_key+".truthOrigin";
+     m_xaodTruthTypeKey =   container_key+".truthType";
+     m_xaodTruthLinkKey =  container_key+".truthParticleLink";
+     m_xaodTruthMatchProbKey = container_key+".truthMatchProbability";
+  }
+  const bool init_truthKey =  m_addTruthLink;
+  ATH_CHECK(m_xaodTruthOriginKey.initialize(init_truthKey && !m_truthClassifier.empty()));
+  ATH_CHECK(m_xaodTruthTypeKey.initialize(init_truthKey && !m_truthClassifier.empty()));
+  ATH_CHECK(m_xaodTruthLinkKey.initialize(init_truthKey));
+  ATH_CHECK(m_xaodTruthMatchProbKey.initialize(init_truthKey));
+  
   // Retrieve monitoring tools if provided
   ATH_CHECK(m_trackMonitoringTool.retrieve(DisableTool{ !m_doMonitoring }));
   ATH_CHECK(m_monTool.retrieve(DisableTool{ !m_doMonitoring }));
@@ -143,6 +118,7 @@ TrackParticleCnvAlg::execute(const EventContext& ctx) const
       tracks = rh_tracks.cptr();
       ATH_MSG_VERBOSE("Got TrackCollection with key " << m_tracks.key()
                                                       << " found.");
+                                                      
     }
   }
   if (m_addTruthLink) {

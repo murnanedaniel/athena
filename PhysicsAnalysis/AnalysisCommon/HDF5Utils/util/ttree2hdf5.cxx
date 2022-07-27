@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "copyRootTree.h"
@@ -28,6 +28,8 @@ int main(int argc, char* argv[]) {
 int run(int argc, char* argv[]) {
   using namespace H5Utils;
   AppOpts opts = getTreeCopyOpts(argc, argv);
+
+  if (opts.exit_code != 0) return opts.exit_code;
 
   // Read in the root tree. We pick whatever tree is on the top level
   // of the file. If there are two we throw an error.

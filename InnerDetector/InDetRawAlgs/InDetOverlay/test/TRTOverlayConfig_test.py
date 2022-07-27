@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 """Run tests on TRTOverlayConfig.py
 
-Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 """
 import sys
 
-from AthenaCommon.Configurable import Configurable
 from AthenaConfiguration.AllConfigFlags import ConfigFlags
 from AthenaConfiguration.MainServicesConfig import MainServicesCfg
 from AthenaPoolCnvSvc.PoolReadConfig import PoolReadCfg
@@ -15,15 +14,13 @@ from OverlayConfiguration.OverlayTestHelpers import \
 from OverlayCopyAlgs.OverlayCopyAlgsConfig import CopyMcEventCollectionCfg
 from xAODEventInfoCnv.xAODEventInfoCnvConfig import EventInfoOverlayCfg
 
-# Configure
-Configurable.configurableRun3Behavior = True
-
 # Argument parsing
 parser = CommonTestArgumentParser("TRTOverlayConfig_test.py")
 args = parser.parse_args()
 
 # Configure
 defaultTestFlags(ConfigFlags, args)
+ConfigFlags.Output.RDOFileName = 'mcOverlayRDO_TRT.pool.root'
 postprocessAndLockFlags(ConfigFlags, args)
 
 # Construct our accumulator to run

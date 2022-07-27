@@ -20,7 +20,7 @@ void PixelClusterOnTrackCnv_p2::persToTrans( const InDet::PixelClusterOnTrack_p2
     }
 
     ElementLinkToIDCPixelClusterContainer rio;
-    m_elCnv.persToTrans(&persObj->m_prdLink,&rio,log);  
+    m_elCnv.persToTrans(&persObj->m_prdLink,&rio,log);
 
     Trk::LocalParameters localParams;
     fillTransFromPStore( &m_localParCnv, persObj->m_localParams, &localParams, log );
@@ -65,10 +65,19 @@ void PixelClusterOnTrackCnv_p2::transToPers( const InDet::PixelClusterOnTrack *t
   persObj->m_isFake              = transObj->isFake();
   persObj->m_energyLoss          = transObj->energyLoss();
 
-  static const SG::InitializedReadHandleKey<InDet::PixelClusterContainer> pixelClusContName ("PixelClusters");
+  static const SG::InitializedReadHandleKey<InDet::PixelClusterContainer> pixelClusContName("PixelClusters");
   ElementLink<InDet::PixelClusterContainer>::index_type hashAndIndex{0};
   bool isFound{m_eventCnvTool->getHashAndIndex<InDet::PixelClusterContainer, InDet::PixelClusterOnTrack>(transObj, pixelClusContName, hashAndIndex)};
-  persObj->m_prdLink.m_contName = (isFound ? pixelClusContName.key() : "");
+  //in the case of track overlay, the final output container has a different name which we use instead
+  if(m_eventCnvTool->doTrackOverlay()){
+    persObj->m_prdLink.m_contName = (isFound ? "Bkg_PixelClusters" : "");
+    if(!isFound){ //in this case the input collection is called Bkg_PixelClusters as well
+      static const SG::InitializedReadHandleKey<InDet::PixelClusterContainer> pixelClusContName("Bkg_PixelClusters");
+      isFound=m_eventCnvTool->getHashAndIndex<InDet::PixelClusterContainer, InDet::PixelClusterOnTrack>(transObj, pixelClusContName, hashAndIndex);
+      persObj->m_prdLink.m_contName = (isFound ? "Bkg_PixelClusters" : "");
+    }
+  }
+  else persObj->m_prdLink.m_contName = (isFound ? pixelClusContName.key() : "");
   persObj->m_prdLink.m_elementIndex = hashAndIndex;
 }
 

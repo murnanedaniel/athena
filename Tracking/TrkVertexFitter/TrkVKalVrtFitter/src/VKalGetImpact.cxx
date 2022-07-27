@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // Header include
@@ -12,9 +12,9 @@
 
 namespace Trk {
  extern   
-  void cfimp(long int TrkID, long int  ICH, int IFL, double* PAR, double* ERR,
+  void cfimp(long int TrkID, long int  ICH, int IFL, double* PAR, const double* ERR,
               double* VRT, double* VCOV,
-	      double* RIMP, double* RCOV, double*  SIGN, const VKalVrtControlBase * FitCONTROL );
+	      double* RIMP, double* RCOV, double*  SIGN, VKalVrtControlBase * FitCONTROL );
 
 }
 //
@@ -99,6 +99,11 @@ namespace Trk{
     int ntrk=0; 
     StatusCode sc = CvtTrackParticle(InpTrkList,ntrk,state);
     if(sc.isFailure() ||  ntrk != 1   )  {       //Something is wrong in conversion
+        Impact.assign(5,1.e10);
+        ImpactError.assign(3,1.e20);
+        return 1.e10;
+    }
+    if(std::abs(Vertex.z())>m_IDsizeZ || Vertex.perp()>m_IDsizeR){  // Crazy user request
         Impact.assign(5,1.e10);
         ImpactError.assign(3,1.e20);
         return 1.e10;

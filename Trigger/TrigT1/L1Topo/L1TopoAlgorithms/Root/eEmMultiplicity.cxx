@@ -20,7 +20,6 @@
 
 #include "L1TopoEvent/TOBArray.h"
 #include "L1TopoEvent/eEmTOBArray.h"
-#include "L1TopoEvent/GenericTOB.h"
 
 REGISTER_ALG_TCS(eEmMultiplicity)
 
@@ -44,13 +43,11 @@ TCS::eEmMultiplicity::initialize() {
   m_threshold = getThreshold();
 
   // book histograms
-  bool isMult = true;
+  std::string hname_accept = "eEmMultiplicity_accept_EtaPt_"+m_threshold->name();
+  bookHistMult(m_histAccept, hname_accept, "Mult_"+m_threshold->name(), "#eta#times40", "E_{t} [GeV]", 200, -200, 200, 100, 0, 100);
 
-  std::string hname_accept = "heEmMultiplicity_accept_EtaPt_"+m_threshold->name();
-  bookHist(m_histAccept, hname_accept, "ETA vs PT", 150, -100, 100, 30, 0., 20., isMult);
-
-  hname_accept = "heEmMultiplicity_accept_counts_"+m_threshold->name();
-  bookHist(m_histAccept, hname_accept, "COUNTS", 15, 0., 10., isMult);
+  hname_accept = "eEmMultiplicity_accept_counts_"+m_threshold->name();
+  bookHistMult(m_histAccept, hname_accept, "Mult_"+m_threshold->name(), "counts", 15, 0, 15);
 
   return StatusCode::SUCCESS;
      
@@ -71,7 +68,7 @@ TCS::eEmMultiplicity::process( const TCS::InputTOBArray & input,
 {
 
   // Grab the threshold and cast it into the right type
-  auto eEMThr = dynamic_cast<const TrigConf::L1Threshold_eEM &>(*m_threshold);
+  const auto& eEMThr = dynamic_cast<const TrigConf::L1Threshold_eEM &>(*m_threshold);
 
   // Grab inputs
   const eEmTOBArray & eems = dynamic_cast<const eEmTOBArray&>(input);
@@ -83,18 +80,21 @@ TCS::eEmMultiplicity::process( const TCS::InputTOBArray & input,
       eem != eems.end();
       ++eem ) {
     
-    const GenericTOB gtob(**eem);
+    // Menu threshold uses 0.1 eta granularity but eFex objects have 0.025 eta granularity
+    // eFex eta is calculated as 4*eta_tower (0.1 gran.) + seed (0.025 gran.), eta from -25 to 24
+    int eta_thr;
+    if ( (*eem)->eta()%4 >= 0 ) { eta_thr = (*eem)->eta() - (*eem)->eta()%4; }
+    else                        { eta_thr = (*eem)->eta() - (*eem)->eta()%4 - 4; }
 
-    // Dividing by 4 standing for converting eta from 0.025 to 0.1 granularity as it is defined in the menu as 0.1 gran.
-    bool passed = gtob.Et() >= eEMThr.thrValue100MeV(gtob.eta()/4);
+    bool passed = (*eem)->Et() > eEMThr.thrValue100MeV(eta_thr/4); // Convert eta_thr to units of 0.1 to pass as an argument
 
-    if ( !isocut(TrigConf::Selection::wpToString(eEMThr.reta()), gtob.Reta()) ) {continue;}
-    if ( !isocut(TrigConf::Selection::wpToString(eEMThr.rhad()), gtob.Rhad()) ) {continue;}
-    if ( !isocut(TrigConf::Selection::wpToString(eEMThr.wstot()), gtob.Wstot()) ) {continue;}
+    if ( !isocut(TrigConf::Selection::wpToString(eEMThr.reta()), (*eem)->Reta()) ) {continue;}
+    if ( !isocut(TrigConf::Selection::wpToString(eEMThr.rhad()), (*eem)->Rhad()) ) {continue;}
+    if ( !isocut(TrigConf::Selection::wpToString(eEMThr.wstot()), (*eem)->Wstot()) ) {continue;}
 
     if (passed) {
       counting++; 
-      fillHist2D( m_histAccept[0], gtob.eta(), gtob.EtDouble() );
+      fillHist2D( m_histAccept[0], (*eem)->eta(), (*eem)->EtDouble() );
     }
 
   }

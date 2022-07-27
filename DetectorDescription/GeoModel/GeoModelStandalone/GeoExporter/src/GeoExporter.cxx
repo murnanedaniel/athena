@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 
@@ -36,6 +36,7 @@
 #include <QtCore/QUrl>
 #include <QtNetwork/QSslSocket>
 #include <QProcessEnvironment>
+#include <QDebug>
 
 #include <cassert>
 #include <iostream>
@@ -50,10 +51,10 @@ public:
   Imp() {};
 
   //We hold the arguments here until init is called:
-  StoreGateSvc* sg;
-  StoreGateSvc* detstore;
-  ISvcLocator* svclocator;
-  IToolSvc*toolSvc;
+  StoreGateSvc* sg = nullptr;
+  StoreGateSvc* detstore = nullptr;
+  ISvcLocator* svclocator = nullptr;
+  IToolSvc*toolSvc = nullptr;
 };
 
 
@@ -103,8 +104,8 @@ void GeoExporter::init()
   VP1Msg::message("===================================================");
   VP1Msg::message("");
 
-  static int argc=1;
-  static char *argv[2];
+  int argc=1;
+  char *argv[2];
 
   QCoreApplication app(argc, argv);
   QCoreApplication::setOrganizationName("ATLAS");

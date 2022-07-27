@@ -33,9 +33,7 @@ namespace Muon {
         ATH_CHECK(m_printer.retrieve());
         ATH_CHECK(m_idHelperSvc.retrieve());
         if (!m_atlasExtrapolator.empty()) ATH_CHECK(m_atlasExtrapolator.retrieve());
-        if (!m_muonExtrapolator.empty()) ATH_CHECK(m_muonExtrapolator.retrieve());
-        if (!m_muonExtrapolator2.empty()) ATH_CHECK(m_muonExtrapolator2.retrieve());
-        
+        if (!m_muonExtrapolator.empty()) ATH_CHECK(m_muonExtrapolator.retrieve());        
         if (!m_trackingGeometryReadKey.empty()) {
             ATH_CHECK(m_trackingGeometryReadKey.initialize());
         } else {
@@ -48,7 +46,8 @@ namespace Muon {
         return StatusCode::SUCCESS;
     }
 
-    const Trk::TrackParameters *MuonTrackExtrapolationTool::extrapolateToMuonEntryRecord(const EventContext& ctx, const Trk::TrackParameters &pars,
+    std::unique_ptr<Trk::TrackParameters> MuonTrackExtrapolationTool::extrapolateToMuonEntryRecord(const EventContext &ctx,
+                                                                                         const Trk::TrackParameters &pars,
                                                                                          Trk::ParticleHypothesis particleHypo) const {
         if (m_muonExtrapolator.empty()) return nullptr;
         const Trk::TrackingVolume *msEntrance = getVolume(m_msEntranceName, ctx);
@@ -63,24 +62,23 @@ namespace Muon {
 
         if (m_cosmics) {
             // for cosmics try both directions
-            const Trk::TrackParameters *entryPars =
-                m_muonExtrapolator->extrapolateToVolume(ctx, pars, *msEntrance, Trk::oppositeMomentum, particleHypo).release();
+            std::unique_ptr<Trk::TrackParameters> entryPars =
+                m_muonExtrapolator->extrapolateToVolume(ctx, pars, *msEntrance, Trk::oppositeMomentum, particleHypo);
             if (!entryPars) {
                 ATH_MSG_VERBOSE(" failed to extrapolate opposite momentum");
                 // retry in other direction
-                entryPars = m_muonExtrapolator->extrapolateToVolume(ctx, pars, *msEntrance, Trk::alongMomentum, particleHypo).release();
+                entryPars = m_muonExtrapolator->extrapolateToVolume(ctx, pars, *msEntrance, Trk::alongMomentum, particleHypo);
                 if (!entryPars) ATH_MSG_VERBOSE(" failed to extrapolate along momentum for the second trial");
             }
             return entryPars;
         }
 
-        return m_muonExtrapolator->extrapolateToVolume(ctx, pars, *msEntrance, dir, particleHypo).release();
+        return m_muonExtrapolator->extrapolateToVolume(ctx, pars, *msEntrance, dir, particleHypo);
     }
 
-    const Trk::TrackParameters *MuonTrackExtrapolationTool::extrapolateToIP(const Trk::TrackParameters &pars,
+    std::unique_ptr<Trk::TrackParameters> MuonTrackExtrapolationTool::extrapolateToIP(const EventContext& ctx, const Trk::TrackParameters &pars,
                                                                             Trk::ParticleHypothesis particleHypo) const {
         if (m_atlasExtrapolator.empty()) return nullptr;
-        const EventContext& ctx = Gaudi::Hive::currentContext(); 
         // temporary hack to avoid crashes in Muid.
         Amg::Vector3D refPos(0.1, 0.1, 0.1);
         Trk::PerigeeSurface persurf(refPos);
@@ -95,20 +93,22 @@ namespace Muon {
                                                                                         : ""));
 
         // for cosmics try both directions
-        const Trk::TrackParameters *entryPars = m_atlasExtrapolator->extrapolate(ctx, pars, persurf, propDir, false, particleHypo).release();
+        std::unique_ptr<Trk::TrackParameters> entryPars =
+            m_atlasExtrapolator->extrapolate(ctx, pars, persurf, propDir, false, particleHypo);
         if (!entryPars) ATH_MSG_VERBOSE(" failed to extrapolate to IP");
 
         if (m_cosmics && !entryPars) {
             // flip propagation direction and retry in other direction
             propDir = propDir == Trk::alongMomentum ? Trk::oppositeMomentum : Trk::alongMomentum;
-            entryPars = m_atlasExtrapolator->extrapolate(ctx, pars, persurf, propDir, false, particleHypo).release();
+            entryPars = m_atlasExtrapolator->extrapolate(ctx, pars, persurf, propDir, false, particleHypo);
             if (!entryPars) ATH_MSG_VERBOSE(" failed to extrapolate to IP in opposite direction");
         }
 
         return entryPars;
     }
 
-    const Trk::TrackParameters *MuonTrackExtrapolationTool::findClosestParametersToMuonEntry(const EventContext& ctx, const Trk::Track &track) const {
+    const Trk::TrackParameters *MuonTrackExtrapolationTool::findClosestParametersToMuonEntry(const EventContext &ctx,
+                                                                                             const Trk::Track &track) const {
         const Trk::TrackingVolume *msEntrance = getVolume(m_msEntranceName, ctx);
 
         if (!msEntrance) {
@@ -132,7 +132,7 @@ namespace Muon {
             double minMeasDistance = 1e9;
 
             ATH_MSG_DEBUG(" Cosmic model, starting for measurement closest to muon entry record ");
-            const DataVector<const Trk::TrackStateOnSurface> *oldTSOT = track.trackStateOnSurfaces();
+            const Trk::TrackStates *oldTSOT = track.trackStateOnSurfaces();
             for (const Trk::TrackStateOnSurface *surf : *oldTSOT) {
                 const Trk::TrackParameters *pars = surf->trackParameters();
                 if (!pars) { continue; }
@@ -158,7 +158,7 @@ namespace Muon {
 
         } else if (perp < 1000. && std::abs(z) < 1000.) {
             ATH_MSG_VERBOSE(" track at IP, starting from closest measurement in muon spectrometer ");
-            const DataVector<const Trk::TrackStateOnSurface> *oldTSOT = track.trackStateOnSurfaces();
+            const Trk::TrackStates *oldTSOT = track.trackStateOnSurfaces();
             for (const Trk::TrackStateOnSurface *surf : *oldTSOT) {
                 const Trk::TrackParameters *pars = surf->trackParameters();
                 if (!pars) { continue; }
@@ -189,7 +189,7 @@ namespace Muon {
         return closestPars;
     }
 
-    double MuonTrackExtrapolationTool::estimateDistanceToEntryRecord(const EventContext& ctx, const Trk::TrackParameters &pars) const {
+    double MuonTrackExtrapolationTool::estimateDistanceToEntryRecord(const EventContext &ctx, const Trk::TrackParameters &pars) const {
         const Trk::TrackingVolume *msEntrance = getVolume("Calo::Container", ctx);
 
         if (!msEntrance) return 0;
@@ -211,11 +211,11 @@ namespace Muon {
     }
 
     const Trk::TrackParameters *MuonTrackExtrapolationTool::checkForSecondCrossing(const Trk::TrackParameters &firstCrossing,
-                                                                                   const Trk::Track &track) const {
+                                                                                   const Trk::Track &track) {
         double dirPosProduct = firstCrossing.position().dot(firstCrossing.momentum());
         double sign = dirPosProduct < 0. ? 1. : -1.;
         // create new TSOS DataVector and reserve enough space to fit all old TSOS + one new TSOS
-        const DataVector<const Trk::TrackStateOnSurface> *oldTSOT = track.trackStateOnSurfaces();
+        const Trk::TrackStates *oldTSOT = track.trackStateOnSurfaces();
 
         Amg::Vector3D perDir = firstCrossing.momentum().unit();
         double minDistance = 1e9;
@@ -282,7 +282,7 @@ namespace Muon {
         // extrapolate to muon entry record
         Trk::ParticleHypothesis particleHypo = track.info().particleHypothesis();
         if (isSL) particleHypo = Trk::nonInteracting;
-        auto exPars = std::unique_ptr<const Trk::TrackParameters>(extrapolateToMuonEntryRecord(ctx, *firstPars, particleHypo));
+        std::shared_ptr<Trk::TrackParameters>exPars{extrapolateToMuonEntryRecord(ctx, *firstPars, particleHypo)};
 
         bool atIP = false;
         if (!exPars) {
@@ -290,7 +290,7 @@ namespace Muon {
 
             // for cosmics also try extrapolate to IP
             if (m_cosmics) {
-                exPars.reset(extrapolateToIP(*firstPars, particleHypo));
+                exPars = extrapolateToIP(ctx, *firstPars, particleHypo);
                 atIP = true;
             }
         }
@@ -306,7 +306,7 @@ namespace Muon {
         // sanity check for cosmics, if we are at the IP we should not
         if (m_cosmics && atIP) {
             double tolerance = -50.;
-            const Trk::TrackingVolume *msEntrance = getVolume("Calo::Container",ctx);
+            const Trk::TrackingVolume *msEntrance = getVolume("Calo::Container", ctx);
 
             if (msEntrance && msEntrance->inside(exPars->position(), tolerance)) {
                 ATH_MSG_DEBUG("extrapolate parameters at perigee inside muon entry volume " << m_printer->print(*exPars));
@@ -316,12 +316,11 @@ namespace Muon {
         ATH_MSG_DEBUG(" first pars:       " << m_printer->print(*firstPars) << endmsg << " extrapolated pars " << m_printer->print(*exPars)
                                             << endmsg);
         // create new perigee
-        auto perigee = dynamic_cast<const Trk::Perigee *>(exPars.get());
+        std::shared_ptr<Trk::Perigee> perigee = std::dynamic_pointer_cast<Trk::Perigee>(exPars);
         
         if (!perigee) {
-            perigee = createPerigee(*exPars);
+            perigee = createPerigee(ctx, *exPars);
         }
-
         // double check
         if (!perigee) {
             ATH_MSG_WARNING(" failed to create perigee ");
@@ -333,7 +332,7 @@ namespace Muon {
 
         // for cosmics we could have hits on both side of the muon entry volume.
         // check whether that is the case and calculate a second perigee in that case
-        const Trk::Perigee *secondPerigee = nullptr;
+        std::shared_ptr< Trk::Perigee>secondPerigee;
         if (m_cosmics && !atIP) {
             ATH_MSG_DEBUG(" trying to calculate second crossing ");
 
@@ -342,20 +341,18 @@ namespace Muon {
                 ATH_MSG_DEBUG(" Expect second crossing ");
 
                 // create second perigee
-                const Trk::TrackParameters *secondExPars = extrapolateToMuonEntryRecord(ctx, *secondEntryCrossing, particleHypo);
+                std::shared_ptr<Trk::TrackParameters> secondExPars = extrapolateToMuonEntryRecord(ctx, *secondEntryCrossing, particleHypo);
                 if (secondExPars) {
                     // check distence to first perigee
                     double distance = (secondExPars->position() - perigee->position()).dot(perDir);
                     ATH_MSG_DEBUG(" second crossing: " << m_printer->print(*secondExPars) << " distance to first " << distance);
                     if (std::abs(distance) < 1.) {
-                        ATH_MSG_DEBUG(" second perigee too close to first: " << m_printer->print(*secondExPars));
-                        delete secondExPars;
+                        ATH_MSG_DEBUG(" second perigee too close to first: " << m_printer->print(*secondExPars));                      
                     } else {
                         // create new perigee
-                        secondPerigee = dynamic_cast<const Trk::Perigee *>(secondExPars);
+                        secondPerigee = std::dynamic_pointer_cast<Trk::Perigee>(secondExPars);
                         if (!secondPerigee) {
-                            secondPerigee = createPerigee(*secondExPars);
-                            delete secondExPars;
+                            secondPerigee = createPerigee(ctx, *secondExPars);
                         }
                     }
                 } else {
@@ -382,14 +379,14 @@ namespace Muon {
         }
 
         // create new TSOS DataVector and reserve enough space to fit all old TSOS + one new TSOS
-        const DataVector<const Trk::TrackStateOnSurface> *oldTSOT = track.trackStateOnSurfaces();
-        auto trackStateOnSurfaces = DataVector<const Trk::TrackStateOnSurface>();
+        const Trk::TrackStates *oldTSOT = track.trackStateOnSurfaces();
+        Trk::TrackStates trackStateOnSurfaces{};
         unsigned int newSize = oldTSOT->size();
         trackStateOnSurfaces.reserve(newSize + 11);
 
-        DataVector<const Trk::TrackStateOnSurface>::const_iterator tit = oldTSOT->begin();
-        DataVector<const Trk::TrackStateOnSurface>::const_iterator tit_prev = tit;  // iterator pointing to the previous TSOS
-        DataVector<const Trk::TrackStateOnSurface>::const_iterator tit_end = oldTSOT->end();
+        Trk::TrackStates::const_iterator tit = oldTSOT->begin();
+        Trk::TrackStates::const_iterator tit_prev = tit;  // iterator pointing to the previous TSOS
+        Trk::TrackStates::const_iterator tit_end = oldTSOT->end();
         for (; tit != tit_end; ++tit) {
             // remove old perigee if we didn't start from a parameter in the muon system
             if ((*tit)->trackParameters() == pp) {
@@ -456,12 +453,11 @@ namespace Muon {
                         ATH_MSG_VERBOSE(" perigee points away from IP, inserting perigee ");
 
                         // first add perigee; cop out here on the unique_ptr magic
-                        auto uniquePerigee=std::unique_ptr<const Trk::Perigee>(perigee);
-                        trackStateOnSurfaces.push_back(MuonTSOSHelper::createPerigeeTSOS(std::move(uniquePerigee)));
+                        trackStateOnSurfaces.push_back(MuonTSOSHelper::createPerigeeTSOS(perigee->uniqueClone()));
                         perigeeWasInserted = true;
 
                         // 	    // now look whether there are measurements upstream of this point add add material if needed
-                        // 	    DataVector<const Trk::TrackStateOnSurface>::const_iterator tit_next = tit; ++tit_next;
+                        // 	    Trk::TrackStates::const_iterator tit_next = tit; ++tit_next;
                         // 	    if( tit_next != tit_end ){
 
                         // check whether a measurement, else we will assume the material is there
@@ -484,8 +480,7 @@ namespace Muon {
 
                 // check whether we did not insert the perigee, if not insert
                 if (!perigeeWasInserted) {
-                    auto uniquePerigee=std::unique_ptr<const Trk::Perigee>(perigee);
-                    trackStateOnSurfaces.push_back(MuonTSOSHelper::createPerigeeTSOS(std::move(uniquePerigee)));
+                    trackStateOnSurfaces.push_back(MuonTSOSHelper::createPerigeeTSOS(perigee->uniqueClone()));
                     perigeeWasInserted = true;
                     ATH_MSG_VERBOSE(" inserting perigee ");
                 }
@@ -513,7 +508,7 @@ namespace Muon {
 
                                 // collect the material going in opposite direction
                                 const std::vector<const Trk::TrackStateOnSurface *> *matvec = m_muonExtrapolator->extrapolateM(
-                                  ctx, *secondPerigee, meas->associatedSurface(), Trk::oppositeMomentum, false, particleHypo);
+                                    ctx, *secondPerigee, meas->associatedSurface(), Trk::oppositeMomentum, false, particleHypo);
                                 if (matvec && !matvec->empty()) {
                                     ATH_MSG_VERBOSE(" got material layers " << matvec->size());
 
@@ -530,12 +525,11 @@ namespace Muon {
                         ATH_MSG_VERBOSE(" perigee points away from IP, inserting perigee ");
 
                         // first add perigee
-                        std::unique_ptr<const Trk::Perigee> uniquePerigee(secondPerigee);
-                        trackStateOnSurfaces.push_back(MuonTSOSHelper::createPerigeeTSOS(std::move(uniquePerigee)));
+                        trackStateOnSurfaces.push_back(MuonTSOSHelper::createPerigeeTSOS(secondPerigee->uniqueClone()));
                         secondPerigeeWasInserted = true;
 
                         // 	    // now look whether there are measurements upstream of this point add add material if needed
-                        // 	    DataVector<const Trk::TrackStateOnSurface>::const_iterator tit_next = tit; ++tit_next;
+                        // 	    Trk::TrackStates::const_iterator tit_next = tit; ++tit_next;
                         // 	    if( tit_next != tit_end ){
                         // check whether a measurement, else we will assume the material is there
                         const Trk::MeasurementBase *meas = (*tit)->measurementOnTrack();
@@ -556,8 +550,7 @@ namespace Muon {
 
                     // check whether we did not insert the perigee, if not insert
                     if (!secondPerigeeWasInserted) {
-                        std::unique_ptr<const Trk::Perigee> uniquePerigee(secondPerigee);
-                        trackStateOnSurfaces.push_back(MuonTSOSHelper::createPerigeeTSOS(std::move(uniquePerigee)));
+                        trackStateOnSurfaces.push_back(MuonTSOSHelper::createPerigeeTSOS(secondPerigee->uniqueClone()));
                         secondPerigeeWasInserted = true;
                         ATH_MSG_VERBOSE(" inserting second perigee ");
                     }
@@ -579,9 +572,8 @@ namespace Muon {
                     ATH_MSG_VERBOSE(" trying to adding material layers extrapolating to previous measurement ");
 
                     // collect the material going in opposite direction
-                    const std::vector<const Trk::TrackStateOnSurface *> *matvec =
-                        m_muonExtrapolator->extrapolateM(
-                          ctx, *perigee, meas->associatedSurface(), Trk::oppositeMomentum, false, particleHypo);
+                    const std::vector<const Trk::TrackStateOnSurface *> *matvec = m_muonExtrapolator->extrapolateM(
+                        ctx, *perigee, meas->associatedSurface(), Trk::oppositeMomentum, false, particleHypo);
                     if (matvec && !matvec->empty()) {
                         ATH_MSG_VERBOSE(" got material layers " << matvec->size());
 
@@ -593,8 +585,7 @@ namespace Muon {
                 }
             }
             ATH_MSG_VERBOSE(" inserting perigee ");
-            std::unique_ptr<const Trk::Perigee> uniquePerigee(perigee);
-            trackStateOnSurfaces.push_back(MuonTSOSHelper::createPerigeeTSOS(std::move(uniquePerigee)));
+            trackStateOnSurfaces.push_back(MuonTSOSHelper::createPerigeeTSOS(perigee->uniqueClone()));
         }
         if (secondPerigee && !secondPerigeeWasInserted) {
             // check whether the previous state is a measurement, else we will assume the material is there
@@ -617,15 +608,12 @@ namespace Muon {
                 }
             }
             ATH_MSG_VERBOSE(" inserting second perigee ");
-            auto secondPerigeeUnique=std::unique_ptr<const Trk::Perigee>(secondPerigee);
-            trackStateOnSurfaces.push_back(MuonTSOSHelper::createPerigeeTSOS(std::move(secondPerigeeUnique)));
+            trackStateOnSurfaces.push_back(MuonTSOSHelper::createPerigeeTSOS(secondPerigee->uniqueClone()));
         }
 
         // create new track
-        return std::make_unique<Trk::Track>(
-          track.info(),
-          std::move(trackStateOnSurfaces),
-          track.fitQuality() ? track.fitQuality()->clone() : nullptr);
+        return std::make_unique<Trk::Track>(track.info(), std::move(trackStateOnSurfaces),
+                                            track.fitQuality() ? track.fitQuality()->clone() : nullptr);
     }
 
     std::unique_ptr<TrackCollection> MuonTrackExtrapolationTool::extrapolate(const TrackCollection &tracks, const EventContext &ctx) const {
@@ -642,15 +630,14 @@ namespace Muon {
         return extrapolateTracks;
     }
 
-    const Trk::Perigee *MuonTrackExtrapolationTool::createPerigee(const Trk::TrackParameters &pars) const {
-        if (m_muonExtrapolator2.empty()) { return nullptr; }
+    std::shared_ptr<Trk::Perigee> MuonTrackExtrapolationTool::createPerigee(const EventContext& ctx, const Trk::TrackParameters &pars) const {
+        if (m_muonExtrapolator.empty()) { return nullptr; }
         Trk::PerigeeSurface persurf(pars.position());
-        const Trk::TrackParameters *exPars = m_muonExtrapolator2->extrapolateDirectly(Gaudi::Hive::currentContext(),pars, persurf).release();
-        const Trk::Perigee *pp = dynamic_cast<const Trk::Perigee *>(exPars);
+        std::shared_ptr<Trk::TrackParameters> exPars {
+                    m_muonExtrapolator->extrapolateDirectly(ctx, pars, persurf)};
+        std::shared_ptr<Trk::Perigee> pp = std::dynamic_pointer_cast<Trk::Perigee>(exPars);
         if (!pp) {
             ATH_MSG_WARNING(" Extrapolation to Perigee surface did not return a perigee!! ");
-            delete exPars;
-            return nullptr;
         }
         return pp;
     }

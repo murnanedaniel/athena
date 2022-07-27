@@ -1,6 +1,6 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
-*/ 
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+*/
 /**
  * @file PixelConditionsAlgorithms/PixelChargeCalibCondAlg.h
  * @author Soshi Tsuno <Soshi.Tsuno@cern.ch>
@@ -23,15 +23,15 @@
 
 #include "InDetIdentifier/PixelID.h"
 
-#include "GaudiKernel/ICondSvc.h"
 #include "Gaudi/Property.h"
 
 class PixelChargeCalibCondAlg : public AthReentrantAlgorithm {
   public:
     PixelChargeCalibCondAlg(const std::string& name, ISvcLocator* pSvcLocator);
 
-    virtual StatusCode initialize() override;
-    virtual StatusCode execute(const EventContext& ctx) const override;
+    virtual StatusCode initialize() override final;
+    virtual StatusCode execute(const EventContext& ctx) const override final;
+    virtual bool isReEntrant() const override final { return false; }
 
   private:
     const PixelID* m_pixelID{nullptr};
@@ -47,8 +47,6 @@ class PixelChargeCalibCondAlg : public AthReentrantAlgorithm {
 
     SG::WriteCondHandleKey<PixelChargeCalibCondData> m_writeKey
     {this, "WriteKey", "PixelChargeCalibCondData", "Output charge caliblation data"};
-
-    ServiceHandle<ICondSvc> m_condSvc{this, "CondSvc", "CondSvc"};
 };
 
 #endif

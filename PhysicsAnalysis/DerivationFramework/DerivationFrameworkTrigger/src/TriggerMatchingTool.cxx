@@ -1,16 +1,20 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "TriggerMatchingTool.h"
 #include "BuildCombinations.h"
 #include "GaudiKernel/ServiceHandle.h"
 #include "GaudiKernel/IIncidentSvc.h"
+#include "GaudiKernel/ThreadLocalContext.h"
 #include "xAODCore/AuxContainerBase.h"
 #include "xAODCaloEvent/CaloClusterContainer.h"
 #include "FourMomUtils/xAODP4Helpers.h"
 #include <memory>
 #include <algorithm>
+#include "AthenaKernel/IProxyDict.h"
+#include "AthenaKernel/ExtendedEventContext.h"
+#include "StoreGate/ReadHandle.h"
 
 namespace {
   /// Helper typedefs for accessors/decorators, vectors of ele links
@@ -21,15 +25,16 @@ namespace {
   template <typename T>
     using vecLink_t = std::vector<ElementLink<T>>;
 
-  std::vector<const xAOD::IParticle *> filterUnique(const std::vector<const xAOD::IParticle *> &vec)
-  {
-    std::vector<const xAOD::IParticle *> out;
-    out.reserve(vec.size());
-    for (const xAOD::IParticle * part : vec)
-      if (part != nullptr && std::find(out.begin(), out.end(), part) == out.end())
-        out.push_back(part);
-    return out;
-  }
+  template <typename T>
+    ElementLink<T> makeLink(typename T::const_value_type element, IProxyDict *proxyDct)
+    {
+      SG::DataProxy *proxy = proxyDct->proxy(element->container());
+      // This will be null if the container isn't in the store. This shouldn't really happen
+      if (!proxy)
+        return {};
+      else
+        return ElementLink<T>(proxy->sgkey(), element->index(), proxyDct);
+    }
 } //> end anonymous namespace
 
 namespace DerivationFramework {
@@ -81,37 +86,53 @@ namespace DerivationFramework {
     m_chainNames.erase(std::unique(m_chainNames.begin(), m_chainNames.end() ), m_chainNames.end() );
 
     ATH_CHECK( m_trigParticleTool.retrieve() );
+    ATH_CHECK( m_scoreTool.retrieve() );
+    for (auto &p : m_offlineInputs)
+    {
+      ATH_CHECK(p.second.initialize(SG::AllowEmpty));
+    }
     return StatusCode::SUCCESS;
   }
 
   StatusCode TriggerMatchingTool::addBranches() const
   {
-    if (m_firstEvent) {
-      m_firstEvent = false;
+    [[maybe_unused]] static const bool firstEvent = [&](){
       auto itr = m_chainNames.begin();
       while (itr != m_chainNames.end() ) {
         const Trig::ChainGroup* cg = m_tdt->getChainGroup(*itr);
         if (cg->getListOfTriggers().size() == 0){
           if (m_inputDependentConfig)
             ATH_MSG_WARNING("Removing trigger " << (*itr) << " -- suggests a bad tool configuration (asking for triggers not in the menu)");
+          // We are now modifying the mutable m_chainNames but since it is done
+          // within this static initialization this is thread-safe:
           itr = m_chainNames.erase(itr);
         } else
           ++itr;
       }
-    }
+      return false;
+    }();
+
+    const EventContext &ctx = Gaudi::Hive::currentContext();
+    const Atlas::ExtendedEventContext &extendedCtx = Atlas::getExtendedEventContext(ctx);
 
     // Now, get all the possible offline candidates
+    std::map<xAOD::Type::ObjectType, const xAOD::IParticleContainer *> offlineContainers;
     std::map<xAOD::Type::ObjectType, particleVec_t> offlineCandidates;
     for (const auto& p : m_offlineInputs) {
       // Skip any that may have been disabled by providing an empty string to
       // the corresponding property
       if (p.second.empty() )
         continue;
-      const xAOD::IParticleContainer* cont(nullptr);
-      ATH_CHECK( evtStore()->retrieve(cont, p.second) );
+      auto handle = SG::makeHandle(p.second, ctx);
+      if (!handle.isValid())
+      {
+        ATH_MSG_ERROR("Failed to retrieve " << p.second);
+        return StatusCode::FAILURE;
+      }
+      offlineContainers[p.first] = handle.ptr();
       offlineCandidates.emplace(std::make_pair(
           p.first, 
-          particleVec_t(cont->begin(), cont->end() )
+          particleVec_t(handle->begin(), handle->end() )
       ) );
     }
 
@@ -155,8 +176,8 @@ namespace DerivationFramework {
         // Get all possible combinations of offline objects that could match to
         // this particular online combination.
         auto theseOfflineCombinations = 
-          TriggerMatchingUtils::getAllCombinations<const xAOD::IParticle*>(
-              matchCandidates, false);
+          TriggerMatchingUtils::getAllDistinctCombinations<const xAOD::IParticle*>(
+              matchCandidates);
         if (msgLvl(MSG::VERBOSE) ) {
           // Spit out some verbose information
           ATH_MSG_VERBOSE(
@@ -174,12 +195,7 @@ namespace DerivationFramework {
         // inserting into a sorted vector that ensures that we only output
         // unique combinations
         for (const particleVec_t& vec : theseOfflineCombinations)
-        {
-          // Remove any duplicated elements and any nullptrs that were entered as dummies
-          particleVec_t filtered = filterUnique(vec);
-          if (filtered.size() > 0)
-            TriggerMatchingUtils::insertIntoSortedVector(offlineCombinations, filtered);
-        }
+          TriggerMatchingUtils::insertIntoSortedVector(offlineCombinations, vec);
       } //> end loop over combinations
 
 
@@ -187,15 +203,21 @@ namespace DerivationFramework {
       for (const particleVec_t& foundCombination : offlineCombinations) {
         xAOD::TrigComposite* composite = new xAOD::TrigComposite();
         container->push_back(composite);
-        static dec_t<vecLink_t<xAOD::IParticleContainer>> dec_links(
+        static const dec_t<vecLink_t<xAOD::IParticleContainer>> dec_links(
             "TrigMatchedObjects");
         vecLink_t<xAOD::IParticleContainer>& links = dec_links(*composite);
         for (const xAOD::IParticle* part : foundCombination) {
-          // TODO This might be dangerous if the user provides the wrong types
-          // for the inputs or the input containers are not the owners (so that
-          // part->index() isn't the right value...). However I'm not sure what
-          // the best option is here...
-          links.emplace_back(m_offlineInputs.at(part->type()), part->index() );
+          const xAOD::IParticleContainer *container = offlineContainers.at(part->type());
+          // If we have an owning container then things are relatively simple:
+          // we can just construct the element link from its SG key and the
+          // index. Otherwise we have to locate the correct proxy from the element
+          if (container->trackIndices())
+            links.emplace_back(
+                m_offlineInputs.at(part->type()).hashedKey(),
+                part->index(),
+                extendedCtx.proxy());
+          else
+            links.push_back(makeLink<xAOD::IParticleContainer>(part, extendedCtx.proxy()));
         }
       } //> end loop over the found combinations
     } //> end loop over chains
@@ -232,7 +254,7 @@ namespace DerivationFramework {
       if (type == xAOD::Type::CaloCluster) {
         // If it's a calo cluster then we need to get the cluster from the
         // egamma types.
-        static constAcc_t<vecLink_t<xAOD::CaloClusterContainer>> acc_calo("caloClusterLinks");
+        static const constAcc_t<vecLink_t<xAOD::CaloClusterContainer>> acc_calo("caloClusterLinks");
         for (xAOD::Type::ObjectType egType : {
             xAOD::Type::Electron, xAOD::Type::Photon})
         {
@@ -251,12 +273,6 @@ namespace DerivationFramework {
           if (matchParticles(part, cand) )
             candidates.push_back(cand);
       }
-      // This is a bit evil, but in order to allow creating combinations in which not all legs are
-      // matched if there is no match for a particle we still need an entry in that vector. We
-      // insert a nullptr to symbolise this dummy match. Note that we will remove this before it
-      // is returned as a match so we will never pass this nullptr out of the main method
-      if (candidates.size() == 0)
-          candidates.push_back(nullptr);
       cacheItr = cache.emplace(
           std::make_pair(part, std::move(candidates) ) ).first;
     }
@@ -267,7 +283,7 @@ namespace DerivationFramework {
       const xAOD::IParticle* lhs,
       const xAOD::IParticle* rhs) const
   {
-    return xAOD::P4Helpers::deltaR(lhs, rhs, false) < m_drThreshold;
+    return m_scoreTool->score(*lhs, *rhs) < m_drThreshold;
   }
 
 } //> end namespace DerivationFramework

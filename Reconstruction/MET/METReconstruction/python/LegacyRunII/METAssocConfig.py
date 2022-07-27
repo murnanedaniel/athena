@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 from __future__ import print_function
 from AthenaCommon import CfgMgr
@@ -22,7 +22,7 @@ defaultInputKey = {
    'Soft'      :'',
    'Clusters'  :'CaloCalTopoClusters',
    'Tracks'    :'InDetTrackParticles',
-   'PFlowObj'  :'CHSParticleFlowObjects',
+   'PFlowObj'  :'CHSGParticleFlowObjects',
    'ORPFlowObj':'OverlapRemovedCHSParticleFlowObjects',
    'PrimVxColl':'PrimaryVertices',
    'Truth'     :'TruthEvents',
@@ -54,22 +54,16 @@ def getAssociator(config,suffix,doPFlow=False,usePFOLinks=False,useFELinks=False
         modEMClus = modClusColls['EM{0}Clusters'.format(modConstKey)]
     # Construct tool and set defaults for case-specific configuration
 
-
-    from METReconstruction.METRecoFlags import metFlags
-
     if config.objType == 'Ele':
         from ROOT import met
         tool = CfgMgr.met__METElectronAssociator('MET_ElectronAssociator_'+suffix,TCMatchMethod=met.ClusterLink)
-        tool.UseFEElectronLinks = metFlags.UseFEElectronLinks()
 
     if config.objType == 'Gamma':
         from ROOT import met
         tool = CfgMgr.met__METPhotonAssociator('MET_PhotonAssociator_'+suffix,TCMatchMethod=met.ClusterLink)
-        tool.UseFEPhotonLinks = metFlags.UseFEPhotonLinks()
 
     if config.objType == 'Tau':
         tool = CfgMgr.met__METTauAssociator('MET_TauAssociator_'+suffix)
-        tool.UseFETauLinks = metFlags.UseFETauLinks()
     if config.objType == 'LCJet':
         tool = CfgMgr.met__METJetAssocTool('MET_LCJetAssocTool_'+suffix)
     if config.objType == 'EMJet':
@@ -80,7 +74,6 @@ def getAssociator(config,suffix,doPFlow=False,usePFOLinks=False,useFELinks=False
         tool = CfgMgr.met__METJetAssocTool('MET_OverlapRemovedPFlowJetAssocTool_'+suffix)
     if config.objType == 'Muon':
         tool = CfgMgr.met__METMuonAssociator('MET_MuonAssociator_'+suffix)
-        tool.UseFEMuonLinks = metFlags.UseFEMuonLinks()
     if config.objType == 'Soft':
         tool = CfgMgr.met__METSoftAssociator('MET_SoftAssociator_'+suffix)
         tool.DecorateSoftConst = True
@@ -100,10 +93,10 @@ def getAssociator(config,suffix,doPFlow=False,usePFOLinks=False,useFELinks=False
     else:
         tool.UseModifiedClus = doModClus
     # set input/output key names
-    if config.inputKey == '':
+    if config.inputKey == '' and defaultInputKey[config.objType] != '':
         tool.InputCollection = defaultInputKey[config.objType]
         config.inputKey = tool.InputCollection
-    else:
+    elif hasattr(tool, 'InputCollection'):
         tool.InputCollection = config.inputKey
     if doModClus:
         tool.ClusColl = modLCClus
@@ -165,7 +158,7 @@ class METAssocConfig:
         modConstKey_tmp = modConstKey
         modClusColls_tmp = modClusColls
         if doPFlow:
-            if modConstKey_tmp == "": modConstKey_tmp = "CHSParticleFlowObjects" if 'OverlapRemoved' not in suffix else "OverlapRemovedCHSParticleFlowObjects"
+            if modConstKey_tmp == "": modConstKey_tmp = "CHSGParticleFlowObjects" if 'OverlapRemoved' not in suffix else "OverlapRemovedCHSParticleFlowObjects"
         else:
             if modConstKey_tmp == "": modConstKey_tmp = "OriginCorr"
             if modClusColls_tmp == {}: modClusColls_tmp = {'LCOriginCorrClusters':'LCOriginTopoClusters',

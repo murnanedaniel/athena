@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 from __future__ import print_function
 import InDetPhysValMonitoring.InDetPhysValMonitoringConf
@@ -9,13 +9,11 @@ from InDetRecExample.TrackingCommon import setDefaults
 
 # ---- definitions
 
-
 def metaDataKey():
     '''
     Meta data key to store the file source on which the InDet decoration alg has been running.
     '''
     return 'InDetPhysValDecoration'
-
 
 def monManName():
     '''
@@ -66,21 +64,6 @@ def findMonMan():
 
     return findAlg([monManName()], search_outputstream_otherwise=False)
 
-
-def getMetaData():
-    '''
-    Try to determine from the meta data whether the decoration has been performed already.
-    '''
-    from RecExConfig.RecFlags import rec
-    if not rec.readRDO():
-        from PyUtils.MetaReaderPeekerFull import metadata
-    try:
-        return metadata['/TagInfo'][metaDataKey()]
-    except Exception:
-        pass
-    return ''
-
-
 def setMetaData():
     '''
     Write the input source on which the InDet decoration algorithm was running to the meta data
@@ -119,6 +102,7 @@ def getInDetPhysHitDecoratorAlg(**kwargs):
     of the algorithm will be extended by the collection name
     '''
     # @TODO use track particles from ? from InDetRecExample.InDetKeys import InDetKeys
+    from InDetRecExample.TrackingCommon import getPixelLorentzAngleTool
     return createExtendNameIfNotDefault(InDetPhysValMonitoring.InDetPhysValMonitoringConf.InDetPhysHitDecoratorAlg,
                                         'TrackParticleContainerName', 'InDetTrackParticles',
                                         kwargs,
@@ -126,6 +110,7 @@ def getInDetPhysHitDecoratorAlg(**kwargs):
                                             getPhysValMonInDetHoleSearchTool),
                                         Updator='Trk::KalmanUpdator/TrkKalmanUpdator',
                                         ResidualPullCalculator='Trk::ResidualPullCalculator/ResidualPullCalculator',
+                                        LorentzAngleTool=getPixelLorentzAngleTool(),
                                         TrackParticleContainerName='InDetTrackParticles')
 
 
@@ -177,6 +162,7 @@ def getInDetTruthSelectionTool(**kwargs):
 def getHardScatterSelectionTool(**kwargs):
     from InDetHardScatterSelectionTool.InDetHardScatterSelectionToolConf import InDet__InDetHardScatterSelectionTool
     kwargs = setDefaults(kwargs, name="InDetHardScatterSelectionTool")
+    kwargs = setDefaults(kwargs, JetContainer="AntiKt4EMTopoJets") 
     return InDet__InDetHardScatterSelectionTool(**kwargs)
 
 
@@ -458,10 +444,7 @@ def addDecoratorIfNeeded():
         print('DEBUG addDecoratorIfNeeded ? Stage is too early or too late for running the decoration. Needs reconstructed tracks. Try again during next stage ?')
         return
 
-    meta_data = getMetaData()
-    if len(meta_data) == 0:
-        # decoration has not been ran
-        addDecorator()
+    addDecorator()
 
     # if DBM or GSF tracks need to be monitored schedule addExtraMonitoring as user algorithm, so that
     # the monitoring manager exists already.

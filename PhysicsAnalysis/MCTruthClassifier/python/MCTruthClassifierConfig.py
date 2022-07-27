@@ -22,6 +22,8 @@ def MCTruthClassifierCaloTruthMatchCfg(flags, **kwargs):
     dedicated instance of the extrapolator.
     """
     from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
+    from AthenaConfiguration.Enums import LHCPeriod
+
     acc = ComponentAccumulator()
 
     if "ParticleCaloExtensionTool" not in kwargs:
@@ -38,6 +40,9 @@ def MCTruthClassifierCaloTruthMatchCfg(flags, **kwargs):
 
     kwargs.setdefault("CaloDetDescrManager", "CaloDetDescrManager")
     kwargs.setdefault("barcodeG4Shift", flags.Sim.SimBarcodeOffset + 1)
+
+    if flags.GeoModel.Run >= LHCPeriod.Run4:
+        kwargs.setdefault("FwdElectronUseG4Sel", False)
 
     from AthenaConfiguration.ComponentFactory import CompFactory
     acc.setPrivateTools(CompFactory.MCTruthClassifier(**kwargs))
@@ -86,11 +91,9 @@ if __name__ == "__main__":
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
     from AthenaConfiguration.TestDefaults import defaultTestFiles
     from AthenaCommon.Logging import logging
-    from AthenaCommon.Configurable import Configurable
 
     from AthenaConfiguration.ComponentAccumulator import (
         ComponentAccumulator, printProperties)
-    Configurable.configurableRun3Behavior = 1
 
     ConfigFlags.Input.isMC = True
     ConfigFlags.Input.Files = defaultTestFiles.RDO_RUN2

@@ -117,8 +117,7 @@ BeamspotVertexPreProcessor::BeamspotVertexPreProcessor(const std::string & type,
 
 //________________________________________________________________________
 BeamspotVertexPreProcessor::~BeamspotVertexPreProcessor()
-{
-}
+= default;
 
 //________________________________________________________________________
 StatusCode BeamspotVertexPreProcessor::initialize()
@@ -436,17 +435,17 @@ const VertexOnTrack* BeamspotVertexPreProcessor::provideVotFromVertex(const Trac
 
       ///vertex as perigeeSurface
       Amg::Vector3D  globPos(updatedVtx->position()); //look
-      const PerigeeSurface* surface = new PerigeeSurface(globPos);
+      const PerigeeSurface surface(globPos);
       const Perigee* perigee = nullptr;
       std::unique_ptr<const Trk::TrackParameters> tmp =
-        m_extrapolator->extrapolate(ctx, *track, *surface);
+        m_extrapolator->extrapolate(ctx, *track, surface);
       //pass ownership only if of correct type
       if (tmp && tmp->associatedSurface().type() == Trk::SurfaceType::Perigee) {
          perigee = static_cast<const Perigee*> (tmp.release()); 
       }
       if (!perigee) {
         const Perigee * trackPerigee = track->perigeeParameters();
-        if ( trackPerigee && trackPerigee->associatedSurface() == *surface )
+        if ( trackPerigee && trackPerigee->associatedSurface() == surface )
           perigee = trackPerigee->clone();
       }
       //if the perigee is still nonsense ...
@@ -454,7 +453,6 @@ const VertexOnTrack* BeamspotVertexPreProcessor::provideVotFromVertex(const Trac
         //clean up
         if (updatedVtx!= tmpVtx) delete updatedVtx;
         delete tmpVtx;
-        delete surface;
         //WARNING
         ATH_MSG_WARNING("Perigee is nullptr in "<<__FILE__<<":"<<__LINE__);
         //exit
@@ -505,10 +503,8 @@ const VertexOnTrack* BeamspotVertexPreProcessor::provideVotFromVertex(const Trac
       LocalParameters localParams = Trk::LocalParameters(Amg::Vector2D(0,0));
 
       // VertexOnTrack Object
-      vot = new VertexOnTrack(localParams, errorMatrix, *surface);
+      vot = new VertexOnTrack(localParams, errorMatrix, surface);
       ATH_MSG_DEBUG("the VertexOnTrack created from vertex: "<<*vot);
-      // garbage collection:
-      delete surface;
     }
   }
 
@@ -541,8 +537,7 @@ const VertexOnTrack* BeamspotVertexPreProcessor::provideVotFromBeamspot(const Tr
   float beamY = beamSpotY + tan(beamTiltY) * (z0-beamSpotZ);
   Amg::Vector3D  BSC(beamX, beamY, z0);
   ATH_MSG_DEBUG("constructing beam point (x,y,z) = ( "<<beamX<<" , "<<beamY<<" , "<<z0<<" )");
-
-  const PerigeeSurface * surface = nullptr;
+  std::optional<PerigeeSurface> surface = std::nullopt;
   Amg::MatrixX  errorMatrix;
   LocalParameters beamSpotParameters;
 
@@ -555,7 +550,7 @@ const VertexOnTrack* BeamspotVertexPreProcessor::provideVotFromBeamspot(const Tr
   if(m_constraintMode == 0) {
 
     const Amg::Vector3D&  globPos(BSC);
-    surface = new PerigeeSurface(globPos);
+    surface.emplace(globPos);
 
     // create a measurement for the beamspot
     DefinedParameter Par0(0.,Trk::d0);
@@ -576,8 +571,6 @@ const VertexOnTrack* BeamspotVertexPreProcessor::provideVotFromBeamspot(const Tr
         perigee = trackPerigee->clone();
     }
     if (not perigee){
-      //clean up
-      delete surface;
       //WARNING
       ATH_MSG_WARNING("Perigee is nullptr in "<<__FILE__<<":"<<__LINE__);
       //exit
@@ -605,8 +598,6 @@ const VertexOnTrack* BeamspotVertexPreProcessor::provideVotFromBeamspot(const Tr
   if (vot){
     ATH_MSG_DEBUG(" the VertexOnTrack objects created from BeamSpot are " << *vot);
   }
-  // garbage collection:
-  delete surface;
 
   return vot;
 }
@@ -741,8 +732,7 @@ AlignTrack* BeamspotVertexPreProcessor::doTrackRefit(const Track* track) {
   const xAOD::Vertex*    vtx = nullptr;
   AlignTrack::AlignTrackType type = AlignTrack::Unknown;
   // configuration of the material effects needed for track fitter
-  ParticleSwitcher particleSwitch;
-  ParticleHypothesis particleHypothesis = particleSwitch.particle[m_particleNumber];
+  ParticleHypothesis particleHypothesis = Trk::ParticleSwitcher::particle[m_particleNumber];
 
   // initialization the GX2 track fitter
   ToolHandle<Trk::IGlobalTrackFitter> fitter = m_trackFitter;
@@ -959,7 +949,7 @@ DataVector<Track> * BeamspotVertexPreProcessor::processTrackCollection(const Dat
 }
 
 //____________________________________________________________________________
-void BeamspotVertexPreProcessor::accumulateVTX(const AlignTrack* alignTrack) {
+void BeamspotVertexPreProcessor::accumulateVTX(AlignTrack* alignTrack) {
 
   if( !m_doFullVertexConstraint ) return;
 
@@ -972,10 +962,10 @@ void BeamspotVertexPreProcessor::accumulateVTX(const AlignTrack* alignTrack) {
   }
 
   // get pointers so we can reuse them if they're valid
-  Amg::MatrixX                 * ptrWeights   = alignTrack->weightMatrix();
-  Amg::MatrixX                 * ptrWeightsFD = alignTrack->weightMatrixFirstDeriv();
-  Amg::VectorX                 * ptrResiduals = alignTrack->residualVector();
-  std::vector<AlignModuleDerivatives> * ptrDerivs    = alignTrack->derivatives();
+  const Amg::MatrixX           * ptrWeights   = alignTrack->weightMatrix();
+  const Amg::MatrixX           * ptrWeightsFD = alignTrack->weightMatrixFirstDeriv();
+  const Amg::VectorX           * ptrResiduals = alignTrack->residualVector();
+  const std::vector<AlignModuleDerivatives> * ptrDerivs    = alignTrack->derivatives();
 
   // check if pointers are valid
   if (!ptrWeights || !ptrWeightsFD || !ptrResiduals || !ptrDerivs) {
@@ -988,12 +978,12 @@ void BeamspotVertexPreProcessor::accumulateVTX(const AlignTrack* alignTrack) {
   }
 
   // get vectors
-  Amg::VectorX&                    residuals     = *ptrResiduals;
+  const Amg::VectorX&                  residuals     = *ptrResiduals;
   std::vector<AlignModuleDerivatives>  derivatives   = *ptrDerivs;
 
   // get weight matrices
-  Amg::MatrixX&                weights           = *ptrWeights;
-  Amg::MatrixX&                weightsFirstDeriv = *ptrWeightsFD;
+  const Amg::MatrixX&          weights           = *ptrWeights;
+  const Amg::MatrixX&          weightsFirstDeriv = *ptrWeightsFD;
   ATH_MSG_VERBOSE("weights="<<weights);
   ATH_MSG_VERBOSE("weightsFirstDeriv="<<weightsFirstDeriv);
 
@@ -1006,8 +996,8 @@ void BeamspotVertexPreProcessor::accumulateVTX(const AlignTrack* alignTrack) {
   //    CLHEP::HepVector*  VTXDerivatives[3];
   Amg::VectorX  VTXDerivatives[3];
   const int    WSize(weights.cols());
-  Amg::MatrixX*  WF = new Amg::MatrixX(3,WSize);
-  std::vector<AlignModuleVertexDerivatives>* derivX = new std::vector<AlignModuleVertexDerivatives>(0);
+  Amg::MatrixX WF(3,WSize);
+  std::vector<AlignModuleVertexDerivatives> derivX;
 
   for ( ; derivIt!=derivIt_end ; ++derivIt) {
 
@@ -1017,33 +1007,27 @@ void BeamspotVertexPreProcessor::accumulateVTX(const AlignTrack* alignTrack) {
 
     // get alignment parameters
     if( module ) {
-      Amg::MatrixX*   F = new Amg::MatrixX(3,WSize);
+      Amg::MatrixX   F(3,WSize);
       std::vector<Amg::VectorX>& deriv_vec = derivIt->second;
       ATH_MSG_VERBOSE( "accumulateVTX: The deriv_vec size is  " << deriv_vec.size() );
       DataVector<AlignPar>* alignPars = m_alignModuleTool->getAlignPars(module);
       int nModPars = alignPars->size();
       if ((nModPars+3) != (int)deriv_vec.size() ) {
         ATH_MSG_ERROR("accumulateVTX: Derivatives w.r.t. the vertex seem to be missing");
-        delete derivX;
-        delete WF;
-        delete F;
         return;
       }
       for (int i=0;i<3;i++) {
         allDerivatives[i].push_back(&deriv_vec[nModPars+i]);
         for (int j=0;j<WSize;j++) {
-          (*F)(i,j) = deriv_vec[nModPars+i][j];
+          F(i,j) = deriv_vec[nModPars+i][j];
         }
       }
 
       // prepare the X object in the AlignVertex:
-      (*WF) += (*F) * weights;
-      delete F;
+      WF += F * weights;
 
     } else {
       ATH_MSG_ERROR("accumulateVTX: Derivatives do not have a valid pointer to the module.");
-      delete derivX;
-      delete WF;
       return;
     }
   }
@@ -1060,30 +1044,23 @@ void BeamspotVertexPreProcessor::accumulateVTX(const AlignTrack* alignTrack) {
     // get alignment parameters
     if( module ) {
       std::vector<Amg::VectorX>& deriv_vec = derivIt->second;
-      std::vector<Amg::VectorX>* drdaWF = new std::vector<Amg::VectorX>(0);
+      std::vector<Amg::VectorX> drdaWF;
       ATH_MSG_DEBUG( "accumulateVTX: The deriv_vec size is  " << deriv_vec.size() );
       DataVector<AlignPar>* alignPars = m_alignModuleTool->getAlignPars(module);
       int nModPars = alignPars->size();
       if ((nModPars+3) != (int)deriv_vec.size() ) {
         ATH_MSG_ERROR("accumulateVTX: Derivatives w.r.t. the vertex seem to be missing");
-        delete derivX;
-        delete WF;
-        delete drdaWF;
         return;
       }
       for (int i=0;i<nModPars;i++) {
-        drdaWF->push_back(2.0 * (*WF) * deriv_vec[i]);
+        drdaWF.push_back(2.0 * (WF) * deriv_vec[i]);
       }
-
+      ATH_MSG_DEBUG("accumulateVTX: derivX incremented by:  " << drdaWF );
       // now add contribution from this track to the X object:
-      derivX->push_back(make_pair(module,*drdaWF));
-      ATH_MSG_DEBUG("accumulateVTX: derivX incremented by:  " << (*drdaWF) );
-      delete drdaWF;
+      derivX.emplace_back(module,std::move(drdaWF));
 
     } else {
       ATH_MSG_ERROR("accumulateVTX: Derivatives do not have a valid pointer to the module.");
-      delete derivX;
-      delete WF;
       return;
     }
   }
@@ -1134,12 +1111,8 @@ void BeamspotVertexPreProcessor::accumulateVTX(const AlignTrack* alignTrack) {
   alignVertex->incrementVector(vtxV);
   alignVertex->incrementMatrix(vtxM);
   //   ATH_MSG_DEBUG("accumulateVTX: derivX size = "<< derivX->size());
-  alignVertex->addDerivatives(derivX);
+  alignVertex->addDerivatives(&derivX);
 
-  // garbage collection:
-
-  delete    WF;
-  delete    derivX;
 }
 
 

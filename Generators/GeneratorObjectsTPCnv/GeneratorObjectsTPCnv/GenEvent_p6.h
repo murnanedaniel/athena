@@ -1,7 +1,7 @@
 ///////////////////////// -*- C++ -*- /////////////////////////////
 
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // GenEvent_p6.h 
@@ -45,6 +45,9 @@ class GenEvent_p6
 	       double eventScale,
 	       double alphaQCD,
 	       double alphaQED,
+         #ifdef HEPMC3
+          double filterWeight,
+         #endif 
 	       int signalProcessVtx,
 	       int beamParticle1,
 	       int beamParticle2,
@@ -59,11 +62,11 @@ class GenEvent_p6
 	       unsigned int verticesEnd,
 	       unsigned int particlesBegin,
 	       unsigned int particlesEnd 
-          ,std::vector<int>         e_attribute_id =  std::vector<int>()    
-          ,std::vector<std::string> e_attribute_name = std::vector<std::string>() 
-          ,std::vector<std::string> e_attribute_string = std::vector<std::string>() 
-          ,std::vector<std::string> r_attribute_name = std::vector<std::string>()   
-          ,std::vector<std::string> r_attribute_string = std::vector<std::string>() 
+          ,const std::vector<int>&         e_attribute_id =  std::vector<int>()    
+          ,const std::vector<std::string>& e_attribute_name = std::vector<std::string>() 
+          ,const std::vector<std::string>& e_attribute_string = std::vector<std::string>() 
+          ,const std::vector<std::string>& r_attribute_name = std::vector<std::string>()   
+          ,const std::vector<std::string>& r_attribute_string = std::vector<std::string>() 
 	       );
 
   /////////////////////////////////////////////////////////////////// 
@@ -94,6 +97,12 @@ class GenEvent_p6
   /** value of the QED coupling. see hep-ph/0109068
    */
   double m_alphaQED;
+
+#ifdef HEPMC3
+  /** value of the extra weight introduced during reweighting events in filter
+   */
+  double m_filterWeight;
+#endif
 
   /** Barcode of the GenVertex holding the signal process.
    *  0 means that no signal process vertex has been written out.
@@ -173,6 +182,9 @@ inline GenEvent_p6::GenEvent_p6():
   m_eventScale       ( -1 ),
   m_alphaQCD         ( -1 ),
   m_alphaQED         ( -1 ),
+  #ifdef HEPMC3
+  m_filterWeight     (  1 ),
+  #endif
   m_signalProcessVtx (  0 ),
   m_beamParticle1    (  0 ),
   m_beamParticle2    (  0 ),
@@ -200,6 +212,9 @@ inline GenEvent_p6::GenEvent_p6( int signalProcessId,
 				 double eventScale,
 				 double alphaQCD,
 				 double alphaQED,
+         #ifdef HEPMC3
+         double filterWeight,
+         #endif
 				 int signalProcessVtx,
 				 int beamParticle1,
 				 int beamParticle2,
@@ -214,11 +229,11 @@ inline GenEvent_p6::GenEvent_p6( int signalProcessId,
 				 unsigned int verticesEnd,
 				 unsigned int particlesBegin,
 				 unsigned int particlesEnd
-                ,std::vector<int>         e_attribute_id
-                ,std::vector<std::string> e_attribute_name 
-                ,std::vector<std::string> e_attribute_string 
-                ,std::vector<std::string> r_attribute_name   
-                ,std::vector<std::string> r_attribute_string 
+                ,const std::vector<int>&         e_attribute_id
+                ,const std::vector<std::string>& e_attribute_name 
+                ,const std::vector<std::string>& e_attribute_string 
+                ,const std::vector<std::string>& r_attribute_name   
+                ,const std::vector<std::string>& r_attribute_string 
 				  ) :
   m_signalProcessId  ( signalProcessId ),
   m_eventNbr         ( eventNbr ),
@@ -226,6 +241,9 @@ inline GenEvent_p6::GenEvent_p6( int signalProcessId,
   m_eventScale       ( eventScale ),
   m_alphaQCD         ( alphaQCD ),
   m_alphaQED         ( alphaQED ),
+  #ifdef HEPMC3
+  m_filterWeight     ( filterWeight ),
+  #endif
   m_signalProcessVtx ( signalProcessVtx ),
   m_beamParticle1    ( beamParticle1 ),
   m_beamParticle2    ( beamParticle2 ),

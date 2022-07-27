@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # Declare the package name:
 atlas_subdir( ElectronEfficiencyCorrection )
@@ -21,7 +21,7 @@ atlas_add_library( ElectronEfficiencyCorrectionLib
    PRIVATE_INCLUDE_DIRS ${Boost_INCLUDE_DIRS}
    LINK_LIBRARIES ${ROOT_LIBRARIES} AthContainers AsgTools
    xAODEgamma PATInterfaces PATCoreAcceptLib AsgMessagingLib EgammaAnalysisInterfacesLib
-   PRIVATE_LINK_LIBRARIES ${Boost_LIBRARIES} ${extra_private_libs} xAODEventInfo
+   PRIVATE_LINK_LIBRARIES ${Boost_LIBRARIES} ${extra_private_libs} xAODEventInfo AsgMessagingLib
    xAODMetaData PathResolver )
 
 if( NOT XAOD_STANDALONE )
@@ -44,7 +44,7 @@ atlas_add_executable( EgEfficiencyCorr_mem_check
 #Test
 atlas_add_test(ut_SimpleInitTest
    SCRIPT EgEfficiencyCorr_mem_check
-   LOG_IGNORE_PATTERN "Package.AsgTool...  DEBUG")
+   LOG_IGNORE_PATTERN "Package.AsgTool...  DEBUG|MessageSvc not found")
 
 # AnalysisBase-only utilities:
 if( XAOD_STANDALONE )
@@ -71,6 +71,12 @@ if( XAOD_STANDALONE )
       util/testEgChargeCorr.cxx
       INCLUDE_DIRS ${ROOT_INCLUDE_DIRS}
       LINK_LIBRARIES ${ROOT_LIBRARIES} AsgMessagingLib ElectronEfficiencyCorrectionLib ElectronPhotonSelectorToolsLib PATCoreAcceptLib PATInterfaces xAODCore xAODEgamma xAODEventInfo )
+
+   atlas_add_executable( EgEfficiencyCorr_dumpNPs
+      util/dumpNPs.cxx util/CreateDummyEl.cxx
+      LINK_LIBRARIES ${ROOT_LIBRARIES} xAODRootAccess xAODEventInfo AsgMessagingLib
+      xAODCore ElectronEfficiencyCorrectionLib )
+
 
    atlas_install_python_modules(util/*.py)
 

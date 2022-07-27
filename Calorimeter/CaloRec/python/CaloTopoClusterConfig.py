@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
@@ -366,11 +366,49 @@ def CaloTopoClusterCfg(configFlags, cellsname="AllCalo", clustersname=None):
 
     result.addEventAlgo(CaloTopoCluster,primary=True)
 
+
+    #Output config:
+    AODMoments=[ "SECOND_R" 
+                 ,"SECOND_LAMBDA"
+                 ,"CENTER_MAG"
+                 ,"CENTER_LAMBDA"
+                 ,"FIRST_ENG_DENS"
+                 ,"ENG_FRAC_MAX" 
+                 ,"ISOLATION"
+                 ,"ENG_BAD_CELLS"
+                 ,"N_BAD_CELLS"
+                 ,"BADLARQ_FRAC"
+                 ,"ENG_POS"
+                 ,"SIGNIFICANCE"
+                 ,"AVG_LAR_Q"
+                 ,"AVG_TILE_Q"
+                 ,"EM_PROBABILITY"
+                 ,"BadChannelList"
+                 ,"SECOND_TIME"
+                 ,"NCELL_SAMPLING"]
+
+    if configFlags.Calo.TopoCluster.writeExtendedClusterMoments:
+        AODMoments += ["LATERAL"
+                       ,"LONGITUDINAL"
+                       ,"CELL_SIGNIFICANCE"
+                       ,"PTD"
+                       ,"MASS"]
+
+
     from OutputStreamAthenaPool.OutputStreamConfig import addToAOD, addToESD
-    toAOD = [f"xAOD::CaloClusterContainer#{CaloTopoCluster.ClustersOutputName}", 
-            f"xAOD::CaloClusterAuxContainer#{CaloTopoCluster.ClustersOutputName}Aux."]
-    toESD = []
-    result.merge(addToESD(configFlags, toAOD+toESD))
+    toESD = [f"xAOD::CaloClusterContainer#{CaloTopoCluster.ClustersOutputName}",
+             f"xAOD::CaloClusterAuxContainer#{CaloTopoCluster.ClustersOutputName}Aux.",
+             f"CaloClusterCellLinkContainer#{CaloTopoCluster.ClustersOutputName}_links"]
+    toAOD = [f"xAOD::CaloClusterContainer#{CaloTopoCluster.ClustersOutputName}",
+             f"CaloClusterCellLinkContainer#{CaloTopoCluster.ClustersOutputName}_links"]
+    auxItems = f"xAOD::CaloClusterAuxContainer#{CaloTopoCluster.ClustersOutputName}Aux"
+    for mom in AODMoments:
+        auxItems += "."+mom
+
+    auxItems += ".CellLink"
+    toAOD.append(auxItems)
+ 
+    result.merge(addToESD(configFlags, toESD))
     result.merge(addToAOD(configFlags, toAOD))
 
     return result
@@ -378,9 +416,6 @@ def CaloTopoClusterCfg(configFlags, cellsname="AllCalo", clustersname=None):
 
 
 if __name__=="__main__":
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior=1
-
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
 
     ConfigFlags.Input.Files = ["/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/RecExRecoTest/mc20e_13TeV/valid1.410000.PowhegPythiaEvtGen_P2012_ttbar_hdamp172p5_nonallhad.ESD.e4993_s3227_r12689/myESD.pool.root"]  

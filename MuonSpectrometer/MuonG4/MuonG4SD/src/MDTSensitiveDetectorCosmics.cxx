@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "MDTSensitiveDetectorCosmics.h"
@@ -156,7 +156,7 @@ G4bool MDTSensitiveDetectorCosmics::ProcessHits(G4Step* aStep,G4TouchableHistory
   if( ((nameSD) && (namePreStepMat != namePostStepMat)) || (currentTrack->GetTrackStatus() ==  fStopAndKill)){
 
     // get identifier
-    G4TouchableHistory* touchHist = (G4TouchableHistory*)aStep->GetPreStepPoint()->GetTouchable();
+    const G4TouchableHistory* touchHist = static_cast<const G4TouchableHistory*>(aStep->GetPreStepPoint()->GetTouchable());
     int MDTid = GetIdentifier(touchHist);
 
     TrackHelper trHelp(aStep->GetTrack());
@@ -173,7 +173,7 @@ G4bool MDTSensitiveDetectorCosmics::ProcessHits(G4Step* aStep,G4TouchableHistory
   return true;
 }
 
-int MDTSensitiveDetectorCosmics::GetIdentifier(G4TouchableHistory* touchHist)
+int MDTSensitiveDetectorCosmics::GetIdentifier(const G4TouchableHistory* touchHist)
 {
   // attributes of the MDT identifier construction
   std::string stationName;

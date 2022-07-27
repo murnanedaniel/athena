@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*- mode: python -*-
 #
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #
 # This is a script that is born as shell to setup the preloading and then
 # resurrected as python script for the actual athenaHLT.py application.
@@ -39,7 +39,7 @@ import sys
 import os
 import argparse
 import ast
-import collections
+import collections.abc
 from datetime import datetime as dt
 import six
 
@@ -113,11 +113,16 @@ def check_args(parser, args):
    if args.perfmon and args.oh_monitoring and args.nprocs>1:
       parser.error("--perfmon cannot be used with --oh-monitoring and --nprocs > 1")
 
+   if not args.file and not args.dump_config_exit:
+      parser.error("--file is required unless using --dump-config-exit")
+
 def update_pcommands(args, cdict):
    """Apply modifications to pre/postcommands"""
 
-   cdict['trigger']['precommand'].append('_run_number=%d' % args.run_number)
-   cdict['trigger']['precommand'].append('_lb_number=%d' % args.lb_number)
+   if args.run_number is not None:
+      cdict['trigger']['precommand'].append('_run_number=%d' % args.run_number)
+   if args.lb_number is not None:
+      cdict['trigger']['precommand'].append('_lb_number=%d' % args.lb_number)
 
    if args.perfmon:
       cdict['trigger']['precommand'].insert(0, "include('TrigCommon/PerfMon.py')")
@@ -136,14 +141,14 @@ def update_run_params(args):
    if (args.run_number and not args.lb_number) or (not args.run_number and args.lb_number):
       log.error("Both or neither of the options -R (--run-number) and -L (--lb-number) have to be specified")
 
-   if args.run_number is None:
+   if args.run_number is None and args.file:
       from eformat import EventStorage
       dr = EventStorage.pickDataReader(args.file[0])
       args.run_number = dr.runNumber()
       args.lb_number = dr.lumiblockNumber()
 
    sor_params = None
-   if args.sor_time is None or args.detector_mask is None:
+   if (args.sor_time is None or args.detector_mask is None) and args.run_number is not None:
       sor_params = AthHLT.get_sor_params(args.run_number)
       log.debug('SOR parameters: %s', sor_params)
       if sor_params is None:
@@ -151,10 +156,10 @@ def update_run_params(args):
                    "remaining run parameters, e.g.: --sor-time=now --detector-mask=all", args.run_number)
          sys.exit(1)
 
-   if args.sor_time is None:
+   if args.sor_time is None and sor_params is not None:
       args.sor_time = arg_sor_time(str(sor_params['SORTime']))
 
-   if args.detector_mask is None:
+   if args.detector_mask is None and sor_params is not None:
       dmask = sor_params['DetectorMask']
       if args.run_number < AthHLT.CondDB._run2:
          dmask = hex(dmask)
@@ -166,7 +171,7 @@ def update_trigconf_keys(args):
    if args.smk is None or args.l1psk is None or args.hltpsk is None:
       try:
          log.info("Reading trigger configuration keys from COOL for run %s", args.run_number)
-         trigconf = AthHLT.get_trigconf_keys(args.run_number)
+         trigconf = AthHLT.get_trigconf_keys(args.run_number, args.lb_number)
          if args.smk is None:
             args.smk = trigconf['SMK']
          if args.l1psk is None:
@@ -211,19 +216,22 @@ def HLTMPPy_cfgdict(args):
    if args.script_after_fork:
       cdict['HLTMPPU']['scriptAfterFork'] = args.script_after_fork
 
-   cdict['datasource'] = {
-      'module': 'dffileds',
-      'dslibrary': 'DFDcmEmuBackend',
-      'compressionFormat': 'ZLIB',
-      'compressionLevel': 2,
-      'file': args.file,
-      'loopFiles': args.loop_files,
-      'numEvents': args.number_of_events,
-      'outFile': args.save_output,
-      'preload': False,
-      'extraL1Robs': args.extra_l1r_robs,
-      'skipEvents': args.skip_events
-   }
+   if args.file:
+      cdict['datasource'] = {
+         'module': 'dffileds',
+         'dslibrary': 'DFDcmEmuBackend',
+         'compressionFormat': 'ZLIB',
+         'compressionLevel': 2,
+         'file': args.file,
+         'loopFiles': args.loop_files,
+         'numEvents': args.number_of_events,
+         'outFile': args.save_output,
+         'preload': False,
+         'extraL1Robs': args.extra_l1r_robs,
+         'skipEvents': args.skip_events
+      }
+   else:
+      cdict['datasource'] = {'module': 'dcmds'}
 
    cdict['global'] = {
       'date': args.sor_time,
@@ -239,6 +247,13 @@ def HLTMPPy_cfgdict(args):
       'schema_files': ['Larg.LArNoiseBurstCandidates.is.schema.xml'],
       'with_infrastructure': args.oh_monitoring
    }
+
+   if not args.file:
+      cdict['global']['trigger_type'] = ''
+      cdict['global']['detector_mask'] = 'f'*32
+      cdict['global']['beam_type'] = 0
+      cdict['global']['beam_energy'] = 0
+      cdict['global']['T0_project_tag'] = ''
 
    if args.oh_monitoring:
       cdict['monitoring'] = {
@@ -333,7 +348,7 @@ def main():
    g.add_argument('--help', '-h', nargs='?', choices=['all'], action=MyHelp, help='show help')
 
    g = parser.add_argument_group('Input/Output')
-   g.add_argument('--file', '--filesInput', '-f', action='append', required=True, help='input RAW file')
+   g.add_argument('--file', '--filesInput', '-f', action='append', help='input RAW file')
    g.add_argument('--save-output', '-o', metavar='FILE', help='output file name')
    g.add_argument('--number-of-events', '--evtMax', '-n', metavar='N', type=int, default=-1, help='processes N events (<=0 means all)')
    g.add_argument('--skip-events', '--skipEvents', '-k', metavar='N', type=int, default=0, help='skip N first events')
@@ -361,7 +376,7 @@ def main():
    g = parser.add_argument_group('Database')
    g.add_argument('--use-database', '-b', action='store_true',
                   help='configure from trigger database, reading keys from COOL if not specified')
-   g.add_argument('--db-server', metavar='DB', default='TRIGGERDB', help='DB server name')
+   g.add_argument('--db-server', metavar='DB', default='TRIGGERDB_RUN3', help='DB server name')
    g.add_argument('--smk', type=int, default=None, help='Super Master Key')
    g.add_argument('--l1psk', type=int, default=None, help='L1 prescale key')
    g.add_argument('--hltpsk', type=int, default=None, help='HLT prescale key')
@@ -428,8 +443,13 @@ def main():
       log.warning("Looping over files without specifying number of events will run forever!")
 
    # Update args and set athena flags
+   from TrigPSC import PscConfig
+
    update_run_params(args)
    if args.use_database:
+      # If HLTPSK was given on the command line, we ignore what is stored in COOL
+      PscConfig.forcePSK = (args.hltpsk is not None)
+      # We always read the keys corresponding to the run/LB in the first file
       update_trigconf_keys(args)
 
    # get HLTMPPY config dictionary
@@ -442,7 +462,6 @@ def main():
    update_pcommands(args, cdict)
 
    # Extra Psc configuration
-   from TrigPSC import PscConfig
    PscConfig.interactive = args.interactive
    PscConfig.dumpJobProperties = args.dump_config or args.dump_config_exit or args.dump_config_reload
    PscConfig.exitAfterDump = args.dump_config_exit

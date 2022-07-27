@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 """Main steering for MC+MC and MC+data overlay
 
-Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 """
 
-from AthenaConfiguration.ComponentFactory import CompFactory
 from AthenaConfiguration.MainServicesConfig import MainServicesCfg
 from AthenaConfiguration.Enums import LHCPeriod
 from AthenaPoolCnvSvc.PoolReadConfig import PoolReadCfg
@@ -12,14 +11,19 @@ from AthenaPoolCnvSvc.PoolWriteConfig import PoolWriteCfg
 from OverlayConfiguration.OverlayMetadata import overlayMetadataCheck, overlayMetadataWrite
 
 from InDetOverlay.BCMOverlayConfig import BCMOverlayCfg
+from InDetOverlay.ITkPixelOverlayConfig import ITkPixelOverlayCfg
+from InDetOverlay.ITkStripOverlayConfig import ITkStripOverlayCfg
 from InDetOverlay.PixelOverlayConfig import PixelOverlayCfg
 from InDetOverlay.SCTOverlayConfig import SCTOverlayCfg
 from InDetOverlay.TRTOverlayConfig import TRTOverlayCfg
+from HGTD_Overlay.HGTD_OverlayConfig import HGTD_OverlayCfg
 from LArDigitization.LArDigitizationConfigNew import LArOverlayCfg, LArSuperCellOverlayCfg
-from MuonConfig.CscOverlayConfig import CscOverlayCfg
-from MuonConfig.MdtOverlayConfig import MdtOverlayCfg
-from MuonConfig.RpcOverlayConfig import RpcOverlayCfg
-from MuonConfig.TgcOverlayConfig import TgcOverlayCfg
+from MuonConfig.CSC_OverlayConfig import CSC_OverlayCfg
+from MuonConfig.MDT_OverlayConfig import MDT_OverlayCfg
+from MuonConfig.MM_OverlayConfig import MM_OverlayCfg
+from MuonConfig.RPC_OverlayConfig import RPC_OverlayCfg
+from MuonConfig.sTGC_OverlayConfig import sTGC_OverlayCfg
+from MuonConfig.TGC_OverlayConfig import TGC_OverlayCfg
 from OverlayCopyAlgs.OverlayCopyAlgsConfig import \
     CopyCaloCalibrationHitContainersCfg, CopyJetTruthInfoCfg, CopyPileupParticleTruthInfoCfg, CopyMcEventCollectionCfg, \
     CopyTimingsCfg, CopyTrackRecordCollectionsCfg
@@ -28,33 +32,23 @@ from TrigT1CaloSim.TTL1OverlayConfig import LArTTL1OverlayCfg, TileTTL1OverlayCf
 from xAODEventInfoCnv.xAODEventInfoCnvConfig import EventInfoOverlayCfg
 
 
-def OverlayMainServicesCfg(flags):
-    """Configure event loop for overlay"""
-    acc = MainServicesCfg(flags)
-    if not flags.Overlay.DataOverlay:
-        if flags.Concurrency.NumThreads > 0:
-            AthenaHiveEventLoopMgr = CompFactory.AthenaHiveEventLoopMgr
-            elmgr = AthenaHiveEventLoopMgr()
-        else:
-            AthenaEventLoopMgr = CompFactory.AthenaEventLoopMgr
-            elmgr = AthenaEventLoopMgr()
-        elmgr.RequireInputAttributeList = True
-        elmgr.UseSecondaryEventNumber = True
-        acc.addService(elmgr)
-    return acc
-
-
 def OverlayMainCfg(configFlags):
     """Main overlay steering configuration"""
 
     # Construct our accumulator to run
-    acc = OverlayMainServicesCfg(configFlags)
+    acc = MainServicesCfg(configFlags)
     acc.merge(PoolReadCfg(configFlags))
     acc.merge(PoolWriteCfg(configFlags))
+    acc.merge(OverlayMainContentCfg(configFlags))
+    return acc
+
+
+def OverlayMainContentCfg(configFlags):
+    """Main overlay content"""
 
     # Handle metadata correctly
     overlayMetadataCheck(configFlags)
-    acc.merge(overlayMetadataWrite(configFlags))
+    acc = overlayMetadataWrite(configFlags)
 
     # Add event info overlay
     acc.merge(EventInfoOverlayCfg(configFlags))
@@ -82,6 +76,16 @@ def OverlayMainCfg(configFlags):
     if configFlags.Detector.EnableTRT:
         acc.merge(TRTOverlayCfg(configFlags))
 
+    # ITk
+    if configFlags.Detector.EnableITkPixel:
+        acc.merge(ITkPixelOverlayCfg(configFlags))
+    if configFlags.Detector.EnableITkStrip:
+        acc.merge(ITkStripOverlayCfg(configFlags))
+
+    # HGTD
+    if configFlags.Detector.EnableHGTD:
+        acc.merge(HGTD_OverlayCfg(configFlags))
+
     # Calorimeters
     if configFlags.Detector.EnableLAr:
         acc.merge(LArOverlayCfg(configFlags))
@@ -104,17 +108,33 @@ def OverlayMainCfg(configFlags):
 
     # Muon system
     if configFlags.Detector.EnableCSC:
-        acc.merge(CscOverlayCfg(configFlags))
+        acc.merge(CSC_OverlayCfg(configFlags))
     if configFlags.Detector.EnableMDT:
-        acc.merge(MdtOverlayCfg(configFlags))
+        acc.merge(MDT_OverlayCfg(configFlags))
     if configFlags.Detector.EnableRPC:
-        acc.merge(RpcOverlayCfg(configFlags))
+        acc.merge(RPC_OverlayCfg(configFlags))
     if configFlags.Detector.EnableTGC:
-        acc.merge(TgcOverlayCfg(configFlags))
+        acc.merge(TGC_OverlayCfg(configFlags))
+    if configFlags.Detector.EnablesTGC:
+        acc.merge(sTGC_OverlayCfg(configFlags))
+    if configFlags.Detector.EnableMM:
+        acc.merge(MM_OverlayCfg(configFlags))
 
     # Add MT-safe PerfMon
     if configFlags.PerfMon.doFastMonMT or configFlags.PerfMon.doFullMonMT:
         from PerfMonComps.PerfMonCompsConfig import PerfMonMTSvcCfg
         acc.merge(PerfMonMTSvcCfg(configFlags))
+
+    #track overlay
+    if configFlags.Overlay.doTrackOverlay:
+        #need this to ensure that the ElementLinks to the PRDs are handled correctly (since the name is hardcoded in the converters)
+        from TrkEventCnvTools.TrkEventCnvToolsConfigCA import TrkEventCnvSuperToolCfg
+        acc.merge(TrkEventCnvSuperToolCfg(configFlags))
+        from OverlayCopyAlgs.OverlayCopyAlgsConfig import CopyTrackCollectionsCfg,CopyPixelClusterContainerCfg, CopySCT_ClusterContainerCfg,\
+            CopyTRT_DriftCircleContainerCfg
+        acc.merge(CopyTrackCollectionsCfg(configFlags))
+        acc.merge(CopyPixelClusterContainerCfg(configFlags))
+        acc.merge(CopySCT_ClusterContainerCfg(configFlags))
+        acc.merge(CopyTRT_DriftCircleContainerCfg(configFlags))
 
     return acc

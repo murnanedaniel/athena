@@ -35,6 +35,7 @@
 
 // ROOT includes
 #include "TROOT.h"
+#include "TSystem.h"
 
 // System includes
 #include <sstream>
@@ -93,6 +94,7 @@ StatusCode HltEventLoopMgr::initialize()
   ATH_MSG_INFO(" ---> HardTimeout               = " << m_hardTimeout.value());
   ATH_MSG_INFO(" ---> SoftTimeoutFraction       = " << m_softTimeoutFraction.value());
   ATH_MSG_INFO(" ---> SoftTimeoutValue          = " << m_softTimeoutValue.count());
+  ATH_MSG_INFO(" ---> TraceOnTimeout            = " << m_traceOnTimeout.value());
   ATH_MSG_INFO(" ---> MaxFrameworkErrors        = " << m_maxFrameworkErrors.value());
   ATH_MSG_INFO(" ---> FwkErrorDebugStreamName   = " << m_fwkErrorDebugStreamName.value());
   ATH_MSG_INFO(" ---> AlgErrorDebugStreamName   = " << m_algErrorDebugStreamName.value());
@@ -270,7 +272,7 @@ StatusCode HltEventLoopMgr::prepareForStart(const ptree& pt)
     ATH_MSG_WARNING("SOR time overwrite:" << m_forceSOR_ns);
   }
 
-  // Set our "run context" (invalid event/slot)
+  // Set our "run context"
   m_currentRunCtx.setEventID( m_sorHelper->eventID() );
   m_currentRunCtx.setExtension(Atlas::ExtendedEventContext(m_evtStore->hiveProxyDict(),
                                                            m_currentRunCtx.eventID().run_number()));
@@ -291,6 +293,8 @@ StatusCode HltEventLoopMgr::prepareForStart(const ptree& pt)
     ATH_MSG_ERROR("Exception: " << e.what());
   }
 
+  ATH_CHECK( updateMagField(pt) );  // update magnetic field
+
   return StatusCode::SUCCESS;
 }
 
@@ -298,14 +302,12 @@ StatusCode HltEventLoopMgr::prepareForStart(const ptree& pt)
 // =============================================================================
 // Implementation of ITrigEventLoopMgr::prepareForRun
 // =============================================================================
-StatusCode HltEventLoopMgr::prepareForRun(const ptree& pt)
+StatusCode HltEventLoopMgr::prepareForRun(const ptree& /*pt*/)
 {
   ATH_MSG_VERBOSE("start of " << __FUNCTION__);
 
   try
   {
-    ATH_CHECK( updateMagField(pt) );                     // update magnetic field
-
     m_incidentSvc->fireIncident(Incident(name(), IncidentType::BeginRun, m_currentRunCtx));
 
     // Initialize COOL helper (needs to be done after IOVDbSvc has loaded all folders)
@@ -913,48 +915,63 @@ StatusCode HltEventLoopMgr::failedEvent(HLT::OnlineErrorCode errorCode, const Ev
   }
 
   //----------------------------------------------------------------------------
-  // Create an HLT result for the failed event (copy one if it exists)
+  // Define a debug stream tag for the HLT result
   //----------------------------------------------------------------------------
-  auto hltResultRH = SG::makeHandle(m_hltResultRHKey,eventContext);
-  if (!hltResultRH.isValid()) {
-    // Try to build a result if not available
-    m_hltResultMaker->makeResult(eventContext).ignore();
-  }
-
-  std::unique_ptr<HLT::HLTResultMT> hltResultPtr;
-  if (!hltResultRH.isValid())
-    hltResultPtr = std::make_unique<HLT::HLTResultMT>();
-  else
-    hltResultPtr = std::make_unique<HLT::HLTResultMT>(*hltResultRH);
-
-  SG::WriteHandleKey<HLT::HLTResultMT> hltResultWHK(m_hltResultRHKey.key()+"_FailedEvent");
-  ATH_CHECK(hltResultWHK.initialize());
-  auto hltResultWH = SG::makeHandle(hltResultWHK,eventContext);
-  if (hltResultWH.record(std::move(hltResultPtr)).isFailure()) {
-    ATH_MSG_ERROR("Failed to record the HLT Result in event store while handling a failed event."
-      << " Likely an issue with the store. OnlineErrorCode=" << errorCode
-      << ", local event number " << eventContext.evt() << ", slot " << eventContext.slot()
-      << ". All slots of this HltEventLoopMgr instance will be drained before proceeding.");
-    return drainAllAndProceed();
-  }
-
-  //----------------------------------------------------------------------------
-  // Set error code and make sure the debug stream tag is added
-  //----------------------------------------------------------------------------
-  hltResultWH->addErrorCode(errorCode);
+  std::string debugStreamName;
   switch (errorCode) {
     case HLT::OnlineErrorCode::PROCESSING_FAILURE:
-      ATH_CHECK(hltResultWH->addStreamTag({m_algErrorDebugStreamName.value(), eformat::DEBUG_TAG, true}));
+      debugStreamName = m_algErrorDebugStreamName.value();
       break;
     case HLT::OnlineErrorCode::TIMEOUT:
-      ATH_CHECK(hltResultWH->addStreamTag({m_timeoutDebugStreamName.value(), eformat::DEBUG_TAG, true}));
+      debugStreamName = m_timeoutDebugStreamName.value();
       break;
     case HLT::OnlineErrorCode::RESULT_TRUNCATION:
-      ATH_CHECK(hltResultWH->addStreamTag({m_truncationDebugStreamName.value(), eformat::DEBUG_TAG, true}));
+      debugStreamName = m_truncationDebugStreamName.value();
       break;
     default:
-      ATH_CHECK(hltResultWH->addStreamTag({m_fwkErrorDebugStreamName.value(), eformat::DEBUG_TAG, true}));
+      debugStreamName = m_fwkErrorDebugStreamName.value();
       break;
+  }
+  eformat::helper::StreamTag debugStreamTag{debugStreamName, eformat::DEBUG_TAG, true};
+
+  //----------------------------------------------------------------------------
+  // Create an HLT result for the failed event (copy one if it exists and contains serialised data)
+  //----------------------------------------------------------------------------
+  std::unique_ptr<HLT::HLTResultMT> hltResultPtr;
+  StatusCode buildResultCode{StatusCode::SUCCESS};
+  auto hltResultRH = SG::makeHandle(m_hltResultRHKey,eventContext);
+  if (hltResultRH.isValid() && !hltResultRH->getSerialisedData().empty()) {
+    // There is already an existing result, create a copy with the error code and stream tag
+    hltResultPtr = std::make_unique<HLT::HLTResultMT>(*hltResultRH);
+    hltResultPtr->addErrorCode(errorCode);
+    buildResultCode &= hltResultPtr->addStreamTag(debugStreamTag);
+  } else {
+    // Create a result if not available, pre-fill with error code an stream tag, then try to fill event data
+    hltResultPtr = std::make_unique<HLT::HLTResultMT>();
+    hltResultPtr->addErrorCode(errorCode);
+    buildResultCode &= hltResultPtr->addStreamTag(debugStreamTag);
+    // Fill the result unless we already failed doing this before
+    if (errorCode != HLT::OnlineErrorCode::NO_HLT_RESULT) {
+      buildResultCode &= m_hltResultMaker->fillResult(*hltResultPtr,eventContext);
+    }
+  }
+
+  // Try to record the result in th event store
+  SG::WriteHandleKey<HLT::HLTResultMT> hltResultWHK(m_hltResultRHKey.key()+"_FailedEvent");
+  buildResultCode &= hltResultWHK.initialize();
+  auto hltResultWH = SG::makeHandle(hltResultWHK,eventContext);
+  if (buildResultCode.isFailure() || hltResultWH.record(std::move(hltResultPtr)).isFailure()) {
+    if (errorCode == HLT::OnlineErrorCode::NO_HLT_RESULT) {
+      // Avoid infinite loop
+      ATH_MSG_ERROR("Second failure to build or record the HLT Result in event store while handling a failed event. "
+                    << "Cannot force-accept this event from HLT side, will rely on data collector to do this. "
+                    << "All slots of this HltEventLoopMgr instance will be drained and the loop will exit.");
+      ATH_CHECK(drainAllSlots());
+      return StatusCode::FAILURE;
+    }
+    ATH_MSG_ERROR("Failed to build or record the HLT Result in event store while handling a failed event. "
+                  << "Trying again with skipped filling of the result contents (except debug stream tag).");
+    return failedEvent(HLT::OnlineErrorCode::NO_HLT_RESULT,eventContext);
   }
 
   //----------------------------------------------------------------------------
@@ -970,39 +987,45 @@ StatusCode HltEventLoopMgr::failedEvent(HLT::OnlineErrorCode errorCode, const Ev
   // Try to build and send the output
   //----------------------------------------------------------------------------
   if (m_outputCnvSvc->connectOutput("").isFailure()) {
-    ATH_MSG_ERROR("The output conversion service failed in connectOutput() while handling a failed event."
-      << " No HLT result can be recorded for this event. OnlineErrorCode=" << errorCode
-      << ", local event number " << eventContext.evt() << ", slot " << eventContext.slot()
-      << ". All slots of this HltEventLoopMgr instance will be drained before proceeding.");
-    return drainAllAndProceed();
+    ATH_MSG_ERROR("The output conversion service failed in connectOutput() while handling a failed event. "
+                  << "Cannot force-accept this event from HLT side, will rely on data collector to do this. "
+                  << "All slots of this HltEventLoopMgr instance will be drained and the loop will exit.");
+    ATH_CHECK(drainAllSlots());
+    return StatusCode::FAILURE;
   }
 
   DataObject* hltResultDO = m_evtStore->accessData(hltResultWH.clid(),hltResultWH.key());
   if (hltResultDO == nullptr) {
-    ATH_MSG_ERROR("Failed to retrieve DataObject for the HLT result object while handling a failed event."
-      << " No HLT result can be recorded for this event. OnlineErrorCode=" << errorCode
-      << ", local event number " << eventContext.evt() << ", slot " << eventContext.slot()
-      << ". All slots of this HltEventLoopMgr instance will be drained before proceeding.");
-    return drainAllAndProceed();
+    if (errorCode == HLT::OnlineErrorCode::NO_HLT_RESULT) {
+      // Avoid infinite loop
+      ATH_MSG_ERROR("Second failure to build or record the HLT Result in event store while handling a failed event. "
+                    << "Cannot force-accept this event from HLT side, will rely on data collector to do this. "
+                    << "All slots of this HltEventLoopMgr instance will be drained and the loop will exit.");
+      ATH_CHECK(drainAllSlots());
+      return StatusCode::FAILURE;
+    }
+    ATH_MSG_ERROR("Failed to retrieve DataObject for the HLT result object while handling a failed event. "
+                  << "Trying again with skipped filling of the result contents (except debug stream tag).");
+    return failedEvent(HLT::OnlineErrorCode::NO_HLT_RESULT,eventContext);
   }
 
   IOpaqueAddress* addr = nullptr;
   if (m_outputCnvSvc->createRep(hltResultDO,addr).isFailure() || addr == nullptr) {
-    ATH_MSG_ERROR("Conversion of HLT result object to the output format failed while handling a failed event."
-      << " No HLT result can be recorded for this event. OnlineErrorCode=" << errorCode
-      << ", local event number " << eventContext.evt() << ", slot " << eventContext.slot()
-      << ". All slots of this HltEventLoopMgr instance will be drained before proceeding.");
+    ATH_MSG_ERROR("Conversion of HLT result object to the output format failed while handling a failed event. "
+                  << "Cannot force-accept this event from HLT side, will rely on data collector to do this. "
+                  << "All slots of this HltEventLoopMgr instance will be drained and the loop will exit.");
     delete addr;
-    return drainAllAndProceed();
+    ATH_CHECK(drainAllSlots());
+    return StatusCode::FAILURE;
   }
 
   if (m_outputCnvSvc->commitOutput("",true).isFailure()) {
-    ATH_MSG_ERROR("The output conversion service failed in commitOutput() while handling a failed event."
-      << " No HLT result can be recorded for this event. OnlineErrorCode=" << errorCode
-      << ", local event number " << eventContext.evt() << ", slot " << eventContext.slot()
-      << ". All slots of this HltEventLoopMgr instance will be drained before proceeding.");
+    ATH_MSG_ERROR("The output conversion service failed in commitOutput() while handling a failed event. "
+                  << "Cannot force-accept this event from HLT side, will rely on data collector to do this. "
+                  << "All slots of this HltEventLoopMgr instance will be drained and the loop will exit.");
     delete addr;
-    return drainAllAndProceed();
+    ATH_CHECK(drainAllSlots());
+    return StatusCode::FAILURE;
   }
 
   // The output has been sent out, the ByteStreamAddress can be deleted
@@ -1025,10 +1048,8 @@ StatusCode HltEventLoopMgr::failedEvent(HLT::OnlineErrorCode errorCode, const Ev
   // Finish handling the failed event
   //----------------------------------------------------------------------------
 
-  // Unless this is a timeout, truncation or processing (i.e. algorithm) failure, increment the number of framework failures
-  if (errorCode != HLT::OnlineErrorCode::TIMEOUT
-      && errorCode != HLT::OnlineErrorCode::RESULT_TRUNCATION
-      && errorCode != HLT::OnlineErrorCode::PROCESSING_FAILURE) {
+  // Unless this is an event data or algorithm processing failure, increment the number of framework failures
+  if (!HLT::isEventProcessingErrorCode(errorCode)) {
     if ( m_maxFrameworkErrors.value()>=0 && ((++m_nFrameworkErrors)>m_maxFrameworkErrors.value()) ) {
       ATH_MSG_ERROR("Failure with OnlineErrorCode=" << errorCode
         << " was successfully handled, but the number of tolerable framework errors for this HltEventLoopMgr instance,"
@@ -1065,6 +1086,12 @@ void HltEventLoopMgr::runEventTimer()
         if (!Athena::Timeout::instance(ctx).reached()) {
           ATH_MSG_ERROR("Soft timeout in slot " << i << ". Processing time exceeded the limit of " << m_softTimeoutValue.count() << " ms");
           setTimeout(Athena::Timeout::instance(ctx));
+          // Generate a stack trace only once, on the first timeout
+          if (m_traceOnTimeout.value() && !m_timeoutTraceGenerated) {
+            ATH_MSG_INFO("Generating stack trace due to the soft timeout");
+            m_timeoutTraceGenerated = true;
+            gSystem->StackTrace();
+          }
         }
       }
     }
@@ -1176,6 +1203,18 @@ StatusCode HltEventLoopMgr::startNextEvent(EventLoopStatus& loopStatus)
                       << " after NoEventsTemporarily detected");
     }
     return StatusCode::SUCCESS;
+  }
+  catch (const hltonl::Exception::MissingCTPFragment& e) {
+    sc = StatusCode::FAILURE;
+    if (check(e.what(), HLT::OnlineErrorCode::MISSING_CTP_FRAGMENT, *eventContext)) {
+      return sc;
+    }
+  }
+  catch (const hltonl::Exception::BadCTPFragment& e) {
+    sc = StatusCode::FAILURE;
+    if (check(e.what(), HLT::OnlineErrorCode::BAD_CTP_FRAGMENT, *eventContext)) {
+      return sc;
+    }
   }
   catch (const std::exception& e) {
     ATH_MSG_ERROR("Failed to get next event from the event source, std::exception caught: " << e.what());

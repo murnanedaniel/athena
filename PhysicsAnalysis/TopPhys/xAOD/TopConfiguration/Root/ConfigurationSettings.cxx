@@ -22,6 +22,7 @@ namespace top {
   ConfigurationSettings* ConfigurationSettings::m_instance = 0;
 
   ConfigurationSettings::ConfigurationSettings() : m_configured(false) {
+    setMsgLevel(MSG::Level::INFO);
     registerParameter("ElectronCollectionName", "Name of the Electron container");
     registerParameter("FwdElectronCollectionName", "Name of the Forward Electrons container, ForwardElectrons or None (default)", "None");
     registerParameter("MuonCollectionName", "Name of the Muon container");
@@ -62,10 +63,19 @@ namespace top {
     registerParameter("ElectronPt", "Electron pT cut for object selection (in MeV). Default 25 GeV.", "25000.");
     registerParameter("Electrond0Sig", "Electron d0 significance cut for object selection. Default 5", "5.");
     registerParameter("Electrondeltaz0", "Electron delta z0 cut for object selection. Default 0.5 mm", "0.5");
+    registerParameter("ElectronIDSFFilePath", "EXPERIMENTAL! Path to a root file containing custom electron ID SFs, e.g. "
+											"dev/ElectronEfficiencyCorrection/2015_2018/rel21.2/Precision_Summer2020_v1/offline/efficiencySF.offline.TightLLH_d0z0_v13.root."
+                      "This should only be used by experts for testing SFs! Default: Using the most recent recommended map.", "Default");
+    registerParameter("ElectronIDSFFilePathLoose", "EXPERIMENTAL! Path to a root file containing custom electron ID SFs, e.g. dev/ElectronEfficiencyCorrection/2015_2018/rel21.2/Precision_Summer2020_v1/offline/efficiencySF.offline.TightLLH_d0z0_v13.root."
+                      "This should only be used by experts for testing SFs! Default: Using the most recent recommended map.", "Default");
     registerParameter("EgammaSystematicModel", "Egamma Calibration Systematic model : FULL_v1 , 1NP_v1 (default)",
                       "1NP_v1");
+    registerParameter("ElectronEfficiencySystematicModelNToys",
+                      "Electron Efficiency Toy Systematics Number of Toys: ","40");
+    registerParameter("ElectronEfficiencySystematicModelToySeed",
+                      "Electron Efficiency Toy Systematics Seed of Toys: ","12345");
     registerParameter("ElectronEfficiencySystematicModel",
-                      "Electron Efficiency Systematic model : FULL, SIMPLIFIED, TOTAL (default)", "TOTAL");
+                      "Electron Efficiency Systematic model : FULL, SIMPLIFIED, TOTAL (default), COMBMCTOYS", "TOTAL");
     registerParameter("ElectronEfficiencySystematicModelEtaBinning",
                       "Electron Efficiency Systematic model eta binning (option for SIMPLIFIED model, do not specify to use default; format XXX:YYY:ZZZ, e.g. 0.0:1.37:4.9)",
                       "default");
@@ -87,6 +97,9 @@ namespace top {
                       "True/False. Switch on/off leakage correction -- REQUIRES ptag>p3947 (Default True).", "True");
     registerParameter("EnablePromptLeptonImprovedVetoStudies",
 		      "True/False. Adds the (many!) variables necessary to validate the PromptLeptonImprovedVeto electron+muon isolation -- TEMPORARY, for studies only (Default False).", "False");
+    registerParameter("ElectronTriggerEfficiencyConfig",
+		      "Electron trigger efficiency SF configuration. REQUIRED!",
+		      " ");
 
     registerParameter("FwdElectronID", "Type of fwd electron. Loose, Medium, Tight (default)", "Tight");
     registerParameter("FwdElectronIDLoose", "Type of fwd loose electrons. Loose, Medium, Tight (default)", "Tight");
@@ -140,6 +153,7 @@ namespace top {
     registerParameter("MuonIsolationSFLoose", "Force loose muon isolation SF to specific WP (e.g. None).", " ");
     registerParameter("MuonDoSmearing2stationHighPt", "True/False, to turn on/off spacial corrections for 2-station muons reconstruction with missing inner MS station allowed for abs(eta)<1.3, only with MuonQuality HighPt. - Default: True", "True");
     registerParameter("MuonDoExtraSmearingHighPt", "True/False, To be used by analyses using willing to check their sensitivity to momentum resolution effects at large muon momenta and in case move to the HighPt WP - Default: false", "false");
+    registerParameter("MuonCalibrationMode", "Calibration method for muon momentum.", "correctData_CB", {"correctData_CB", "correctData_IDMS", "notCorrectData_IDMS"});
     registerParameter("UseAntiMuons", "Use AntiMuons for fake estimate. Default: false", "false");
     registerParameter("UseSoftMuons", "True to use soft muons, False (default) otherwise", "False");
     registerParameter("SoftMuonPt", "Soft Muon pT cut for object selection (in MeV). Default 4 GeV.", "4000");
@@ -166,6 +180,22 @@ namespace top {
                       "Debug output for soft muon additional truth-level information: True or False (default)",
                       "False");
 
+    registerParameter("MuonSFCustomInputFolder",
+                      "EXPERT OPTION! Tells the MuonEfficiencyScaleFactors tools to use a custom input folder path. If set to \" \" will use the default",
+                      " ");
+    registerParameter("MuonForceYear",
+                      "EXPERT OPTION! Tells the MuonEfficiencyScaleFactors tools to use a custom Year. If set to -1 will use the default",
+                      "-1");
+    registerParameter("MuonForcePeriod",
+                      "EXPERT OPTION! Tells the MuonEfficiencyScaleFactors tools to use a custom Period. If set to \" \" will use the default",
+                      " ");
+    registerParameter("MuonForceTrigger",
+                      "EXPERT OPTION! Tells the MuonEfficiencyScaleFactors tools to use a custom Trigger. If set to \" \" will use the default", 
+                      " ");
+    registerParameter("MuonBreakDownSystematics",
+                      "Tells the MuonEfficiencyScaleFactors tools to use a more complex systematic model, if set to True. Default is False",
+                      "False", {"True", "False"});
+
     registerParameter("JetPt", "Jet pT cut for object selection (in MeV). Default 25 GeV.", "25000.");
     registerParameter("JetEta", "Absolute Jet eta cut for object selection. Default 2.5.", "2.5");
    
@@ -181,7 +211,12 @@ namespace top {
                       "Use fJVT cut on forward jets to improve resolution in the MET recalculation? \'False\' (default - must set false if using pflow jets with derivations older than P4173), or \'True\'", "False");
     registerParameter("SaveFailForwardJVTJets", "Save the jets that failed the fJVT cut? \'False\' (default), or \'True\'", "False");
     registerParameter("AdvancedUsage_METUncertaintiesConfigDir", "Path to directory containing MET uncertainties configs (including trailing /) \'Latest\' (default), or previous \'METUtilities/data17_13TeV/prerec_Jan16/\'", "Latest");
-   
+    registerParameter("METSignificance",
+                      "Setting that provide option to turn on/off METSignificance",
+                      "False", {"True", "False"});
+    registerParameter("METSignificanceSoftTermParam",
+                      "String that sets the type of resolutions that are used for the soft term, Random(met::Random), PthardParam(met::PthardParam), TSTParam(met::TSTParam)",
+                      "Random", {"Random", "PthardParam", "TSTParam"});
     registerParameter("JetPtGhostTracks",
                       "Jet pT threshold for ghost track systematic variations calculation (in MeV). Default 25 GeV.",
                       "25000.");
@@ -577,6 +612,15 @@ namespace top {
                       "Specify period number assignments to run numbers ranges in this form: \"XXX:XXX:XXX\", where XXX are runnumbers, first number is the associated run number, second number is the period block start, the third number is the period block end. You can pass any number of these sets (total number of provided RunNumbers needs to be divisible by 3). Default is used if not specified",
                       " ");
 
+    registerParameter("ForceRandomRunNumber",
+                      "If set to an integer, will disable PRW and use that value as the random run number for MC",
+                      " ");
+    
+    registerParameter("IsRun3",
+                      "Tells the code to setup congiguration for Run 3",
+                      "False",
+                      {"True", "False"});
+
     registerParameter("MuonTriggerSF", "Muon trigger SFs to calculate", "HLT_mu20_iloose_L1MU15_OR_HLT_mu50");
 
     registerParameter("KLFitterTransferFunctionsPath", "Select the transfer functions to use", "mc12a/akt4_LCtopo_PP6");
@@ -613,6 +657,9 @@ namespace top {
     registerParameter("LargeJetOverlapRemoval",
                       "Perform overlap removal including large-R jets. True or False (default: False).", "False");
 
+    registerParameter("EleEleOverlapRemoval",
+                      "Apply electron-electron overlap removal. True or False (default: False).", "False");
+
     registerParameter("SaveBootstrapWeights", "Set to true in order to save Poisson bootstrap weights,"
                                               "True or False (default False)", "False");
 
@@ -647,8 +694,11 @@ namespace top {
     registerParameter("RedefineMCMCMap", "Dictionary for translating the shower names from TopDataPreparation. Format: \"shower1:shower2,shower3:shower4\".", " ");
   }
 
-  ConfigurationSettings* ConfigurationSettings::get() {
-    if (!m_instance) m_instance = new ConfigurationSettings();
+  ConfigurationSettings* ConfigurationSettings::get(bool reset) {
+    if (!m_instance || reset) {
+      delete m_instance;
+      m_instance = new ConfigurationSettings();
+    }
 
     return m_instance;
   }

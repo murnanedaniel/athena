@@ -1,13 +1,12 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef TRIGT1NSW_NSWL1SIMULATION_H
 #define TRIGT1NSW_NSWL1SIMULATION_H
 
 // Basic includes
-#include "AthenaBaseComps/AthAlgorithm.h"
-#include "CxxUtils/checker_macros.h"
+#include "AthenaBaseComps/AthReentrantAlgorithm.h"
 #include "GaudiKernel/ITHistSvc.h"
 #include "GaudiKernel/ToolHandle.h"
 #include "Gaudi/Property.h"
@@ -27,14 +26,10 @@
 #include "TrigT1NSWSimTools/PadTriggerAdapter.h"
 #include "TrigT1NSWSimTools/TriggerProcessorTool.h"
 
-#include "xAODEventInfo/EventInfo.h"
-#include "EventInfo/EventInfo.h"
-#include "EventInfo/EventID.h"
 #include "TTree.h"
 
 // Forward includes
 class StoreGateSvc;
-class TTree;
 
 
 // namespace for the NSW LVL1 related classes
@@ -57,16 +52,13 @@ namespace NSWL1 {
    *
    */
 
-  class ATLAS_NOT_THREAD_SAFE  // use of TTree in execute
-  NSWL1Simulation: public AthAlgorithm {
+  class NSWL1Simulation: public AthReentrantAlgorithm {
 
   public:
     NSWL1Simulation( const std::string& name, ISvcLocator* pSvcLocator );
 
     virtual StatusCode initialize() override;
-    virtual StatusCode start() override;
-    virtual StatusCode execute() override;
-    virtual StatusCode finalize() override;
+    virtual StatusCode execute(const EventContext& ctx) const override;
 
   protected:
     SG::WriteHandleKey<Muon::NSW_TrigRawDataContainer> m_trigRdoContainer{this, "NSWTrigRDOContainerName", "NSWTRGRDO", "Name of the NSW trigger RDO container"};
@@ -88,11 +80,10 @@ namespace NSWL1 {
     Gaudi::Property<bool> m_doMMDiamonds{this, "DoMMDiamonds", false, "Run data analysis for MM using Diamond Roads algorithm"};
     Gaudi::Property<bool> m_dosTGC{this, "DosTGC", false, "Run data analysis for sTGCs"};
     Gaudi::Property<bool> m_doStrip{this, "DoStrip", false, "Run data analysis for sTGC strip trigger"};
+    Gaudi::Property<bool> m_doPad{this, "DoPad", false, "Run data analysis for sTGC pad trigger"};
 
     // put analysis variables here
     TTree*       m_tree;                                    //!< analysis ntuple
-    unsigned int m_current_run;                             //!< current run number
-    unsigned int m_current_evt;                             //!< current event number
   };  // end of NSWL1Simulation class
 } // namespace NSWL1
 #endif

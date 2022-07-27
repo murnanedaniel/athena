@@ -1,9 +1,21 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "ISF_FastCaloSimEvent/TFCSParametrizationBase.h"
 #include "TClass.h"
+#ifdef USE_GPU
+//for purpose of copying all parameterization files to GPU in initialization
+#include "ISF_FastCaloSimEvent/TFCSHitCellMappingWiggle.h"
+#include "ISF_FastCaloSimEvent/TFCSHistoLateralShapeParametrization.h"
+#include "ISF_FastCaloSimEvent/TFCSHistoLateralShapeGausLogWeight.h"
+#include "ISF_FastCaloSimEvent/TFCSLateralShapeParametrizationHitChain.h"
+#include "TString.h"
+#endif
+
+#ifndef __FastCaloSimStandAlone__
+#include "AthenaKernel/getMessageSvc.h"
+#endif
 
 //=============================================
 //======= TFCSParametrizationBase =========
@@ -11,11 +23,6 @@
 
 std::set< int > TFCSParametrizationBase::s_no_pdgid;
 std::vector< TFCSParametrizationBase* > TFCSParametrizationBase::s_cleanup_list;
-
-#ifndef __FastCaloSimStandAlone__
-//Initialize only in constructor to make sure the needed services are ready
-Athena::MsgStreamMember* TFCSParametrizationBase::s_msg(nullptr); 
-#endif
 
 #if defined(__FastCaloSimStandAlone__)
 TFCSParametrizationBase::TFCSParametrizationBase(const char* name, const char* title)
@@ -25,9 +32,12 @@ TFCSParametrizationBase::TFCSParametrizationBase(const char* name, const char* t
 {
 }
 #else
-TFCSParametrizationBase::TFCSParametrizationBase(const char* name, const char* title):TNamed(name,title)
+
+TFCSParametrizationBase::TFCSParametrizationBase(const char* name, const char* title)
+  : TNamed(name,title)
 {
-  if(s_msg==nullptr) s_msg=new Athena::MsgStreamMember("FastCaloSimParametrization");
+  // Initialize only in constructor to make sure the needed services are ready
+  if (!s_msg) s_msg = std::make_unique<MsgStream>(Athena::getMessageSvc(), "FastCaloSimParametrization");
 }
 #endif
 
@@ -199,3 +209,31 @@ void TFCSParametrizationBase::RemoveNameTitle()
   }  
 }
 
+#ifdef USE_GPU
+void TFCSParametrizationBase::Copy2GPU()
+{
+  for( unsigned int i=0; i<size(); ++i )  {
+    if(!((*this)[i])) continue;
+    TFCSParametrizationBase* param=(*this)[i];
+    TString name=param->ClassName();
+    if(name.EqualTo("TFCSLateralShapeParametrizationHitChain")){
+      auto size=((TFCSLateralShapeParametrizationHitChain*)param)->size();
+      for(size_t ichain=0; ichain < size; ++ichain){
+	TFCSParametrizationBase* hitsim=(*((TFCSLateralShapeParametrizationHitChain*)param))[ichain];
+	TString hitsimname = hitsim->ClassName();
+	if(hitsimname.EqualTo("TFCSHistoLateralShapeParametrization")){
+	  ( (TFCSHistoLateralShapeParametrization*)hitsim)->LoadHistFuncs();
+	}
+	else if( hitsimname.EqualTo("TFCSHitCellMappingWiggle")){
+	  ( (TFCSHitCellMappingWiggle*)hitsim )->LoadHistFuncs();
+	}
+	else if( hitsimname.EqualTo("TFCSHistoLateralShapeGausLogWeight")){
+	  ( (TFCSHistoLateralShapeGausLogWeight*)hitsim )->LoadHist();
+	}
+
+      }
+    }
+    param->Copy2GPU();
+  }
+}
+#endif

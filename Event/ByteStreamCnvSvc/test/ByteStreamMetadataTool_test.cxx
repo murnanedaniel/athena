@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
  */
 /** Tests for ByteStreamMetadata management.
  *
@@ -10,6 +10,10 @@
  * @author Frank Berghaus <fberghaus@anl.gov>
  * @date Dec 4, 2020
  */
+
+#include "CxxUtils/checker_macros.h"
+ATLAS_NO_CHECK_FILE_THREAD_SAFETY;
+
 #include <ostream>
 #include <memory>
 #include <set>
@@ -215,14 +219,6 @@ namespace Athena_test {
 }  // namespace Athena_test
 
 int main(int argc, char ** argv) {
-  ISvcLocator * svcLocator = nullptr;
-  if (!Athena_test::initGaudi(svcLocator)) {
-    std::cerr << "This test can not be run" << std::endl;
-    return 1;
-  }
-  assert(svcLocator);
-
-  Athena_test::setupStoreGate(argv[0]);
   ::testing::InitGoogleTest(&argc, argv);
 
   return RUN_ALL_TESTS();

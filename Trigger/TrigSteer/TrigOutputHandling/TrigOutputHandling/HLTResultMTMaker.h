@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef TRIGOUTPUTHANDLING_HLTRESULTMTMAKER_H
@@ -20,6 +20,9 @@
 // Gaudi includes
 #include "Gaudi/Interfaces/IOptionsSvc.h"
 
+// System includes
+#include <atomic>
+
 /** @class HLTResultMTMaker
  *  @brief Tool to create the HLTResultMT at the end of each event
  **/
@@ -36,8 +39,10 @@ public:
   virtual StatusCode finalize() override;
 
   // ------------------------- Specific methods of this tool -------------------
-  /// Builds the HLTResultMT and records it in the event store
+  /// Create and fill a new HLTResultMT, and record it in the event store
   StatusCode makeResult(const EventContext& eventContext) const;
+  /// Fill an existing HLTResultMT with event information
+  StatusCode fillResult(HLT::HLTResultMT& hltResult, const EventContext& eventContext) const;
   /// Return name of the HLTResultMT
   const std::string& resultName() const {return m_hltResultWHKey.key();}
 
@@ -111,6 +116,8 @@ private:
   std::set<eformat::SubDetector> m_enabledSubDets;
   /// If true, don't call validatePEBInfo
   bool m_skipValidatePEBInfo {false};
+  /// Flag if empty PEB list error was already printed
+  mutable std::atomic_bool m_emptyPEBInfoErrorPrinted{false};
 };
 
 #endif // TRIGOUTPUTHANDLING_HLTRESULTMTMAKER_H

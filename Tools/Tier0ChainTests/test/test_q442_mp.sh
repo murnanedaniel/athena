@@ -3,6 +3,7 @@
 # art-description: RecoTrf
 # art-type: grid
 # art-include: master/Athena
+# art-include: 22.0/Athena
 # art-include: 22.0-mc20/Athena
 # art-athena-mt: 8
 
@@ -10,7 +11,7 @@ Reco_tf.py \
 --AMI=q442 \
 --athenaopts='--nprocs=2' \
 --maxEvents=500 \
---outputAODFile=myAOD.pool.root --outputESDFile=myESD.pool.root --outputHISTFile=myHIST.root \
+--outputAODFile=myAOD.pool.root --outputESDFile=myESD.pool.root \
 --imf False
 
 rc1=$?

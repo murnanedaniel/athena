@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "GaudiKernel/MsgStream.h"
@@ -37,8 +37,7 @@ namespace Trk {
 
   //________________________________________________________________________
   AlignTrackDresser::~AlignTrackDresser()
-  {
-  }
+  = default;
 
   //________________________________________________________________________
   StatusCode AlignTrackDresser::initialize()
@@ -122,7 +121,7 @@ namespace Trk {
 
     if (imeas!=NMEAS) {
       msg(MSG::ERROR)<<"problem with nmeas.  imeas="<<imeas<<", NMEAS="<<NMEAS<<endmsg;
-      exit(3);
+      throw std::runtime_error("Error in AlignTrackDresser::setResiduals");
     }
 
     alignTrack->setResidualVector(residuals); // residuals owned by alignTrack

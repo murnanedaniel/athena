@@ -1,5 +1,5 @@
 #
-#  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+#  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #
 
 ####################################################
@@ -19,75 +19,52 @@ def InDetGlobalMonitoringRun3TestConfig(flags):
         
     from AthenaConfiguration.ComponentFactory import CompFactory
 
+    from AthenaMonitoring.FilledBunchFilterToolConfig import FilledBunchFilterToolCfg
+
     # run on RAW only
     if flags.DQ.Environment in ('online', 'tier0', 'tier0Raw'):
-        ##        from InDetRecExample.InDetKeys import InDetKeys    ## not sure it works now
         
         ########### here begins InDetGlobalTrackMonAlg ###########
-        kwargsInDetGlobalTrackMonAlg = { 
-            'DoIBL' : True,                       #InDetFlags.doIBL(), #Turn on/off IBL histograms 
-            'TrackName'  : 'CombinedInDetTracks',  #Until new config ready
-            'TrackName2' : 'CombinedInDetTracks',  #Until new config ready
-            'TrackName3' : 'CombinedInDetTracks', 
-        }
-        
-        
         from InDetGlobalMonitoringRun3Test.InDetGlobalTrackMonAlgCfg import InDetGlobalTrackMonAlgCfg 
 
-        inDetGlobalTrackMonAlg = helper.addAlgorithm(CompFactory.InDetGlobalTrackMonAlg, 'InDetGlobalTrackMonAlg')
-        for k, v in kwargsInDetGlobalTrackMonAlg.items():
-            setattr(inDetGlobalTrackMonAlg, k, v)
+        
+        inDetGlobalTrackMonAlg = helper.addAlgorithm(CompFactory.InDetGlobalTrackMonAlg, 'InDetGlobalTrackMonAlg',addFilterTools = [FilledBunchFilterToolCfg(flags)])
 
-        inDetGlobalTrackMonAlg.TrackSelectionTool = CompFactory.InDet.InDetTrackSelectionTool('InDetGlobalTrackMonAlg_TrackSelectionTool')
-        inDetGlobalTrackMonAlg.TrackSelectionTool.UseTrkTrackTools = True
-        inDetGlobalTrackMonAlg.TrackSelectionTool.CutLevel         = "TightPrimary"
-        inDetGlobalTrackMonAlg.TrackSelectionTool.maxNPixelHoles   = 1
-        inDetGlobalTrackMonAlg.TrackSelectionTool.minPt            = 5000
-        inDetGlobalTrackMonAlg.Tight_TrackSelectionTool = CompFactory.InDet.InDetTrackSelectionTool('InDetGlobalTrackMonAlg_TightTrackSelectionTool')
-        inDetGlobalTrackMonAlg.Tight_TrackSelectionTool.UseTrkTrackTools = True
-        inDetGlobalTrackMonAlg.Tight_TrackSelectionTool.CutLevel         = "TightPrimary"
-        inDetGlobalTrackMonAlg.Tight_TrackSelectionTool.minPt            = 5000
-        
-        from InDetConfig.TrackingCommonConfig import InDetTrackSummaryToolCfg
-        TrackSummaryTool = acc.getPrimaryAndMerge(InDetTrackSummaryToolCfg(flags))
-        inDetGlobalTrackMonAlg.TrackSummaryTool = TrackSummaryTool
-        inDetGlobalTrackMonAlg.TrackSelectionTool.TrackSummaryTool = TrackSummaryTool
-        inDetGlobalTrackMonAlg.TrackSelectionTool.Extrapolator     = acc.getPublicTool("InDetExtrapolator")
-        inDetGlobalTrackMonAlg.Tight_TrackSelectionTool.TrackSummaryTool = TrackSummaryTool
-        inDetGlobalTrackMonAlg.Tight_TrackSelectionTool.Extrapolator     = acc.getPublicTool("InDetExtrapolator")
-        
-        InDetGlobalTrackMonAlgCfg(helper, inDetGlobalTrackMonAlg, **kwargsInDetGlobalTrackMonAlg)
+        from InDetConfig.InDetTrackSelectionToolConfig import InDetTrackSelectionTool_TightPrimary_TrackTools_Cfg
+        TrackSelectionTool = acc.popToolsAndMerge(
+            InDetTrackSelectionTool_TightPrimary_TrackTools_Cfg(flags, name='TrackSelectionTool',
+                                                                maxNPixelHoles = 1, # Default for TightPrimary is 0
+                                                                minPt = 5000))
+        Tight_TrackSelectionTool = acc.popToolsAndMerge(
+            InDetTrackSelectionTool_TightPrimary_TrackTools_Cfg(flags, name='TightTrackSelectionTool',
+                                                                minPt = 5000))
+
+        Loose_TrackSelectionTool = acc.popToolsAndMerge(
+            InDetTrackSelectionTool_TightPrimary_TrackTools_Cfg(flags, name='LooseTrackSelectionTool',
+                                                                minPt = 1000))
+
+        from InDetConfig.TrackingCommonConfig import TrackToVertexIPEstimatorCfg
+        TrackToVertexIPEstimator = acc.popToolsAndMerge(
+            TrackToVertexIPEstimatorCfg(flags, name='TrackToVertexIPEstimator'))
+
+        inDetGlobalTrackMonAlg.TrackSelectionTool = TrackSelectionTool
+        inDetGlobalTrackMonAlg.Tight_TrackSelectionTool = Tight_TrackSelectionTool
+        inDetGlobalTrackMonAlg.Loose_TrackSelectionTool = Loose_TrackSelectionTool
+        inDetGlobalTrackMonAlg.TrackToVertexIPEstimator = TrackToVertexIPEstimator 
+
+        InDetGlobalTrackMonAlgCfg(helper, inDetGlobalTrackMonAlg)
         ########### here ends InDetGlobalTrackMonAlg ###########
 
 
     if flags.DQ.Environment in ('online', 'tier0', 'tier0Raw') and (flags.InDet.Tracking.doLargeD0 or flags.InDet.Tracking.doR3LargeD0 or flags.InDet.Tracking.doLowPtLargeD0):
         ########### here begins InDetGlobalLRTMonAlg ###########
-        kwargsInDetGlobalLRTMonAlg = { 
-            'DoIBL' : True,                       #InDetFlags.doIBL(), #Turn on/off IBL histograms 
-            'TrackName'  : 'CombinedInDetTracks',  #Until new config ready
-            'TrackName2' : 'CombinedInDetTracks',  #Until new config ready
-            'TrackName3' : 'CombinedInDetTracks',  'TrackName4' : 'ExtendedLargeD0Tracks',
-        }
-        
-        
-        from InDetGlobalMonitoringRun3Test.InDetGlobalLRTMonAlgCfg import InDetGlobalLRTMonAlgCfg 
+        from InDetGlobalMonitoringRun3Test.InDetGlobalLRTMonAlgCfg import InDetGlobalLRTMonAlgCfg
+        inDetGlobalLRTMonAlg = helper.addAlgorithm(CompFactory.InDetGlobalLRTMonAlg, 'InDetGlobalLRTMonAlg',addFilterTools = [FilledBunchFilterToolCfg(flags)])
 
-        inDetGlobalLRTMonAlg = helper.addAlgorithm(CompFactory.InDetGlobalLRTMonAlg, 'InDetGlobalLRTMonAlg')
-        for k, v in kwargsInDetGlobalLRTMonAlg.items():
-            setattr(inDetGlobalLRTMonAlg, k, v)
+        from InDetConfig.InDetTrackSelectionToolConfig import InDetGlobalLRTMonAlg_TrackSelectionToolCfg
+        inDetGlobalLRTMonAlg.TrackSelectionTool = acc.popToolsAndMerge(InDetGlobalLRTMonAlg_TrackSelectionToolCfg(flags))
 
-        inDetGlobalLRTMonAlg.TrackSelectionTool = CompFactory.InDet.InDetTrackSelectionTool('InDetGlobalLRTMonAlg_TrackSelectionTool')
-        inDetGlobalLRTMonAlg.TrackSelectionTool.UseTrkTrackTools = True
-        inDetGlobalLRTMonAlg.TrackSelectionTool.maxNPixelHoles   = 1
-        inDetGlobalLRTMonAlg.TrackSelectionTool.minPt            = 1000
-        
-        from InDetConfig.TrackingCommonConfig import InDetTrackSummaryToolCfg
-        InDetTrackSummaryTool = acc.getPrimaryAndMerge(InDetTrackSummaryToolCfg(flags))
-        inDetGlobalLRTMonAlg.TrackSummaryTool = InDetTrackSummaryTool
-        inDetGlobalLRTMonAlg.TrackSelectionTool.TrackSummaryTool = InDetTrackSummaryTool
-        inDetGlobalLRTMonAlg.TrackSelectionTool.Extrapolator     = acc.getPublicTool("InDetExtrapolator")
-        
-        InDetGlobalLRTMonAlgCfg(helper, inDetGlobalLRTMonAlg, **kwargsInDetGlobalLRTMonAlg)
+        InDetGlobalLRTMonAlgCfg(helper, inDetGlobalLRTMonAlg)
         ########### here ends InDetGlobalLRTMonAlg ###########
 
 
@@ -103,7 +80,7 @@ def InDetGlobalMonitoringRun3TestConfig(flags):
         from InDetGlobalMonitoringRun3Test.InDetGlobalPrimaryVertexMonAlgCfg import InDetGlobalPrimaryVertexMonAlgCfg 
         
         myInDetGlobalPrimaryVertexMonAlg = helper.addAlgorithm(CompFactory.InDetGlobalPrimaryVertexMonAlg,
-                                                               'InDetGlobalPrimaryVertexMonAlg')
+                                                               'InDetGlobalPrimaryVertexMonAlg',addFilterTools = [FilledBunchFilterToolCfg(flags)])
         
         kwargsInDetGlobalPrimaryVertexMonAlg = { 
             'vxContainerName'                      : 'PrimaryVertices', #InDetKeys.xAODVertexContainer(),
@@ -124,7 +101,7 @@ def InDetGlobalMonitoringRun3TestConfig(flags):
         from InDetGlobalMonitoringRun3Test.InDetGlobalBeamSpotMonAlgCfg import InDetGlobalBeamSpotMonAlgCfg 
         
         myInDetGlobalBeamSpotMonAlg = helper.addAlgorithm(CompFactory.InDetGlobalBeamSpotMonAlg,
-                                                          'InDetGlobalBeamSpotMonAlg')
+                                                          'InDetGlobalBeamSpotMonAlg',addFilterTools = [FilledBunchFilterToolCfg(flags)])
         
         kwargsInDetGlobalBeamSpotMonAlg = { 
             'BeamSpotKey'                      : 'BeamSpotData', #InDetKeys.BeamSpotData(),

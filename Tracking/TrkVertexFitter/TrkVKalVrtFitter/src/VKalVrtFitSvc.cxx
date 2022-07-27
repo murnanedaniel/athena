@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // Header include
@@ -17,7 +17,7 @@
  namespace Trk {
 
  extern void cfpest( int ntrk, double *vrt, long int *Charge, double (*part)[5], double (*par0)[3]);
- extern void xyztrp( long int* Charge, double* vrt, double* Mom, double* CovVrtMom, double BMAG, double* Perig, double* CovPerig );
+ extern void xyztrp( const long int* Charge, double* vrt, double* Mom, double* CovVrtMom, double BMAG, double* Perig, double* CovPerig );
 
  extern int CFit(VKalVrtControl *FitCONTROL, int ifCovV0, int NTRK, 
 	      long int *ich, double xyz0[3], double (*par0)[3],
@@ -440,11 +440,11 @@ int TrkVKalVrtFitter::VKalVrtFit3( int ntrk,
  
   StatusCode
   TrkVKalVrtFitter::VKalGetFullCov( long int NTrk, dvect& CovVrtTrk,
-                                    const IVKalState& istate,
+                                    IVKalState& istate,
                                     bool useMom) const
   {
-    assert(dynamic_cast<const State*> (&istate)!=nullptr);
-    const State& state = static_cast<const State&> (istate);
+    assert(dynamic_cast<State*> (&istate)!=nullptr);
+    State& state = static_cast<State&> (istate);
     if(!state.m_FitStatus)       return StatusCode::FAILURE;
     if(NTrk<1)             return StatusCode::FAILURE;
     if(NTrk>NTrMaxVFit)    return StatusCode::FAILURE;

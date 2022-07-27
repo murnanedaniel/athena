@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////////////////////////////////////////////////////////////
@@ -22,6 +22,7 @@
 #include "InDetPrepRawData/TRT_DriftCircleContainer.h"
 #include "InDetRIO_OnTrack/TRT_DriftCircleOnTrack.h"
 #include "InDetIdentifier/TRT_ID.h"
+#include "TRT_ConditionsData/StrawStatus.h"
 
 // Math functions:
 #include <cmath>
@@ -42,24 +43,9 @@ TRT_LocalOccupancy::TRT_LocalOccupancy(const std::string& t,
 			  const std::string& n,
 			  const IInterface*  p )
   :
-  base_class(t,n,p),
-  m_TRTHelper(nullptr),
-  m_CalDbTool("TRT_CalDbTool",this),
-  m_StrawStatusSummaryTool("TRT_StrawStatusSummaryTool",this)
+  base_class(t,n,p)
 {
- declareProperty("isTrigger",            m_isTrigger = false);
- declareProperty("includeT0Shift",       m_T0Shift = true);
- declareProperty("LowGate",              m_lowGate  = 14.0625*CLHEP::ns);
- declareProperty("HighGate",             m_highGate = 42.1875*CLHEP::ns);
- declareProperty("LowWideGate",          m_lowWideGate  = 20.3125*CLHEP::ns);
- declareProperty("HighWideGate",        m_highWideGate = 54.6875*CLHEP::ns);
- declareProperty("TRTCalDbTool", m_CalDbTool);
- declareProperty("TRTStrawStatusSummaryTool", m_StrawStatusSummaryTool);
 }
-
-// =======================================================================
-TRT_LocalOccupancy::~TRT_LocalOccupancy()
-= default;
 
 // =======================================================================
 StatusCode TRT_LocalOccupancy::initialize()
@@ -75,14 +61,14 @@ StatusCode TRT_LocalOccupancy::initialize()
     m_lowGate  = m_lowWideGate ;
     m_highGate = m_highWideGate ;
   }
-  CHECK( m_StrawStatusSummaryTool.retrieve());
-
 
   ATH_MSG_INFO ("initialize() successful in " << name());
 
-  //Initlalize ReadHandleKey
-  ATH_CHECK( m_trt_rdo_location.initialize( m_isTrigger));
-  ATH_CHECK( m_trt_driftcircles.initialize( SG::AllowEmpty));
+  //Initialize ReadHandleKeys -  AllowEmpty has to be kept for overlay client passing RDOs as input arg
+  ATH_CHECK( m_trt_driftcircles.initialize(SG::AllowEmpty));  
+
+  ATH_CHECK( m_strawStatusKey.initialize() );
+  ATH_CHECK( m_strawStatusPermKey.initialize() );
   ATH_CHECK( m_strawReadKey.initialize() );
 
   std::string OccupancyCacheName = name() + "OccupancyData";
@@ -93,13 +79,6 @@ StatusCode TRT_LocalOccupancy::initialize()
 
   return StatusCode::SUCCESS;
 }
-
-StatusCode TRT_LocalOccupancy::finalize()
-{
-  ATH_MSG_INFO ("finalize() successful in " << name());
-  return AlgTool::finalize();
-}
-
 
 std::vector<float> TRT_LocalOccupancy::GlobalOccupancy(const EventContext& ctx) const {
   std::vector<float> 	output				;
@@ -132,7 +111,7 @@ std::vector<float> TRT_LocalOccupancy::GlobalOccupancy(const EventContext& ctx) 
 }
 
 
-float TRT_LocalOccupancy::LocalOccupancy(const EventContext& ctx,const Trk::Track& track ) const {
+float TRT_LocalOccupancy::LocalOccupancy(const EventContext& ctx, const Trk::Track& track) const {
   ATH_MSG_DEBUG("Compute LocalOccupancy(const Trk::Track& track ) for tool: " << name());
 
   int track_local[NLOCAL][NLOCALPHI]= {{0}};
@@ -170,8 +149,8 @@ float TRT_LocalOccupancy::LocalOccupancy(const EventContext& ctx,const Trk::Trac
   std::unique_ptr<OccupancyData> data_ptr;
   const OccupancyData* data = nullptr;
   if (m_isTrigger) {
-    data_ptr = makeDataTrigger();
-    countHitsNearTrack(*data_ptr, track_local);
+    data_ptr = makeDataTrigger(ctx);
+    countHitsNearTrack(ctx, *data_ptr, track_local);
     data = data_ptr.get();
   }
   else
@@ -212,8 +191,13 @@ float TRT_LocalOccupancy::LocalOccupancy(const EventContext& ctx,const Trk::Trac
 }
 
 
-std::map<int, double>  TRT_LocalOccupancy::getDetectorOccupancy( const TRT_RDO_Container* p_trtRDOContainer ) const
+std::map<int, double> TRT_LocalOccupancy::getDetectorOccupancy(const EventContext &ctx,
+                                                               const TRT_RDO_Container* p_trtRDOContainer) const
 {
+  SG::ReadCondHandle<TRTCond::StrawStatusData> strawStatusHandle{m_strawStatusKey, ctx};
+  SG::ReadCondHandle<TRTCond::StrawStatusData> strawStatusPermHandle{m_strawStatusPermKey, ctx};
+  const TRTCond::StrawStatusData *strawStatus{*strawStatusHandle};
+  const TRTCond::StrawStatusData *strawStatusPerm{*strawStatusPermHandle};
 
   std::map<int,int> hitCounter;
   std::map<int,double> occResults;
@@ -230,11 +214,12 @@ std::map<int, double>  TRT_LocalOccupancy::getDetectorOccupancy( const TRT_RDO_C
         if (!*r)
           continue;
 
-        Identifier  rdo_id  = (*r)->identify    ()                          ;
+        Identifier rdo_id = (*r)->identify();
+        IdentifierHash straw_hash = m_TRTHelper->straw_hash(rdo_id);
 
         //Check if straw is OK
-        if((m_StrawStatusSummaryTool->getStatus(rdo_id) != TRTCond::StrawStatus::Good)
-            || (m_StrawStatusSummaryTool->getStatusPermanent(rdo_id))) {
+        if((strawStatus->findStatus(straw_hash) != TRTCond::StrawStatus::Good)
+            || (strawStatusPerm->findStatus(straw_hash))) {
           continue;
         }
 
@@ -266,7 +251,7 @@ std::map<int, double>  TRT_LocalOccupancy::getDetectorOccupancy( const TRT_RDO_C
     }
   }
 
-  SG::ReadCondHandle<TRTCond::AliveStraws> strawHandle{m_strawReadKey};
+  SG::ReadCondHandle<TRTCond::AliveStraws> strawHandle{m_strawReadKey, ctx};
   const TRTCond::AliveStraws* strawCounts{*strawHandle};
 
   const std::array<int,TRTCond::AliveStraws::NTOTAL> &straws = strawCounts->getStwTotal();
@@ -280,13 +265,14 @@ std::map<int, double>  TRT_LocalOccupancy::getDetectorOccupancy( const TRT_RDO_C
 }
 
 void
-TRT_LocalOccupancy::countHitsNearTrack (OccupancyData& data,
+TRT_LocalOccupancy::countHitsNearTrack (const EventContext &ctx,
+                                        OccupancyData& data,
                                         int track_local[NLOCAL][NLOCALPHI]) const
 {
-    SG::ReadHandle<TRT_RDO_Container> p_trtRDOContainer(m_trt_rdo_location);
-    if ( !p_trtRDOContainer.isValid() ) {
-      ATH_MSG_ERROR( "Could not find the TRT_RDO_Container "
-		     << m_trt_rdo_location.key() );
+
+    SG::ReadHandle<TRT_DriftCircleContainer> driftCircleContainer( m_trt_driftcircles,ctx );
+    if (!driftCircleContainer.isValid()){
+      ATH_MSG_FATAL("driftCircleContainer " << m_trt_driftcircles << " not available");
       return;
     }
 
@@ -301,55 +287,29 @@ TRT_LocalOccupancy::countHitsNearTrack (OccupancyData& data,
 	// if we already filled this region, skip it
 	if (data.m_hit_local[i][j] > 0) continue;
 
-	TRT_RDO_Container::const_iterator RDO_collection_iter = p_trtRDOContainer->begin();
-	TRT_RDO_Container::const_iterator RDO_collection_end  = p_trtRDOContainer->end();
-	for ( ; RDO_collection_iter!= RDO_collection_end; ++RDO_collection_iter) {
-	  const InDetRawDataCollection<TRT_RDORawData>* RDO_Collection(*RDO_collection_iter);
-	  if (!RDO_Collection) return;
-	  if (!RDO_Collection->empty()){
-	    DataVector<TRT_RDORawData>::const_iterator r,rb=RDO_Collection->begin(),re=RDO_Collection->end();
+	for (const InDet::TRT_DriftCircleCollection *colNext : *driftCircleContainer) {
+	  if (!colNext) continue;
+	  DataVector<TRT_DriftCircle>::const_iterator p_rdo           =    colNext->begin();
+	  DataVector<TRT_DriftCircle>::const_iterator p_rdo_end       =    colNext->end();
+	  for(; p_rdo!=p_rdo_end; ++p_rdo){
+	    const TRT_DriftCircle* rdo = (*p_rdo);
+	    if(!rdo)        continue;
+ 
+	      Identifier id = rdo->identify();
 
-	    for(r=rb; r!=re; ++r) {
-	      if (!*r)                                continue;
-	      Identifier   rdo_id  = (*r)->identify    ()                          ;
-
-	      if((m_StrawStatusSummaryTool->getStatus(rdo_id) != TRTCond::StrawStatus::Good)
-		 || (m_StrawStatusSummaryTool->getStatusPermanent(rdo_id))) {
-		continue;
-	      }
-
-	      int det      = m_TRTHelper->barrel_ec(         rdo_id)     ;
-	      int lay      = m_TRTHelper->layer_or_wheel(    rdo_id)     ;
-	      int phi      = m_TRTHelper->phi_module(        rdo_id)     ;
+	      int det      = m_TRTHelper->barrel_ec(         id)     ;
+	      int lay      = m_TRTHelper->layer_or_wheel(    id)     ;
+	      int phi      = m_TRTHelper->phi_module(        id)     ;
 	      int i_total       = findArrayTotalIndex(det, lay)-1;
 
 	      if (i_total != i || phi != j) continue; // only fill the one region [i][j]
 
-	      unsigned int word = (*r)->getWord();
-
-	      double t0 = 0.;
-	      if (m_T0Shift) {
-		unsigned  mask = 0x02000000;
-		bool SawZero = false;
-		int tdcvalue;
-		for(tdcvalue=0;tdcvalue<24;++tdcvalue)
-		  { if      (  (word & mask) && SawZero) break;
-		    if ( !(word & mask) ) SawZero = true;
-		    mask>>=1;
-		    if(tdcvalue==7 || tdcvalue==15) mask>>=1;
-		  }
-		if(!(tdcvalue==0 || tdcvalue==24)) {
-                  t0 =  m_CalDbTool->getT0(rdo_id);
-		}
-	      }
-
-	      if (!passValidityGate(word, t0)) continue;
-	      if (i%3==1 && lay>4)	allOfEndcapAFound[(i<3?0:1)][phi]=true;
+	      if (i%3==1 && lay>4)	allOfEndcapAFound[(i<3?0:1)][phi]=true;  //why the rescaling below?
 
 	      data.m_hit_local[i_total][phi]           +=1;
-	    }
 	  }
 	}
+
 	int hits = data.m_hit_local[i][j];
 	int stws = data.m_stw_local[i][j];
 	data.m_occ_local[i][j] = int(hits*100) / stws;
@@ -416,7 +376,7 @@ TRT_LocalOccupancy::countHitsNearTrack (OccupancyData& data,
 
 
 // ========================================================================
-bool TRT_LocalOccupancy::isMiddleBXOn(unsigned int word) const {
+bool TRT_LocalOccupancy::isMiddleBXOn(unsigned int word) {
   // check that there is at least one hit in middle 25 ns
   unsigned mask = 0x00010000;
   int i=0;
@@ -464,7 +424,7 @@ bool TRT_LocalOccupancy::passValidityGate(unsigned int word, float t0) const {
     return arrayindex;
   }
 
-int TRT_LocalOccupancy::mapPhiToPhisector(const double t_phi) const {
+int TRT_LocalOccupancy::mapPhiToPhisector(const double t_phi) {
 
   int phisector=33;
   // do phi selection
@@ -511,7 +471,7 @@ std::unique_ptr<TRT_LocalOccupancy::OccupancyData>
 TRT_LocalOccupancy::makeData(const EventContext& ctx) const
 {
   // count live straws
-  SG::ReadCondHandle<TRTCond::AliveStraws> strawHandle(m_strawReadKey,ctx);
+  SG::ReadCondHandle<TRTCond::AliveStraws> strawHandle{m_strawReadKey, ctx};
   const TRTCond::AliveStraws* strawCounts{*strawHandle};
 
   auto data = std::make_unique<OccupancyData>(strawCounts->getStwLocal());
@@ -577,9 +537,9 @@ TRT_LocalOccupancy::makeData(const EventContext& ctx) const
 
 
 std::unique_ptr<TRT_LocalOccupancy::OccupancyData>
-TRT_LocalOccupancy::makeDataTrigger() const
+TRT_LocalOccupancy::makeDataTrigger(const EventContext &ctx) const
 {
-  SG::ReadCondHandle<TRTCond::AliveStraws> strawHandle{m_strawReadKey};
+  SG::ReadCondHandle<TRTCond::AliveStraws> strawHandle{m_strawReadKey, ctx};
   const TRTCond::AliveStraws* strawCounts{*strawHandle};
 
   auto data = std::make_unique<OccupancyData>(strawCounts->getStwLocal());

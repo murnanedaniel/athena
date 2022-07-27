@@ -1,13 +1,11 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # JetRecFlags.py
 #
 # David Adams
 # Updated March 2015
 #
-# These are flags for controlling the behavior of jet reconstruction
-# in RecExCommon (which includes JetRec/JetRec_jobOptions.py) and in
-# the example jet reconstruction options RunJetRec.py.
+# These are flags for controlling the behavior of jet reconstruction in RecExCommon
 #
 # Typical usage is
 #   from JetRec.JetRecFlags import jetFlags
@@ -207,20 +205,6 @@ class separateJetAlgs(JobProperty):
   allowedTypes = ['bool']  # type
   StoredValue  = True      # default value
 
-class timeJetToolRunner(JobProperty):
-  """ Timing flag for JetToolRunner: 0 for no timing, 1 for some, 2 for detailed
-  """
-  statusOn     = True
-  allowedTypes = ['int']  # type
-  StoredValue  = 0        # default value
-
-class timeJetRecTool(JobProperty):
-  """ Timing flag for JetRecTool: 0 for no timing, 1 for some, 2 for detailed
-  """
-  statusOn     = True
-  allowedTypes = ['int']  # type
-  StoredValue  = 0        # default value
-
 class jetAODList(JobProperty):
   """ The collections to be saved in (x)AOD files
   """
@@ -249,15 +233,17 @@ class JetContentDetail:
   Trigger=4
 
 class detailLevel(JobProperty):
-  """ Toggles detail level for AOD jet reconstruction
-      1. Reduced: This will disable the building of jet containers other than:
-        AntiKt4EMTopoJets, AntiKt4EMPFlowJets, AntiKt4LCTopoJets
-      2. Full: This corresponds to the r21 default prior to AOD size reduction:
-        AntiKt10LCTopoJets, AntiKt2PV0TrackJets, AntiKt4PV0TrackJets,
-        AntiKt4TruthJets, AntiKt4TruthWZJets, AntiKt10TruthJets, AntiKt10TruthWZJets
-      3. Validation: This adds to the Full content the building of jet containers:
-        AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets
-        with substructure moments included
+  """ Toggles detail level for AOD jet reconstruction when running with RecExCommon
+      If doWriteESD is set to True, then all built jet collections are written
+      to the AODs otherwise as specified below:
+      1. Reduced: This will build jet containers needed for monitoring:
+        AntiKt4EMTopoJets, AntiKt4EMPFlowJets, AntiKt4LCTopoJets, AntiKt4TruthJets, AntiKt10LCTopoJets
+        If writing to AOD turned on, only R = 0.4 reco jets will be written to disk
+      2. Full: Same building of jet collections as 'Reduced'
+        If writing to AOD turned on, all jet collections will be written to disk
+      3. Validation: Not supported in r22
+      4. Trigger: Same building of jet collections as 'Reduced' + trimmed R = 1.0 LCTopo jets
+        All reco jet collections (R = 0.4, R = 1.0 ungroomed and groomed) are written to disk
   """
   statusOn = True
   allowedTypes = ['int']
@@ -291,8 +277,6 @@ jobproperties.JetRecFlags.add_JobProperty(useCalibJetThreshold)
 jobproperties.JetRecFlags.add_JobProperty(useCalibThresholdsLCTopo)
 jobproperties.JetRecFlags.add_JobProperty(containerNamePrefix)
 jobproperties.JetRecFlags.add_JobProperty(separateJetAlgs)
-jobproperties.JetRecFlags.add_JobProperty(timeJetToolRunner)
-jobproperties.JetRecFlags.add_JobProperty(timeJetRecTool)
 jobproperties.JetRecFlags.add_JobProperty(useTrackVertexTool)
 jobproperties.JetRecFlags.add_JobProperty(detailLevel)
 

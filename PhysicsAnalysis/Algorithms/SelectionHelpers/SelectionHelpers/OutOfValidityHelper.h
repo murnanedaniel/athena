@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2018 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /// @author Nils Krumnack
@@ -8,10 +8,10 @@
 #ifndef SELECTION_HELPERS__OUT_OF_VALIDITY_HELPER_H
 #define SELECTION_HELPERS__OUT_OF_VALIDITY_HELPER_H
 
-#include <AsgMessaging/MsgStream.h>
+#include <AsgMessaging/AsgMessagingForward.h>
 #include <AthContainers/AuxElement.h>
 #include <CxxUtils/AthUnlikelyMacros.h>
-#include <SelectionHelpers/ISelectionAccessor.h>
+#include <SelectionHelpers/ISelectionWriteAccessor.h>
 #include <xAODBase/IParticle.h>
 #include <memory>
 
@@ -68,7 +68,7 @@ namespace CP
   /// correct handling in all situations.  This helper allows to
   /// configure a variety of behaviors via properties.
 
-  class OutOfValidityHelper final
+  class OutOfValidityHelper final : public asg::AsgMessagingForward
   {
     /// \brief standard constructor
   public:
@@ -92,13 +92,9 @@ namespace CP
   private:
     unsigned m_action {unsigned (OutOfValidityAction::ABORT)};
 
-    /// \brief the message stream we use
-  private:
-    MsgStream *m_msg {nullptr};
-
     /// \brief the accessor if we apply one
   private:
-    std::unique_ptr<ISelectionAccessor> m_accessor;
+    std::unique_ptr<ISelectionWriteAccessor> m_accessor;
 
     /// \brief the decoration name we use (if we have one)
   private:
@@ -111,10 +107,6 @@ namespace CP
     /// initialize this object.
   private:
     bool m_isInitialized = false;
-
-    /// \brief helper for message macros
-  private:
-    MsgStream& msg( const MSG::Level lvl ) const;
   };
 
 
@@ -122,7 +114,7 @@ namespace CP
   template<typename T> OutOfValidityHelper ::
   OutOfValidityHelper (T *owner, const std::string& propertyName,
                        const std::string& propertyDescription)
-    : m_msg (&owner->msg())
+    : asg::AsgMessagingForward (owner)
   {
     owner->declareProperty (propertyName, m_action,
                             propertyDescription);

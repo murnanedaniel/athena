@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 /**
  * @file RecTPCnv/test/MuonCnv_p1_test.cxx
@@ -19,7 +19,9 @@
 #include "SGTools/TestStore.h"
 #include "TestTools/leakcheck.h"
 #include "TestTools/FLOATassert.h"
+#include "CxxUtils/checker_macros.h"
 #include "GaudiKernel/MsgStream.h"
+#include "CxxUtils/checker_macros.h"
 #include <cassert>
 #include <iostream>
 
@@ -169,7 +171,7 @@ void testit (const Analysis::Muon& trans1)
 }
 
 
-void test1()
+void test1 ATLAS_NOT_THREAD_SAFE ()
 {
   std::cout << "test1\n";
   {
@@ -244,7 +246,7 @@ void test1()
 }
 
 
-int main()
+int main ATLAS_NOT_THREAD_SAFE()
 {
   std::cout << "RecTPCnv/MuonCnv_p1\n";
   SGTest::initTestStore();

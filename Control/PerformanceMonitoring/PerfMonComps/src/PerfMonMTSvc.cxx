@@ -1,10 +1,13 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /*
  * @authors: Alaettin Serhan Mete, Hasan Ozturk - alaettin.serhan.mete@cern.ch, haozturk@cern.ch
  */
+
+// Thread-safety-checker
+#include "CxxUtils/checker_macros.h"
 
 // Framework includes
 #include "GaudiKernel/IIncidentSvc.h"
@@ -17,6 +20,9 @@
 
 // STD includes
 #include <algorithm>
+#include <cmath>
+#include <fstream>
+#include <iomanip>
 
 // Boost includes
 #include "boost/filesystem.hpp"
@@ -29,8 +35,9 @@
  * Constructor
  */
 PerfMonMTSvc::PerfMonMTSvc(const std::string& name, ISvcLocator* pSvcLocator)
-    : AthService(name, pSvcLocator), m_isFirstEvent{false}, m_eventCounter{0}, m_eventLoopMsgCounter{0} {
+    : AthService(name, pSvcLocator), m_isFirstEvent{false}, m_eventCounter{0}, m_eventLoopMsgCounter{0}, m_checkPointTime{0} {
   // Five main snapshots : Configure, Initialize, FirstEvent, Execute, and Finalize
+  m_motherPID = getpid();
   m_snapshotData.resize(NSNAPSHOTS); // Default construct
 
   // Initial capture upon construction
@@ -124,8 +131,14 @@ void PerfMonMTSvc::handle(const Incident& inc) {
     // Increment the internal counter
     m_eventCounter++;
 
+    // Get current time in seconds
+    double currentTime = PMonMT::get_wall_time()*0.001;
+
     // Monitor
-    if (m_doEventLoopMonitoring && isCheckPoint()) {
+    if (m_doEventLoopMonitoring && (currentTime - m_checkPointTime > m_checkPointThreshold)) {
+      // Overwrite the last measurement time
+      m_checkPointTime = currentTime;
+
       // Capture
       m_measurementEvents.capture();
       m_eventLevelData.recordEvent(m_measurementEvents, m_eventCounter);
@@ -140,6 +153,19 @@ void PerfMonMTSvc::handle(const Incident& inc) {
   // By convention the first event is executed serially
   // Therefore, we treat it a little bit differently
   else if (m_eventCounter == 1 && inc.type() == "EndAlgorithms") {
+    // In AthenaMP w/ fork-after-initialize, the loop starts
+    // in the mother process but the first event is actually
+    // executed in the worker. Here, we try to work around this
+    // by resetting the first event measurement if we think
+    // we're in AthenaMP. This is not an ideal approach but
+    // gets the job done for the fork-after-initialize case.
+    if (m_motherPID != getpid()) {
+      m_snapshotData[FIRSTEVENT].m_tmp_cpu = 0;
+      m_snapshotData[FIRSTEVENT].m_memMonTmpMap["vmem"] = 0;
+      m_snapshotData[FIRSTEVENT].m_memMonTmpMap["pss"]  = 0;
+      m_snapshotData[FIRSTEVENT].m_memMonTmpMap["rss"]  = 0;
+      m_snapshotData[FIRSTEVENT].m_memMonTmpMap["swap"] = 0;
+    }
     m_measurementSnapshots.capture();
     m_snapshotData[FIRSTEVENT].addPointStop(m_measurementSnapshots);
     m_snapshotData[EXECUTE].addPointStart(m_measurementSnapshots);
@@ -226,7 +252,7 @@ void PerfMonMTSvc::stopSnapshotAud(const std::string& stepName, const std::strin
   }
 
   // First thing to be called after the event loop ends
-  if (compName == "AthMasterSeq" && stepName == "Stop") {
+  if (compName == "AthMasterSeq" && stepName == "Stop" && m_eventCounter > 0) {
     m_measurementSnapshots.capture();
     m_snapshotData[EXECUTE].addPointStop(m_measurementSnapshots);
   }
@@ -254,7 +280,12 @@ void PerfMonMTSvc::startCompAud(const std::string& stepName, const std::string& 
 
   // Capture and store
   PMonMT::ComponentMeasurement meas;
-  meas.capture(doMem);
+  meas.capture(); // No memory in the event-loop
+  if (doMem) {
+    // we made sure this is only run outside event loop or single-threaded
+    [[maybe_unused]] bool dummy ATLAS_THREAD_SAFE = meas.capture_memory();
+  }
+
   compLevelDataMap[currentState]->addPointStart(meas, doMem);
 
   // Debug
@@ -282,7 +313,11 @@ void PerfMonMTSvc::stopCompAud(const std::string& stepName, const std::string& c
 
   // Capture
   PMonMT::ComponentMeasurement meas;
-  meas.capture(doMem); // No memory in the event-loop
+  meas.capture(); // No memory in the event-loop
+  if (doMem) {
+    // we made sure this is only run outside event loop or single-threaded
+    [[maybe_unused]] bool dummy ATLAS_THREAD_SAFE = meas.capture_memory();
+  }
 
   // Generate State
   PMonMT::StepComp currentState = generate_state(stepName, compName);
@@ -322,31 +357,6 @@ void PerfMonMTSvc::stopCompAud(const std::string& stepName, const std::string& c
                                           << meas.malloc    << ":"
                                           << (meas.malloc - compLevelDataMap[currentState]->m_tmp_malloc) << ":"
                                           << compLevelDataMap[currentState]->m_delta_malloc << ") kb");
-}
-
-/*
- * Is it event-level monitoring check point yet?
- */
-bool PerfMonMTSvc::isCheckPoint() {
-  // Always check 1, 2, 10, 25 for short tests
-  if (m_eventCounter <= 2 || m_eventCounter == 10 || m_eventCounter == 25)
-    return true;
-
-  // Check the user settings
-  if (m_checkPointType == "Arithmetic")
-    return (m_eventCounter % m_checkPointFactor == 0);
-  else if (m_checkPointType == "Geometric")
-    return isPower(m_eventCounter, m_checkPointFactor);
-  else
-    return false;
-}
-
-/*
- * Helper function for geometric printing
- */
-bool PerfMonMTSvc::isPower(uint64_t input, uint64_t base) {
-  while (input >= base && input % base == 0) input /= base;
-  return (input == 1);
 }
 
 /*

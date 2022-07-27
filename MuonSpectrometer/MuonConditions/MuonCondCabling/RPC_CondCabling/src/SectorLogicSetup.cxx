@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "RPC_CondCabling/SectorLogicSetup.h"
@@ -9,13 +9,16 @@
 #include <iomanip>
 
 using namespace RPC_CondCabling;
-const std::map<std::string, std::string>* RPC_CondCabling::SectorLogicSetup::s_trigroads = nullptr;
 
 SectorLogicSetup::SectorLogicSetup(int type, const std::string& database, const std::string& layout, bool conf) :
-    BaseObject(Logic, "Sector Logic Map"), m_positive_sector(""), m_negative_sector(""), m_sector_type(type) {
-    m_online_database = database;
-    m_layout = layout;
-    m_cosmic = conf;
+    BaseObject(Logic, "Sector Logic Map"),
+    m_positive_sector(""),
+    m_negative_sector(""),
+    m_sector_type(type),
+    m_online_database (database),
+    m_layout (layout),
+    m_cosmic (conf)
+{
 }
 
 std::string SectorLogicSetup::no_elements(const std::string& tech, int stat) {
@@ -323,7 +326,9 @@ const CMAparameters::CMAlist SectorLogicSetup::give_CMAs(const int sector, const
     return list;
 }
 
-bool SectorLogicSetup::give_RoI_borders(CMAidentity ETA, CMAidentity PHI, unsigned int& firstEtaCode, unsigned int& lastEtaCode,
+bool SectorLogicSetup::give_RoI_borders(const CMAidentity& ETA,
+                                        const CMAidentity& PHI,
+                                        unsigned int& firstEtaCode, unsigned int& lastEtaCode,
                                         unsigned int& firstPhiCode, unsigned int& lastPhiCode) const {
     EtaCMAmap::const_iterator etaCMA = find_etaCMA(ETA.PAD_index(), ETA.Ixx_index());
     if (etaCMA == m_etaCMAs.end()) return false;
@@ -347,7 +352,9 @@ bool SectorLogicSetup::give_RoI_borders(CMAidentity ETA, CMAidentity PHI, unsign
     return firstEtaCode != lastEtaCode;
 }
 
-bool SectorLogicSetup::give_LowPt_borders(CMAidentity ETA, CMAidentity PHI, unsigned int& firstEtaCode, unsigned int& lastEtaCode,
+bool SectorLogicSetup::give_LowPt_borders(const CMAidentity& ETA,
+                                          const CMAidentity& PHI,
+                                          unsigned int& firstEtaCode, unsigned int& lastEtaCode,
                                           unsigned int& firstPhiCode, unsigned int& lastPhiCode) const {
     EtaCMAmap::const_iterator etaCMA = find_etaCMA(ETA.PAD_index(), ETA.Ixx_index());
     if (etaCMA == m_etaCMAs.end()) return false;
@@ -371,7 +378,9 @@ bool SectorLogicSetup::give_LowPt_borders(CMAidentity ETA, CMAidentity PHI, unsi
     return true;
 }
 
-bool SectorLogicSetup::give_HighPt_borders(CMAidentity ETA, CMAidentity PHI, unsigned int& firstEtaCode, unsigned int& lastEtaCode,
+bool SectorLogicSetup::give_HighPt_borders(const CMAidentity& ETA,
+                                           const CMAidentity& PHI,
+                                           unsigned int& firstEtaCode, unsigned int& lastEtaCode,
                                            unsigned int& firstPhiCode, unsigned int& lastPhiCode) const {
     EtaCMAmap::const_iterator etaCMA = find_etaCMA(ETA.PAD_index(), ETA.Ixx_index());
     if (etaCMA == m_etaCMAs.end()) return false;
@@ -395,7 +404,7 @@ bool SectorLogicSetup::give_HighPt_borders(CMAidentity ETA, CMAidentity PHI, uns
     return true;
 }
 
-bool SectorLogicSetup::give_LowPt_layout(CMAidentity ID, unsigned short int& start_pivot_ch, unsigned int& start_pivot_code,
+bool SectorLogicSetup::give_LowPt_layout(const CMAidentity& ID, unsigned short int& start_pivot_ch, unsigned int& start_pivot_code,
                                          unsigned short int& stop_pivot_ch, unsigned int& stop_pivot_code,
                                          unsigned short int& start_confirm_ch, unsigned int& start_confirm_code,
                                          unsigned short int& stop_confirm_ch, unsigned int& stop_confirm_code) const {
@@ -444,7 +453,7 @@ bool SectorLogicSetup::give_LowPt_layout(CMAidentity ID, unsigned short int& sta
     return !(start_confirm_ch == 999 || stop_confirm_ch == 999);
 }
 
-bool SectorLogicSetup::give_HighPt_layout(CMAidentity ID, unsigned short int& start_pivot_ch, unsigned int& start_pivot_code,
+bool SectorLogicSetup::give_HighPt_layout(const CMAidentity& ID, unsigned short int& start_pivot_ch, unsigned int& start_pivot_code,
                                           unsigned short int& stop_pivot_ch, unsigned int& stop_pivot_code,
                                           unsigned short int& start_confirm_ch, unsigned int& start_confirm_code,
                                           unsigned short int& stop_confirm_ch, unsigned int& stop_confirm_code) const {
@@ -493,7 +502,7 @@ bool SectorLogicSetup::give_HighPt_layout(CMAidentity ID, unsigned short int& st
     return !(start_confirm_ch == 999 || stop_confirm_ch == 999);
 }
 
-const CMAparameters* SectorLogicSetup::give_CMA(CMAidentity CMA) const {
+const CMAparameters* SectorLogicSetup::give_CMA(const CMAidentity& CMA) const {
     if (CMA.type() == Eta) {
         EtaCMAmap::const_iterator etaCMA = find_etaCMA(CMA.PAD_index(), CMA.Ixx_index());
         return (etaCMA != m_etaCMAs.end()) ? &((*etaCMA).second) : nullptr;
@@ -512,7 +521,8 @@ const CMAparameters* SectorLogicSetup::give_CMA(CMAidentity CMA) const {
     return nullptr;
 }
 
-bool SectorLogicSetup::correct(CMAidentity CMA, L1RPCcabCorrection type, CMAinput it, unsigned int ly, unsigned short int Channel1,
+bool SectorLogicSetup::correct(const CMAidentity& CMA,
+                               L1RPCcabCorrection type, CMAinput it, unsigned int ly, unsigned short int Channel1,
                                unsigned short int Channel2, short int number) const {
     if (CMA.type() == Eta) {
         EtaCMAmap::const_iterator etaCMA = find_etaCMA(CMA.PAD_index(), CMA.Ixx_index());
@@ -531,7 +541,8 @@ bool SectorLogicSetup::correct(CMAidentity CMA, L1RPCcabCorrection type, CMAinpu
     return false;
 }
 
-std::list<unsigned int> SectorLogicSetup::give_strip_code(CMAidentity CMA, int logic_sector, unsigned short int lh, unsigned short int ijk,
+std::list<unsigned int> SectorLogicSetup::give_strip_code(const CMAidentity& CMA,
+                                                          int logic_sector, unsigned short int lh, unsigned short int ijk,
                                                           unsigned short int Channel) const {
     std::list<unsigned int> StripCodes;
 
@@ -833,4 +844,4 @@ HalfType SectorLogicSetup::side() const {
     return NoHalf;
 }
 
-void SectorLogicSetup::SetPtoTrigRoads(const std::map<std::string, std::string>* RPC_trigroads) { s_trigroads = RPC_trigroads; }
+void SectorLogicSetup::SetPtoTrigRoads(const std::map<std::string, std::string>* RPC_trigroads) { m_trigroads = RPC_trigroads; }

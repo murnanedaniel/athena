@@ -1,5 +1,5 @@
 #
-#Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+#Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #
 
 from .CscMonUtils import getCSCLabelx
@@ -134,10 +134,6 @@ def CscMonitoringRAW_AlgConfig(inputFlags):
     return result
 
 if __name__=='__main__':
-    # Setup the Run III behavior
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior = True
-
     # Setup logs
     from AthenaCommon.Logging import log
     from AthenaCommon.Constants import INFO
@@ -150,10 +146,6 @@ if __name__=='__main__':
 
 
     ConfigFlags.Output.HISTFileName = 'CscRDOMonitorOutput.root'
-    ConfigFlags.Muon.doCSCs = True
-    ConfigFlags.Muon.doRPCs = False
-    ConfigFlags.Muon.doTGCs = False
-    ConfigFlags.Muon.doMicromegas = False
     ConfigFlags.Detector.GeometryMuon=False
     ConfigFlags.Detector.GeometryCSC=True
     ConfigFlags.Detector.GeometryRPC=False

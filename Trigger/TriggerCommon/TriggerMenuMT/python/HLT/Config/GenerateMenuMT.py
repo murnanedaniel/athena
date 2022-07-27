@@ -3,20 +3,12 @@
 import importlib
 import string
 
-from TriggerMenuMT.HLT.Config.Utility.HLTMenuConfig  import HLTMenuConfig
-from TriggerMenuMT.HLT.Config.Utility.DictFromChainName import dictFromChainName
-from TriggerMenuMT.HLT.Menu.MenuPrescaleConfig import MenuPrescaleConfig, applyHLTPrescale
-from TriggerMenuMT.HLT.Config.Utility.MenuAlignmentTools import MenuAlignment
-from TriggerMenuMT.HLT.Config.Utility.ChainDictTools import splitInterSignatureChainDict
-from TriggerMenuMT.HLT.Config.Utility.ComboHypoHandling import addTopoInfo, comboConfigurator, topoLegIndices
-from TriggerMenuMT.HLT.Config.Utility.ChainMerging import mergeChainDefs
-from TriggerMenuMT.HLT.CommonSequences import EventBuildingSequences, TLABuildingSequences
+from AthenaConfiguration.ComponentFactory import isRun3Cfg
+from TriggerMenuMT.HLT.Config.ControlFlow.HLTCFTools import NoCAmigration
 
-from TriggerMenuMT.HLT.Config.ControlFlow.HLTCFConfig import makeHLTTree
 
 from AthenaCommon.Logging import logging
 log = logging.getLogger(__name__)
-
 
 class Singleton(type):
     _instances = {}
@@ -106,6 +98,8 @@ class GenerateMenuMT(object, metaclass=Singleton):
                 log.error("Chain signatures %s not a subset of required signatures %s",set(chainSig),reqd)
             return isValid
 
+        from TriggerMenuMT.HLT.Config.Utility.DictFromChainName import dictFromChainName
+
         chainCounter = 0
         invalid = False
         for sig, chains in self.chainsInMenu.items():
@@ -155,7 +149,7 @@ class GenerateMenuMT(object, metaclass=Singleton):
 
         return
 
-    def generateChains(self):
+    def generateChains(self, flags):
 
         all_chains = []
         combinations_in_menu = []
@@ -164,9 +158,15 @@ class GenerateMenuMT(object, metaclass=Singleton):
         
         for chainDict in self.chainDicts:
             log.debug("Next: getting chain configuration for chain %s ", chainDict['chainName'])
-            chainConfig,lengthOfChainConfigs = self.__generateChainConfig(chainDict)
-
+            chainConfig,lengthOfChainConfigs = self.__generateChainConfig(flags, chainDict)
+            if isRun3Cfg():
+                # skip chain generation if no ChainConfig was found
+                if chainConfig is None:
+                    continue
+                log.debug("Found CA configuration for Chain %r",chainConfig)
+                
             all_chains += [(chainDict,chainConfig,lengthOfChainConfigs)]
+            
             
             #update the alignment group length dictionary if we have a longer number of steps
             #or the signature isn't registered in the dictionary yet
@@ -198,6 +198,10 @@ class GenerateMenuMT(object, metaclass=Singleton):
         == Obtains chain configs for all chains in menu
         """
 
+        from TriggerMenuMT.HLT.Config.Utility.HLTMenuConfig  import HLTMenuConfig
+        from TriggerMenuMT.HLT.Config.Utility.MenuAlignmentTools import MenuAlignment
+        from TriggerMenuMT.HLT.CommonSequences import EventBuildingSequences, TLABuildingSequences
+
         # get all chain names from menu
         log.info("Will now get chains from the menu")
         self.getChainsFromMenu(flags)
@@ -216,7 +220,7 @@ class GenerateMenuMT(object, metaclass=Singleton):
         self.importSignaturesToGenerate()
 
         log.info("Will now generate the chain configuration for each chain")
-        self.generateChains()
+        self.generateChains(flags)
 
         log.info("Will now calculate the alignment parameters")
         #dict of signature: set it belongs to
@@ -287,6 +291,9 @@ class GenerateMenuMT(object, metaclass=Singleton):
         == Returns the list of chain names that are in the menu
         """
 
+        from TriggerMenuMT.HLT.Config.Utility.HLTMenuConfig  import HLTMenuConfig
+        from TriggerMenuMT.HLT.Menu.MenuPrescaleConfig import MenuPrescaleConfig
+
         # go over the slices and put together big list of signatures requested
         (self.L1Prescales, self.HLTPrescales, self.chainsInMenu) = MenuPrescaleConfig(HLTMenuConfig, flags)
 
@@ -324,10 +331,15 @@ class GenerateMenuMT(object, metaclass=Singleton):
             pprint.pprint(self.chainsInMenu)
 
 
-    def __generateChainConfig(self, mainChainDict):
+    def __generateChainConfig(self, flags, mainChainDict):
         """
         # Assembles the chain configuration and returns a chain object with (name, L1see and list of ChainSteps)
         """
+
+        from TriggerMenuMT.HLT.Config.Utility.ChainDictTools import splitInterSignatureChainDict
+        from TriggerMenuMT.HLT.Config.Utility.ComboHypoHandling import addTopoInfo, comboConfigurator, topoLegIndices
+        from TriggerMenuMT.HLT.Config.Utility.ChainMerging import mergeChainDefs
+        from TriggerMenuMT.HLT.CommonSequences import EventBuildingSequences, TLABuildingSequences
 
         # split the the chainDictionaries for each chain and print them in a pretty way
         chainDicts = splitInterSignatureChainDict(mainChainDict)
@@ -365,9 +377,15 @@ class GenerateMenuMT(object, metaclass=Singleton):
                 log.error('Available signature(s): %s', self.availableSignatures)
                 raise Exception('Stopping the execution. Please correct the configuration.')
 
-            log.debug("Chain %s chain configs: %s",chainPartDict['chainName'],chainPartConfig)
-            listOfChainConfigs.append(chainPartConfig)
-            tmp_lengthOfChainConfigs.append((chainPartConfig.nSteps,chainPartConfig.alignmentGroups))
+            log.debug("Chain %s \n chain configs: %s",chainPartDict['chainName'],chainPartConfig)
+            if isRun3Cfg() and \
+                (chainPartConfig is None or (any(["_MissingCA" in step.name for step in chainPartConfig.steps]) \
+                    and "_MissingCA" not in chainPartConfig.steps[-1].name )):      
+                    # if a MissingCA step exist and it's not the last one, do not build the chain because it's incomplete              
+                log.warning(str(NoCAmigration("[__generateChainConfigs] Chain {0} removed because is incomplete".format(chainPartDict['chainName'])) ))       
+            else:
+                listOfChainConfigs.append(chainPartConfig)
+                tmp_lengthOfChainConfigs.append((chainPartConfig.nSteps,chainPartConfig.alignmentGroups))
 
         # this will be a list of lists for inter-sig combined chains and a list with one 
         # multi-element list for intra-sig combined chains
@@ -387,42 +405,58 @@ class GenerateMenuMT(object, metaclass=Singleton):
 
 
         # This part is to deal with combined chains between different signatures
-        if len(listOfChainConfigs) == 0:
-            log.error('[__generateChainConfigs] No Chain Configuration found for %s', mainChainDict['chainName'])
-            raise Exception("[__generateChainConfigs] chain generation failed, exiting.")
-        else:
-            if len(listOfChainConfigs)>1:
-                log.debug("Merging strategy from dictionary: %s", mainChainDict["mergingStrategy"])
-                theChainConfig = mergeChainDefs(listOfChainConfigs, mainChainDict)
+        try:
+            if len(listOfChainConfigs) == 0:
+                if isRun3Cfg():
+                    raise NoCAmigration("[__generateChainConfigs] chain {0} generation missed configuration".format(mainChainDict['chainName']))                               
+                raise Exception('[__generateChainConfigs] No Chain Configuration found for {0}'.format(mainChainDict['chainName']))                    
             else:
-                theChainConfig = listOfChainConfigs[0]
-            
-            for topoID in range(len(mainChainDict['extraComboHypos'])):
-                thetopo = mainChainDict['extraComboHypos'][topoID].strip(string.digits).rstrip(topoLegIndices)
-                theChainConfig.addTopo((comboConfigurator[thetopo],thetopo))
-
-            # Now we know where the topos should go, we can insert them in the right steps
-            if len(theChainConfig.topoMap) > 0:
-                try:
+                if len(listOfChainConfigs)>1:
+                    log.debug("Merging strategy from dictionary: %s", mainChainDict["mergingStrategy"])
+                    theChainConfig = mergeChainDefs(listOfChainConfigs, mainChainDict)
+                else:
+                    theChainConfig = listOfChainConfigs[0]
+                
+                for topoID in range(len(mainChainDict['extraComboHypos'])):
+                    thetopo = mainChainDict['extraComboHypos'][topoID].strip(string.digits).rstrip(topoLegIndices)                    
+                    theChainConfig.addTopo((comboConfigurator[thetopo],thetopo))
+                                    
+                # Now we know where the topos should go, we can insert them in the right steps
+                if len(theChainConfig.topoMap) > 0:                    
                     log.debug("Trying to add extra ComboHypoTool for %s",mainChainDict['extraComboHypos'])
                     addTopoInfo(theChainConfig,mainChainDict,listOfChainConfigs,lengthOfChainConfigs)
-                except RuntimeError:
-                    log.error('[__generateChainConfigs] Problems creating ChainDef for chain %s ', chainName)
-                    log.error('[__generateChainConfigs] I am in the extraComboHypos section, for %s ', mainChainDict['extraComboHypos'])
-                    log.exception('[__generateChainConfigs] Full chain dictionary is\n %s ', mainChainDict)
-                    raise Exception('[__generateChainConfigs] Stopping menu generation. Please investigate the exception shown above.')
-                        
+        except RuntimeError:
+            log.error('[__generateChainConfigs] Problems creating ChainDef for chain %s ', chainName)
+            log.error('[__generateChainConfigs] I am in the extraComboHypos section, for %s ', mainChainDict['extraComboHypos'])
+            log.exception('[__generateChainConfigs] Full chain dictionary is\n %s ', mainChainDict)
+            raise Exception('[__generateChainConfigs] Stopping menu generation. Please investigate the exception shown above.')
+        except AttributeError:                    
+            if isRun3Cfg():
+                log.warning(str(NoCAmigration("[__generateChainConfigs] addTopoInfo failed with CA configurables") )  )  
+                return None,[]                       
+            raise Exception('[__generateChainConfigs] Stopping menu generation. Please investigate the exception shown above.')
+        except NoCAmigration as e:
+            log.warning(str(e))
+            return None,[]
+
         # Configure event building strategy
         eventBuildType = mainChainDict['eventBuildType']
         if eventBuildType:
-            if 'PhysicsTLA' in eventBuildType:
-                log.debug("Adding TLA Step for chain %s", mainChainDict['chainName'])
-                TLABuildingSequences.addTLAStep(theChainConfig, mainChainDict)
+            try:
+                if 'PhysicsTLA' in eventBuildType:
+                    log.debug("Adding TLA Step for chain %s", mainChainDict['chainName'])
+                    TLABuildingSequences.addTLAStep(theChainConfig, mainChainDict)
             
-            log.debug('Configuring event building sequence %s for chain %s', eventBuildType, mainChainDict['chainName'])
-            EventBuildingSequences.addEventBuildingSequence(theChainConfig, eventBuildType, mainChainDict)
+                log.debug('Configuring event building sequence %s for chain %s', eventBuildType, mainChainDict['chainName'])
+                EventBuildingSequences.addEventBuildingSequence(flags, theChainConfig, eventBuildType, mainChainDict)
+            except TypeError as ex:
+                if isRun3Cfg():
+                    log.warning(str(NoCAmigration("[__generateChainConfigs] EventBuilding/TLA sequences failed with CA configurables")) )                                  
+                else:
+                    log.error(ex)
+                    raise Exception('[__generateChainConfigs] Stopping menu generation for EventBuilding/TLA sequences. Please investigate the exception shown above.')
+            
 
-        
 
         log.debug('ChainConfigs  %s ', theChainConfig)
         return theChainConfig,lengthOfChainConfigs
@@ -447,8 +481,8 @@ class GenerateMenuMT(object, metaclass=Singleton):
             return chainConfigs
         
         if len(self.availableSignatures) != 1 and not (self.chainFilter and hasattr(self.chainFilter,'selectChains') and self.chainFilter.selectChains):
-            log.error("[resolveEmptySteps] The menu you are trying to generate contains a fully empty step. This is only allowed for partial menus.")
-            raise Exception("[resolveEmptySteps] Please find the source of this empty step and remove it from the menu.")
+            log.warning("[resolveEmptySteps] The menu you are trying to generate contains a fully empty step. This is only allowed for partial menus.")
+            #raise Exception("[resolveEmptySteps] Please find the source of this empty step and remove it from the menu.")  #ATR-25392 downgrade to warning only
 
         log.info("Will now delete steps %s (indexed from zero)",empty_step_indices)
         
@@ -467,6 +501,11 @@ class GenerateMenuMT(object, metaclass=Singleton):
         """
         == Main function of the class which generates L1, L1Topo and HLT menu
         """
+
+        from TriggerMenuMT.HLT.Config.Utility.HLTMenuConfig  import HLTMenuConfig
+        from TriggerMenuMT.HLT.Menu.MenuPrescaleConfig import applyHLTPrescale
+        from TriggerMenuMT.HLT.Config.ControlFlow.HLTCFConfig import makeHLTTree
+
         log.info('Starting menu generation')
 
         # --------------------------------------------------------------------

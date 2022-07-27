@@ -14,9 +14,10 @@ def EntryLayerToolCfg(flags, name="ISF_EntryLayerTool", **kwargs):
     kwargs["GeoIDSvc"] = result.getPrimaryAndMerge(GeoIDSvcCfg(flags)).name
 
     filt = result.popToolsAndMerge(EntryLayerFilterCfg(flags))
-    kwargs.setdefault("ParticleFilters", [filt])
+    result.addPublicTool(filt)
+    kwargs.setdefault("ParticleFilters", [result.getPublicTool(filt.name)])
 
-    if flags.GeoModel.Run in [LHCPeriod.Run1, LHCPeriod.Run2, LHCPeriod.Run3]:
+    if flags.GeoModel.Run < LHCPeriod.Run4:
         kwargs.setdefault("CaloEntryVolumeString", "IDET::IDET")
     else:
         kwargs.setdefault("CaloEntryVolumeString", "ITK::ITK")
@@ -37,7 +38,7 @@ def EntryLayerToolMTCfg(flags, name="ISF_EntryLayerToolMT", **kwargs):
     filt = result.popToolsAndMerge(EntryLayerFilterCfg(flags))
     kwargs.setdefault("ParticleFilters", [filt])
 
-    if flags.GeoModel.Run in [LHCPeriod.Run1, LHCPeriod.Run2, LHCPeriod.Run3]:
+    if flags.GeoModel.Run < LHCPeriod.Run4:
         kwargs.setdefault("CaloEntryVolumeString", "IDET::IDET")
     else:
         kwargs.setdefault("CaloEntryVolumeString", "ITK::ITK")
@@ -56,9 +57,10 @@ def AFIIEntryLayerToolCfg(flags, name="ISF_AFIIEntryLayerTool", **kwargs):
     kwargs["GeoIDSvc"] = result.getPrimaryAndMerge(AFIIGeoIDSvcCfg(flags)).name
 
     filt = result.popToolsAndMerge(EntryLayerFilterCfg(flags))
-    kwargs.setdefault("ParticleFilters", [filt])
+    result.addPublicTool(filt)
+    kwargs.setdefault("ParticleFilters", [result.getPublicTool(filt.name)])
 
-    if flags.GeoModel.Run in [LHCPeriod.Run1, LHCPeriod.Run2, LHCPeriod.Run3]:
+    if flags.GeoModel.Run < LHCPeriod.Run4:
         kwargs.setdefault("CaloEntryVolumeString", "IDET::IDET")
     else:
         kwargs.setdefault("CaloEntryVolumeString", "ITK::ITK")
@@ -79,7 +81,7 @@ def AFIIEntryLayerToolMTCfg(flags, name="ISF_AFIIEntryLayerToolMT", **kwargs):
     filt = result.popToolsAndMerge(EntryLayerFilterCfg(flags))
     kwargs.setdefault("ParticleFilters", [filt])
 
-    if flags.GeoModel.Run in [LHCPeriod.Run1, LHCPeriod.Run2, LHCPeriod.Run3]:
+    if flags.GeoModel.Run < LHCPeriod.Run4:
         kwargs.setdefault("CaloEntryVolumeString", "IDET::IDET")
     else:
         kwargs.setdefault("CaloEntryVolumeString", "ITK::ITK")

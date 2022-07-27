@@ -10,7 +10,7 @@ import pickle
 import re
 import sys
 
-from AthenaConfiguration.iconfTool.models.loaders import loadConfigFile, baseParser, componentRenamingDict, loadDifferencesFile
+from AthenaConfiguration.iconfTool.models.loaders import loadConfigFile, baseParser, componentRenamingDict, loadDifferencesFile, isReference
 class fullColor:
     reset="\033[0m"
     difference="\033[91m"
@@ -33,9 +33,10 @@ class noColor:
 
 
 def parse_args():
-    print("Run with arguments:")
-    print( "confTool.py", " ".join(sys.argv[1:]))
     parser = baseParser
+    parser.add_argument(
+        "-q", "--quiet", action="store_true", help="Don't print command arguments"
+    )
     parser.add_argument(
         "-p", "--printConf", action="store_true", help="Prints entire configuration"
     )
@@ -73,16 +74,66 @@ def parse_args():
         help="Ignore differences enlisted in file (to be used only with diffing)")
         
     parser.add_argument("--color",
-        help="Use colored output even for file output (usefull when piping to less -R to to HTML conversion", 
+        help="Use colored output even for file output (useful when piping to less -R to to HTML conversion", 
+        action="store_true")
+    
+    parser.add_argument("-s", "--structured", 
+        action='append',
+        default=[],
+        help="Print only a single component, in a structured manner (reflecting components parent children)")
+
+    parser.add_argument("--includeClasses",
+        action='append',
+        default=[],
+        help="Only list the components selected by the given classname (anchored regular expression)")
+
+    parser.add_argument("--excludeClasses",
+        action='append',
+        default=[],
+        help="Don't list the components excluded by the given classname (anchored regular expression)")
+
+    parser.add_argument("--excludeComponents",
+        action='append',
+        default=[],
+        help="Don't list these components (anchored regular expression)")
+
+    parser.add_argument("--includeClassesSub",
+        action='append',
+        default=[],
+        help="Below the top-level, also include the components selected by the given classname (anchored regular expression)")
+
+    parser.add_argument("--includeSequences",
+        help="Include sequences in the structured printout",
         action="store_true")
 
+    parser.add_argument("--classes",
+        action="store_true",
+        help="Only show class names")
+
+    parser.add_argument("--uniqueClasses",
+        action="store_true",
+        help="Only show unique classes")
+
+    parser.add_argument("--showComponentName",
+        help="Show component name with --classes",
+        action="store_true")
+
+    parser.add_argument("--maxDepth",
+        help="Maximum depth for structured printout",
+        type=int,
+        default=None)
+
     args = parser.parse_args()
+    if not args.quiet:
+        print("Run with arguments:")
+        print( "confTool.py", " ".join(sys.argv[1:]))
+
     main(args)
 
 knownDifferences={}
 
 def main(args):
-    if args.ignoreIrrelevant:
+    if not args.quiet and args.ignoreIrrelevant:
         print(f"Components to ignore: {args.ignore}")
     color = fullColor()
     if not sys.stdout.isatty() and not args.color: #Remove colors when writing to a file unless forced
@@ -96,6 +147,12 @@ def main(args):
         for fileName in args.file:
             conf = loadConfigFile(fileName, args)
             _print(conf, color)
+
+    if args.structured:
+        for fileName in args.file:
+            conf = loadConfigFile(fileName, args)
+            _structuredPrint(conf, args.structured, args)
+
 
     if args.toJSON:
         if len(args.file) != 1:
@@ -148,6 +205,121 @@ def _printComps(conf):
     for k, item in conf.items():
         if isinstance(item, dict):
             print(k)
+
+def _structuredPrint(conf, start, args):
+    showClasses = args.classes or args.uniqueClasses
+    def _oneCompPrint(d, comp, cl, done={}, depth=0, indent = "") -> list:
+        show = ((not showClasses or cl is not None) and
+                (depth>0 and                 any([re.match(f"({regex})$",cl)   for regex in args.includeClassesSub])) or
+                ((not args.includeClasses or any([re.match(f"({regex})$",cl)   for regex in args.includeClasses]))   and
+                                         not any([re.match(f"({regex})$",cl)   for regex in args.excludeClasses])    and
+                                         not any([re.match(f"({regex})$",comp) for regex in args.excludeComponents])))
+        if show:
+            if not args.uniqueClasses:
+                if args.classes:
+                    cc = cl if (not args.showComponentName) else f"{cl}/{comp}"
+                    print(f"{indent}{cc}")
+                else:
+                    print(f"{indent}{comp}")
+            newindent = indent + "   - "
+            depth += 1
+        elif args.includeSequences and ((len(d) == 1 and "Members" in d) or (comp == "ApplicationMgr" and "TopAlg" in d)):
+            newindent = indent
+        else:
+            return []
+        if showClasses and args.maxDepth is not None and depth > args.maxDepth:
+            return []
+
+        sub = []
+        for prop,val in sorted(d.items()):
+            if not showClasses and show:
+                print(f"{indent}   {prop} = {val}")
+            if args.maxDepth is not None and depth > args.maxDepth:
+                continue
+            if not args.includeSequences and (prop == "Members" or prop == "TopAlg"):
+                continue
+            for ref,c in isReference(val, comp, conf):
+                if showClasses and not c:
+                    continue
+                if ref in conf and ref not in done:
+                    r = _oneCompPrint(conf[ref], ref, c or ref, {**done, ref:True}, depth, newindent)
+                    if args.uniqueClasses:
+                        sub += r
+        if show:
+            return [[cl, comp, sub]]
+        else:
+            return sub
+
+    sub = []
+    for comp in start:
+        for ref,cl in isReference(start, None, conf) or [(None,None)]:
+            if ref and ref in conf:
+                settings = conf.get(ref)
+                if isinstance(settings, dict):
+                    r = _oneCompPrint(settings, ref, cl or ref)
+                    sub += r
+                elif not showClasses:
+                    print(settings)
+            else:
+                print(f"{comp} is absent in the config, unfortunately the name has to be exact")
+
+    if not args.uniqueClasses:
+        return
+
+    def _nocomp(top):
+        """copy structure without the component names, so equality tests for the same class names."""
+        new = []
+        for cl,_,sub in top:
+            r = _nocomp(sub)
+            new.append([cl,r])
+        return new
+
+    from collections import defaultdict
+    cls = defaultdict(list)
+    def _oneCompPrune(top):
+        """Duplicate classes (with identical structure below) are listed, without substructure
+        - or not listed at all if they already showed up at this level.
+        Classes with the same name are grouped next to each other and shown with their component name."""
+
+        # group classes with the same name together
+        ord = defaultdict(list)
+        for cl,comp,sub in top:
+            ord[cl].append([cl,comp,sub])
+
+        # remove duplicate class structures
+        new = []
+        dupcls = defaultdict(int)
+        for o in ord.values():
+            for cl,comp,sub in o:
+                comp = comp.split('.')[-1]
+                nsub = _nocomp(sub)
+                if cl in cls and nsub in cls[cl]:
+                    if cl in dupcls:
+                        continue
+                    r = []
+                else:
+                    cls[cl].append(nsub)
+                    r = _oneCompPrune(sub)
+                dupcls[cl] += 1
+                new.append([cl,comp,r])
+
+        # only show component for duplicated class names
+        if not args.showComponentName:
+            for e in new:
+                if dupcls[e[0]] < 2:
+                    e[1] = None
+        return new
+
+    def _structPrint(top, indent = ""):
+        for cl,comp,sub in top:
+            cc = f"{cl}/{comp}"   if args.showComponentName else \
+                 f"{cl} ({comp})" if comp is not None       else cl
+            print(f"{indent}{cc}")
+            if sub:
+                _structPrint(sub, indent + "   - ")
+
+    _structPrint(_oneCompPrune(sub))
+
 
 def _compareConfig(configRef, configChk, args, color):
     # Find superset of all components:
@@ -380,7 +552,7 @@ def _compareIOVDbFolders(compRef, compChk, prefix, args, color):
         refParsed.append(_parseIOVDbFolder(item))
     for item in compChk:
         chkParsed.append(_parseIOVDbFolder(item))
-    _compareComponent(refParsed, chkParsed, prefix, args, "", color)
+    return _compareComponent(refParsed, chkParsed, prefix, args, "", color)
 
 
 if __name__ == "__main__":

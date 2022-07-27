@@ -93,19 +93,16 @@ public:
   // - xxxChainName: the name of the chain to be used as test/reference/selection; must be "StoreGate" in case of direct access to SG containers
   // - xxxType: the type of tracks to be retrieved from the test/reference/selection chain or container
   // - xxxKey:  the key for tracks to be retrieved from the test/reference/selection chain or container
-  // - roiInfo: in case the test chain is a real chain, this is used to specify RoI widths; in case the test chain is a fake chain, this is used for RoI position too
   // - all standard operations are performed in loops over 0=test 1=reference 2=selection
   T_AnalysisConfig_Tier0(const std::string& analysisInstanceName,
 			 const std::string& testChainName,      const std::string& testType,      const std::string& testKey,
 			 const std::string& referenceChainName, const std::string& referenceType, const std::string& referenceKey,
-			 TIDARoiDescriptor* roiInfo,
 			 TrackFilter*     testFilter,  TrackFilter*     referenceFilter, 
 			 TrackAssociator* associator,
 			 TrackAnalysis*   analysis) :
     T_AnalysisConfig<T>( analysisInstanceName,
 			 testChainName,      testType,      testKey,
 			 referenceChainName, referenceType, referenceKey,
-			 roiInfo,
 			 testFilter, referenceFilter,
 			 associator,
 			 analysis ),
@@ -228,15 +225,7 @@ protected:
 
 	if ( chainName.head() == "" ) { 
 	  
-	  std::string selectChain;
-	  
-	  if ( chainName.tail()!="" )    selectChain += ":key="+chainName.tail();
-	  if ( chainName.extra()!="" )   selectChain += ":extra="+chainName.extra();
-	  if ( chainName.element()!="" ) continue;
-	  if ( chainName.roi()!="" )     continue;
-	  if ( chainName.vtx()!="" )     selectChain += ":vtx="+chainName.vtx();
-	  if ( !chainName.passed() )     continue;
-	  if ( chainName.postcount() )   selectChain += ":post:"+chainName.post();
+	  std::string selectChain = chainName.raw();
 
 	  chains.push_back( ChainString(selectChain) );
 	    
@@ -253,22 +242,16 @@ protected:
 	  
 	  for ( unsigned iselected=0 ; iselected<selectChains.size() ; iselected++ ) {
 	    
-	    if ( chainName.tail()!="" )    selectChains[iselected] += ":key="+chainName.tail();
-	    if ( chainName.extra()!="" )   selectChains[iselected] += ":extra="+chainName.extra();
-	    if ( chainName.element()!="" ) selectChains[iselected] += ":te="+chainName.element();
-	    if ( chainName.roi()!="" )     selectChains[iselected] += ":roi="+chainName.roi();
-	    if ( chainName.vtx()!="" )     selectChains[iselected] += ":vtx="+chainName.vtx();
-	    if ( !chainName.passed() )     selectChains[iselected] += ";DTE";
-	    if ( chainName.postcount() )   selectChains[iselected] += ":post:"+chainName.post();
-	    
+	    selectChains[iselected] = chainName.subs( selectChains[iselected] );
+
 #if 0
 	    std::cout << "sorting:: chain specification: " << chainName << "\traw:" << chainName.raw() << std::endl;
 	    std::cout << "\tchain: " << chainName.head()    << std::endl;
 	    std::cout << "\tkey:   " << chainName.tail()    << std::endl;
-	    std::cout << "\tind:   " << chainName.extra()   << std::endl;
 	    std::cout << "\troi:   " << chainName.roi()     << std::endl;
 	    std::cout << "\tvtx:   " << chainName.vtx()     << std::endl;
 	    std::cout << "\tte:    " << chainName.element() << std::endl;
+	    std::cout << "\tind:   " << chainName.extra()   << std::endl;
 #endif
 	    
 	    /// replace wildcard with actual matching chains ...
@@ -476,8 +459,7 @@ protected:
     if ( m_doOffline ) {
       if ( m_provider->evtStore()->template contains<VxContainer>("VxPrimaryCandidate") ) {
         if ( m_provider->evtStore()->retrieve(primaryVtxCollection, "VxPrimaryCandidate").isFailure()) {
-          if (m_provider->msg().level() <= MSG::WARNING)
-            m_provider->msg(MSG::WARNING) << "Primary vertex container not found" << endmsg;
+          if (m_provider->msg().level() <= MSG::WARNING) m_provider->msg(MSG::WARNING) << "Primary vertex container not found" << endmsg;
         }
         else {
           VxContainer::const_iterator vtxitr = primaryVtxCollection->begin();
@@ -505,7 +487,7 @@ protected:
     const xAOD::VertexContainer* xaodVtxCollection = 0;
 
     if ( m_provider->evtStore()->retrieve( xaodVtxCollection, "PrimaryVertices" ).isFailure()) {
-      m_provider->msg(MSG::WARNING) << "xAOD Primary vertex container not found with key " << "PrimaryVertices" <<  endmsg;
+      if (m_provider->msg().level() <= MSG::WARNING) m_provider->msg(MSG::WARNING) << "xAOD Primary vertex container not found with key " << "PrimaryVertices" <<  endmsg;
     }
     
     if ( xaodVtxCollection!=0 ) { 
@@ -533,8 +515,6 @@ protected:
 
 #endif
 
-
-    //    std::cout << "here " << __LINE__ << std::endl;
 
     /// add the truth particles if needed
 
@@ -839,7 +819,9 @@ protected:
 	    std::vector< Trig::Feature<xAOD::VertexContainer> > xaodtrigvertices = c->get<xAOD::VertexContainer>(vtx_name);
 	    
 	    if ( xaodtrigvertices.empty() ) { 
-	      m_provider->msg(MSG::WARNING) << "\tNo xAOD::VertexContainer for chain " << chainConfig << " for key " << vtx_name << endmsg;
+	      if ( m_provider->msg().level() <= MSG::DEBUG ) {
+		m_provider->msg(MSG::WARNING) << "\tNo xAOD::VertexContainer for chain " << chainConfig << " for key " << vtx_name << endmsg;
+	      }
 	    }
 	    else {
 	      
@@ -1253,17 +1235,8 @@ protected:
 
       if ( chainName.head() == "" ) {
 	
-	std::string selectChain = "";
-	
-	if ( chainName.tail()!="" )    selectChain += ":key="+chainName.tail();
-	if ( chainName.extra()!="" )   selectChain += ":ind="+chainName.extra();
-	if ( chainName.roi()!="" )     continue;
-	if ( chainName.vtx()!="" )     selectChain += ":vtx="+chainName.vtx();
-	if ( chainName.element()!="" ) continue;
-	if ( !chainName.passed() )     continue;
-	if ( chainName.postcount() )   selectChain += ":post:"+chainName.post();
-	
-	
+	std::string selectChain = chainName.raw();
+		    
 	/// replace wildcard with actual matching chains ...
 	chains.push_back( selectChain );
 
@@ -1279,15 +1252,8 @@ protected:
 	
 	for ( unsigned iselected=0 ; iselected<selectChains.size() ; iselected++ ) {
 	  
-	  if ( chainName.tail()!="" )    selectChains[iselected] += ":key="+chainName.tail();
-	  if ( chainName.extra()!="" )   selectChains[iselected] += ":ind="+chainName.extra();
-	  if ( chainName.roi()!="" )     selectChains[iselected] += ":roi="+chainName.roi();
-	  if ( chainName.vtx()!="" )     selectChains[iselected] += ":vtx="+chainName.vtx();
-	  if ( chainName.element()!="" ) selectChains[iselected] += ":te="+chainName.element();
-	  if ( !chainName.passed() )     selectChains[iselected] += ";DTE";
-	  if ( chainName.postcount() )   selectChains[iselected] += ":post:"+chainName.post();
-	  
-	  
+	  selectChains[iselected] = chainName.subs( selectChains[iselected] );
+
 	  /// replace wildcard with actual matching chains ...
 	  chains.push_back( selectChains[iselected] );
 	  

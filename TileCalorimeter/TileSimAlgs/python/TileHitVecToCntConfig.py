@@ -4,7 +4,7 @@
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
-from AthenaConfiguration.Enums import BeamType, ProductionStep
+from AthenaConfiguration.Enums import BeamType
 from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
 from Digitization.PileUpMergeSvcConfigNew import PileUpMergeSvcCfg, PileUpXingFolderCfg
 from Digitization.PileUpToolsConfig import PileUpToolsCfg
@@ -38,13 +38,19 @@ def TileHitVecToCntToolCfg(flags, **kwargs):
     """
 
     kwargs.setdefault('name', 'TileHitVecToCntTool')
-    kwargs.setdefault('RndmEvtOverlay', flags.Common.ProductionStep == ProductionStep.Overlay)
-    kwargs.setdefault('OnlyUseContainerName', flags.Common.ProductionStep != ProductionStep.Overlay)
+    kwargs.setdefault('RndmEvtOverlay', flags.Common.isOverlay)
+    if flags.Common.isOverlay:
+        kwargs.setdefault('OnlyUseContainerName', False)
+    else:
+        kwargs.setdefault('OnlyUseContainerName', flags.Digitization.PileUp)
 
     acc = ComponentAccumulator()
 
     from TileConditions.TileInfoLoaderConfig import TileInfoLoaderCfg
     acc.merge( TileInfoLoaderCfg(flags) )
+
+    from TileConditions.TileSamplingFractionConfig import TileSamplingFractionCondAlgCfg
+    acc.merge( TileSamplingFractionCondAlgCfg(flags) )
 
     from TileConditions.TileCablingSvcConfig import TileCablingSvcCfg
     acc.merge(TileCablingSvcCfg(flags))
@@ -54,6 +60,10 @@ def TileHitVecToCntToolCfg(flags, **kwargs):
     else:
         kwargs.setdefault('TileHitVectors', ['TileHitVec'])
     kwargs.setdefault('TileHitContainer', 'TileHitCnt')
+
+    if flags.Common.isOverlay:
+        from SGComps.SGInputLoaderConfig import SGInputLoaderCfg
+        acc.merge(SGInputLoaderCfg(flags, [f'TileHitVector#{vec}' for vec in kwargs['TileHitVectors']]))
 
     kwargs.setdefault('DoHSTruthReconstruction', flags.Digitization.DoDigiTruth)
     if kwargs['DoHSTruthReconstruction']:
@@ -107,7 +117,7 @@ def TileHitVecToCntCfg(flags, **kwargs):
         kwargs.setdefault('DigitizationTool', tool)
 
     # choose which alg to attach to, following PileUpToolsCfg
-    if flags.Common.ProductionStep == ProductionStep.Overlay:
+    if flags.Common.isOverlay:
         if flags.Concurrency.NumThreads > 0:
             kwargs.setdefault('Cardinality', flags.Concurrency.NumThreads)
 
@@ -152,8 +162,6 @@ def TileHitVecToCntOutputCfg(flags, **kwargs):
 
 if __name__ == "__main__":
 
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior = 1
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
     from AthenaConfiguration.TestDefaults import defaultTestFiles
     from AthenaCommon.Logging import log
@@ -166,6 +174,7 @@ if __name__ == "__main__":
     ConfigFlags.Output.RDOFileName = 'myRDO.pool.root'
     ConfigFlags.IOVDb.GlobalTag = 'OFLCOND-MC16-SDR-16'
     ConfigFlags.Digitization.PileUp = False
+    ConfigFlags.Exec.MaxEvents = 3
 
     ConfigFlags.fillFromArgs()
     ConfigFlags.lock()
@@ -190,7 +199,7 @@ if __name__ == "__main__":
     ConfigFlags.dump()
     acc.store( open('TileHitVecToCnt.pkl','wb') )
 
-    sc = acc.run(maxEvents=3)
+    sc = acc.run()
     # Success should be 0
     import sys
     sys.exit(not sc.isSuccess())

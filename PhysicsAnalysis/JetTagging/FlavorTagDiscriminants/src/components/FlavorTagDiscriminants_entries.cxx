@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "FlavorTagDiscriminants/VRJetOverlapDecoratorTool.h"
@@ -10,11 +10,15 @@
 #include "FlavorTagDiscriminants/BTagMuonAugmenterTool.h"
 #include "FlavorTagDiscriminants/BTagDecoratorAlg.h"
 #include "FlavorTagDiscriminants/JetTagDecoratorAlg.h"
+#include "FlavorTagDiscriminants/JetTagConditionalDecoratorAlg.h"
 #include "FlavorTagDiscriminants/BTagToJetLinkerAlg.h"
 #include "FlavorTagDiscriminants/JetToBTagLinkerAlg.h"
 #include "FlavorTagDiscriminants/BTagTrackLinkCopyAlg.h"
 #include "FlavorTagDiscriminants/BTaggingBuilderAlg.h"
 #include "FlavorTagDiscriminants/PoorMansIpAugmenterAlg.h"
+#include "FlavorTagDiscriminants/TrackLeptonDecoratorAlg.h"
+#include "FlavorTagDiscriminants/TrackTruthDecoratorAlg.h"
+#include <FlavorTagDiscriminants/TrackClassifier.h>
 
 using namespace FlavorTagDiscriminants;
 
@@ -26,8 +30,12 @@ DECLARE_COMPONENT(BTagAugmenterTool)
 DECLARE_COMPONENT(BTagMuonAugmenterTool)
 DECLARE_COMPONENT(BTagDecoratorAlg)
 DECLARE_COMPONENT(JetTagDecoratorAlg)
+DECLARE_COMPONENT(JetTagConditionalDecoratorAlg)
 DECLARE_COMPONENT(BTagToJetLinkerAlg)
 DECLARE_COMPONENT(JetToBTagLinkerAlg)
 DECLARE_COMPONENT(BTagTrackLinkCopyAlg)
 DECLARE_COMPONENT(BTaggingBuilderAlg)
 DECLARE_COMPONENT(PoorMansIpAugmenterAlg)
+DECLARE_COMPONENT(TrackLeptonDecoratorAlg)
+DECLARE_COMPONENT(TrackTruthDecoratorAlg)
+DECLARE_COMPONENT(TrackClassifier)

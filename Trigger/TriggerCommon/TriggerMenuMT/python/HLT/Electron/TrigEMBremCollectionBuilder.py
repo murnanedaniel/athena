@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 __doc__ = """ToolFactory to instantiate  TrigEMBremCollectionBuilder
 with default configuration"""
@@ -15,10 +15,6 @@ from egammaTools.egammaExtrapolators import egammaExtrapolator
 from InDetRecExample.InDetJobProperties import InDetFlags
 from RecExConfig.RecFlags import rec
 
-from TriggerMenuMT.HLT.Egamma.TrigEgammaKeys import getTrigEgammaKeys
-TrigEgammaKeys = getTrigEgammaKeys('_GSF')
-
-
 
 log = logging.getLogger(__name__)
 
@@ -32,8 +28,10 @@ class TrigEgammaBremCollectionBuilder (egammaAlgsConf.EMBremCollectionBuilder):
 
         import egammaRec.EMCommonRefitter
         # import TriggerMenuMT.HLT.Electron.TrigEMCommonRefitter as TrigEMCommonRefitter
-        # Extrapolator to be used for GSF (private)
+        # Extrapolator to be used for GSF (public)
         GSFBuildInDetExtrapolator = egammaExtrapolator()
+        from AthenaCommon.AppMgr import ToolSvc
+        ToolSvc += GSFBuildInDetExtrapolator
 
         # GsfReffiter (private not in ToolSvc)
         from egammaTrackTools.egammaTrackToolsConf import egammaTrkRefitterTool
@@ -48,7 +46,7 @@ class TrigEgammaBremCollectionBuilder (egammaAlgsConf.EMBremCollectionBuilder):
         #
         #  BLayer and Pixel Related Tools (private = True)
         #
-        GSFBuildTestBLayerTool = None
+        GSFBuildTestPixelLayerTool = None
         GSFBuildPixelToTPIDTool = None
         if DetFlags.haveRIO.pixel_on():
             GSFPixelConditionsSummaryTool = (
@@ -59,10 +57,11 @@ class TrigEgammaBremCollectionBuilder (egammaAlgsConf.EMBremCollectionBuilder):
                 GSFPixelConditionsSummaryTool.IsActiveStatus = [
                     'OK', 'WARNING', 'ERROR', 'FATAL']
 
-            GSFBuildTestBLayerTool = TrackingCommon.getInDetRecTestBLayerTool(
-                name="GSFBuildTestBLayerTool",
+            GSFBuildTestPixelLayerTool = TrackingCommon.getInDetTrigTestPixelLayerToolInner(
+                name="GSFBuildTestPixelLayerTool",
                 PixelSummaryTool=GSFPixelConditionsSummaryTool,
                 Extrapolator=GSFBuildInDetExtrapolator,
+                CheckActiveAreas=False,
                 private=True)
 
             GSFBuildPixelToTPIDTool = TrackingCommon.getInDetPixelToTPIDTool(
@@ -75,14 +74,9 @@ class TrigEgammaBremCollectionBuilder (egammaAlgsConf.EMBremCollectionBuilder):
         if DetFlags.haveRIO.TRT_on() and not InDetFlags.doHighPileup():
 
             from TrigInDetConfig.InDetTrigCollectionKeys import TrigTRTKeys
-            from AthenaCommon.GlobalFlags import globalflags
-            TrigTRTRDOs = "TRT_RDOs"
-            if globalflags.DataSource() == "data":
-                TrigTRTRDOs = TrigTRTKeys.RDOs
-
+    
             TRT_LocalOccupancyTool = TrackingCommon.getInDetTRT_LocalOccupancy(
-                TRT_RDOContainerName=TrigTRTRDOs,
-                TRT_DriftCircleCollection="",
+                TRT_DriftCircleCollection = TrigTRTKeys.DriftCircles,
                 isTrigger=True)
 
             TRT_ToT_dEdx_Tool = TrackingCommon.getInDetTRT_dEdxTool(
@@ -90,10 +84,12 @@ class TrigEgammaBremCollectionBuilder (egammaAlgsConf.EMBremCollectionBuilder):
                     AssociationTool="InDetTrigPrdAssociationTool")
 
             GSFBuildTRT_ElectronPidTool = TrackingCommon.getInDetTRT_ElectronPidTool(
-                    name="GSFBuildTRT_ElectronPidTool",
-                    private=True,
-                    TRT_LocalOccupancyTool=TRT_LocalOccupancyTool,
-                    TRT_ToT_dEdx_Tool=TRT_ToT_dEdx_Tool)
+                name="GSFBuildTRT_ElectronPidTool",
+                private=True,
+                CalculateNNPid=False,
+                MinimumTrackPtForNNPid=0.,
+                TRT_LocalOccupancyTool=TRT_LocalOccupancyTool,
+                TRT_ToT_dEdx_Tool=TRT_ToT_dEdx_Tool)
 
         #
         #  InDet Track Summary Helper, no Association and no hole
@@ -103,8 +99,6 @@ class TrigEgammaBremCollectionBuilder (egammaAlgsConf.EMBremCollectionBuilder):
             name="GSFBuildTrackSummaryHelperTool",
             AssoTool=None,
             HoleSearch=None,
-            PixelToTPIDTool=GSFBuildPixelToTPIDTool,
-            TestBLayerTool=GSFBuildTestBLayerTool,
             isHLT = True,
             DoSharedHits=False,
             private=True)
@@ -118,22 +112,22 @@ class TrigEgammaBremCollectionBuilder (egammaAlgsConf.EMBremCollectionBuilder):
                 InDetSummaryHelperTool=GSFBuildTrackSummaryHelperTool,
                 doSharedHits=False,
                 doHolesInDet=False,
-                TRT_ElectronPidTool=GSFBuildTRT_ElectronPidTool,
-                PixelToTPIDTool=GSFBuildPixelToTPIDTool,
-                private=True)
+                AddExpectedHits=True)
         )
-
         #
         #  Track Particle Creator tool (private not in ToolSvc)
-        #  But needs a public extrapolator
         #
         from TrkParticleCreator.TrkParticleCreatorConf import (
             Trk__TrackParticleCreatorTool)
 
         GSFBuildInDetParticleCreatorTool = Trk__TrackParticleCreatorTool(
             name="GSFBuildInDetParticleCreatorTool",
+            TRT_ElectronPidTool=GSFBuildTRT_ElectronPidTool,
+            PixelToTPIDTool=GSFBuildPixelToTPIDTool,
+            TestPixelLayerTool=GSFBuildTestPixelLayerTool,
+            ComputeAdditionalInfo=True,
             KeepParameters=True,
-            TrackSummaryTool="")
+            TrackSummaryTool=GSFBuildInDetTrigTrackSummaryTool)
         #
         #  Track slimming (private not in ToolSvc)
         #
@@ -149,19 +143,21 @@ class TrigEgammaBremCollectionBuilder (egammaAlgsConf.EMBremCollectionBuilder):
         self.TrackRefitTool = GSFRefitterTool
         self.TrackParticleCreatorTool = GSFBuildInDetParticleCreatorTool
         self.TrackSlimmingTool = GSFBuildInDetTrkSlimmingTool
-        self.TrackSummaryTool = GSFBuildInDetTrigTrackSummaryTool
-
 
 
 """ This is an instance of GSF fitter tool will be used on track particles """
-TrigEMBremCollectionBuilder = AlgFactory(TrigEgammaBremCollectionBuilder,
-    doAdd = False,
-    name='TrigEMBremCollectionBuilder',
-    TrackParticleContainerName          = TrigEgammaKeys.precisionTrackingContainer,
-    SelectedTrackParticleContainerName  = TrigEgammaKeys.precisionTrackingContainer,
-    OutputTrkPartContainerName          = TrigEgammaKeys.precisionElectronTrackParticleContainerGSF,
-    OutputTrackContainerName            = TrigEgammaKeys.precisionElectronTrkCollectionGSF,
-    DoTruth=rec.doTruth(),
-    usePixel=DetFlags.haveRIO.pixel_on(),
-    useSCT=DetFlags.haveRIO.SCT_on()
-    )
+
+def TrigEMBremCollectionBuilderCfg(variant, TrigEgammaKeys):
+    TrigEMBremCollectionBuilder = AlgFactory(TrigEgammaBremCollectionBuilder,
+        doAdd = False,
+        name='TrigEMBremCollectionBuilder'+variant,
+        TrackParticleContainerName          = TrigEgammaKeys.precisionTrackingContainer,
+        SelectedTrackParticleContainerName  = TrigEgammaKeys.precisionTrackingContainer,
+        OutputTrkPartContainerName          = TrigEgammaKeys.precisionElectronTrackParticleContainerGSF,
+        OutputTrackContainerName            = TrigEgammaKeys.precisionElectronTrkCollectionGSF,
+        DoTruth=rec.doTruth(),
+        usePixel=DetFlags.haveRIO.pixel_on(),
+        useSCT=DetFlags.haveRIO.SCT_on()
+     )
+    
+    return TrigEMBremCollectionBuilder()

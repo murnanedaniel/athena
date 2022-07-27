@@ -24,14 +24,19 @@ def TRTAlignCondAlgCfg(flags, name="TRTAlignCondAlg", **kwargs):
     return acc
 
 
+def TRTStrawStatusCondAlgCfg(flags, name="TRTStrawStatusCondAlg", **kwargs):
+    """Return a ComponentAccumulator for TRTStrawStatusCondAlg algorithm"""
+    acc = ComponentAccumulator()
+    acc.merge(addFoldersSplitOnline(flags, "TRT", "/TRT/Onl/Cond/Status", "/TRT/Cond/Status", className="TRTCond::StrawStatusMultChanContainer"))
+    acc.merge(addFoldersSplitOnline(flags, "TRT", "/TRT/Onl/Cond/StatusPermanent", "/TRT/Cond/StatusPermanent", className="TRTCond::StrawStatusMultChanContainer"))
+    acc.addCondAlgo(CompFactory.TRTStrawStatusCondAlg(name, **kwargs))
+    return acc
+
+
 def TRTStrawCondAlgCfg(flags, name="TRTStrawCondAlg", **kwargs):
     """Return a ComponentAccumulator for TRTStrawCondAlg algorithm"""
     acc = TRTAlignCondAlgCfg(flags)
-    from TRT_ConditionsServices.TRT_ConditionsServicesConfig import TRT_StrawStatusSummaryToolCfg
-    StrawStatusTool = acc.popToolsAndMerge(TRT_StrawStatusSummaryToolCfg(flags))
-    acc.addPublicTool(StrawStatusTool)  # public as it is has many clients to save some memory
-    acc.merge(addFoldersSplitOnline(flags, "TRT", "/TRT/Onl/Cond/Status", "/TRT/Cond/Status", className="TRTCond::StrawStatusMultChanContainer"))
-    kwargs.setdefault("TRTStrawStatusSummaryTool", StrawStatusTool)
+    acc.merge(TRTStrawStatusCondAlgCfg(flags))
     # Alive straws algorithm
     acc.addCondAlgo(CompFactory.TRTStrawCondAlg(name, **kwargs))
     return acc

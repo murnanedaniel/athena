@@ -10,30 +10,47 @@
 #ifndef MUONPHYSVALMONITORING_MUONPHYSVALMONITORINGTOOL_H
 #define MUONPHYSVALMONITORING_MUONPHYSVALMONITORINGTOOL_H
 
-#include <string>
-#include <vector>
+
 
 #include "AthenaMonitoring/ManagedMonitorToolBase.h"
 #include "GaudiKernel/ServiceHandle.h"
 #include "IsolationSelection/IIsolationSelectionTool.h"
 #include "MuonAnalysisInterfaces/IMuonSelectionTool.h"
 #include "MuonCombinedToolInterfaces/IMuonPrintingTool.h"
-#include "MuonSegmentValidationPlots.h"
-#include "MuonTrackValidationPlots.h"
-#include "MuonValidationPlots.h"
-#include "SlowMuonValidationPlots.h"
+
+
 #include "StoreGate/ReadHandleKey.h"
 #include "TrigDecisionTool/TrigDecisionTool.h"
-#include "TriggerMuonValidationPlots.h"
+
 #include "TrkToolInterfaces/ITrackSelectorTool.h"
 #include "xAODEventInfo/EventInfo.h"
-#include "xAODMuon/SlowMuon.h"
-#include "xAODTrigMuon/L2CombinedMuon.h"
-#include "xAODTrigMuon/L2CombinedMuonContainer.h"
-#include "xAODTrigMuon/L2StandAloneMuon.h"
-#include "xAODTrigMuon/L2StandAloneMuonContainer.h"
-#include "xAODTruth/TruthParticleAuxContainer.h"
-#include "xAODTruth/TruthParticleContainer.h"
+#include "xAODMuon/Muon.h" //typedef
+#include "xAODMuon/MuonSegment.h" //typedef
+#include "xAODMuon/SlowMuon.h" //typedef
+#include "xAODTrigMuon/L2CombinedMuon.h" //typedef
+
+#include "xAODTrigMuon/L2StandAloneMuon.h" //typedef
+#include "xAODTruth/TruthParticle.h" //typedef
+#include "xAODTruth/TruthParticleContainer.h" //typedef
+
+#include "MuonSegmentValidationPlots.h" //needed for unique_ptr  access to deleter
+#include "MuonHistUtils/MuonSegmentPlots.h" //needed for unique_ptr  access to deleter
+#include "MuonValidationPlots.h" //needed for unique_ptr  access to deleter
+#include "MuonHistUtils/RecoMuonPlotOrganizer.h" //needed for unique_ptr  access to deleter
+#include "MuonHistUtils/TruthMuonPlotOrganizer.h" //needed for unique_ptr  access to deleter
+#include "TrkValHistUtils/PlotBase.h" //for PlotBase, also for typedef of HistData
+#include "SlowMuonValidationPlots.h" //needed for unique_ptr  access to deleter
+#include "MuonTrackValidationPlots.h" //needed for unique_ptr  access to deleter
+#include "TriggerMuonValidationPlots.h" //needed for unique_ptr  access to deleter
+
+#include <string>
+#include <vector>
+#include <memory>
+
+class TString;
+class TH1F;
+
+
 
 namespace MuonPhysValMonitoring {
 
@@ -150,10 +167,10 @@ namespace MuonPhysValMonitoring {
         SG::ReadHandleKey<xAOD::EventInfo> m_eventInfo{this, "EventInfo", "EventInfo", "event info"};
 
         // Tools
-        ToolHandle<CP::IMuonSelectionTool> m_muonSelectionTool;
-        ToolHandle<Rec::IMuonPrintingTool> m_muonPrinter;
-        ToolHandle<Trig::TrigDecisionTool> m_trigDec;
-        ToolHandle<Trk::ITrackSelectorTool> m_trackSelector;
+        ToolHandle<CP::IMuonSelectionTool> m_muonSelectionTool{this, "MuonSelector", "CP::MuonSelectionTool/MuonSelectionTool"};
+        ToolHandle<Rec::IMuonPrintingTool> m_muonPrinter{this, "MuonPrinter", "Rec::MuonPrintingTool/MuonPrintingTool"};
+        ToolHandle<Trig::TrigDecisionTool> m_trigDec{this, "TrigDecTool", "Trig::TrigDecisionTool/TrigDecisionTool"};
+        ToolHandle<Trk::ITrackSelectorTool> m_trackSelector{this, "TrackSelector", "InDet::InDetDetailedTrackSelectorTool/MuonCombinedInDetDetailedTrackSelectorTool"};
         ToolHandle<CP::IIsolationSelectionTool> m_isoTool{this, "IsoTool", ""};
 
         std::vector<std::string> m_selectMuonCategoriesStr;

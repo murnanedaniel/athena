@@ -1,7 +1,7 @@
 ///////////////////////// -*- C++ -*- /////////////////////////////
 
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // METTauAssociator.cxx
@@ -45,40 +45,26 @@ namespace met {
   ////////////////
   METTauAssociator::METTauAssociator(const std::string& name) :
     AsgTool(name),
-    METAssociator(name),
-    m_tauContKey("")
+    METAssociator(name)
   {
-    declareProperty("tauContainer",m_tauContKey);
-    declareProperty("UseFETauLinks", m_useFETauLinks = false ); 
   }
-
-  // Destructor
-  ///////////////
-  METTauAssociator::~METTauAssociator()
-  {}
 
   // Athena algtool's Hooks
   ////////////////////////////
   StatusCode METTauAssociator::initialize()
   {
     ATH_CHECK( METAssociator::initialize() );
+
     ATH_MSG_VERBOSE ("Initializing " << name() << "...");
-    ATH_CHECK( m_tauContKey.assign(m_input_data_key));
     ATH_CHECK( m_tauContKey.initialize());
 
-    if (m_useFETauLinks || m_useFELinks) {
-      if (m_neutralFEReadDecorKey.key()=="") {ATH_CHECK( m_neutralFEReadDecorKey.assign(m_input_data_key+"."+m_neutralFELinksKey));}
-      if (m_chargedFEReadDecorKey.key()=="") {ATH_CHECK( m_chargedFEReadDecorKey.assign(m_input_data_key+"."+m_chargedFELinksKey));}
+    if (m_useFELinks) {
+      if (m_neutralFEReadDecorKey.key().empty()) {ATH_CHECK( m_neutralFEReadDecorKey.assign(m_tauContKey.key() + "." + m_neutralFELinksKey));}
+      if (m_chargedFEReadDecorKey.key().empty()) {ATH_CHECK( m_chargedFEReadDecorKey.assign(m_tauContKey.key() + "." + m_chargedFELinksKey));}
       ATH_CHECK( m_neutralFEReadDecorKey.initialize());
       ATH_CHECK( m_chargedFEReadDecorKey.initialize());
     }
 
-    return StatusCode::SUCCESS;
-  }
-
-  StatusCode METTauAssociator::finalize()
-  {
-    ATH_MSG_VERBOSE ("Finalizing " << name() << "...");
     return StatusCode::SUCCESS;
   }
 
@@ -102,13 +88,13 @@ namespace met {
     
     SG::ReadHandle<xAOD::TauJetContainer> tauCont(m_tauContKey);
     if (!tauCont.isValid()) {
-      ATH_MSG_WARNING("Unable to retrieve input tau container " << m_input_data_key);
+      ATH_MSG_WARNING("Unable to retrieve input tau container " << m_tauContKey.key());
       return StatusCode::FAILURE;
     }
 
     ATH_MSG_DEBUG("Successfully retrieved tau collection");
     if (fillAssocMap(metMap,tauCont.cptr()).isFailure()) {
-      ATH_MSG_WARNING("Unable to fill map with tau container " << m_input_data_key);
+      ATH_MSG_WARNING("Unable to fill map with tau container " << m_tauContKey.key());
       return StatusCode::FAILURE;
     }
     return StatusCode::SUCCESS;
@@ -123,7 +109,7 @@ namespace met {
   {
     const TauJet* tau = static_cast<const TauJet*>(obj);
     TLorentzVector tauAxis = tauRecTools::getTauAxis(*tau);
-    const xAOD::Vertex* tauVertex = tauRecTools::getTauVertex(*tau);
+    const xAOD::Vertex* tauVertex = tau->vertex();
 
     auto clusterList = tau->clusters();
     for (const xAOD::IParticle* particle : clusterList) {
@@ -210,13 +196,10 @@ namespace met {
                                             std::map<const IParticle*,MissingETBase::Types::constvec_t> &/*momenta*/) const
   {
     const TauJet* tau = static_cast<const TauJet*>(obj);
-
-    if (m_useFETauLinks) { 
+    if (m_useFELinks)
       ATH_CHECK( extractFEsFromLinks(tau, felist,constits) );
-    } 
-    else {
+    else
       ATH_CHECK( extractFEs(tau, felist, constits) );
-    }
 
     return StatusCode::SUCCESS;
   }
@@ -289,7 +272,7 @@ namespace met {
       bool match = false;
       if (!pfo->isCharged()) {
         if(xAOD::P4Helpers::isInDeltaR(*seedjet,*pfo,0.2,m_useRapidity) && pfo->e()>0) {
-          ATH_MSG_VERBOSE("Found nPFO with dR " << seedjet->p4().DeltaR(pfo->p4()));
+          ATH_MSG_VERBOSE("Found nPFO with dR " << seedjet->p4().DeltaR(pfo->p4())); 
           match = true;
         }
       }
@@ -298,7 +281,7 @@ namespace met {
         for( const xAOD::TauTrack* ttrk : tau->tracks(xAOD::TauJetParameters::coreTrack) ){//all tracks <0.2, no quality
           const TrackParticle* tautrk = ttrk->track();
           if(tautrk==pfotrk) {
-            ATH_MSG_VERBOSE("Found cPFO with dR " << seedjet->p4().DeltaR(ttrk->p4()));
+            ATH_MSG_VERBOSE("Found cPFO with dR " << seedjet->p4().DeltaR(ttrk->p4())); 
             // We set a small -ve pt for cPFOs that were rejected
             // by the ChargedHadronSubtractionTool
             const static SG::AuxElement::ConstAccessor<char> PVMatchedAcc("matchedToPV");        

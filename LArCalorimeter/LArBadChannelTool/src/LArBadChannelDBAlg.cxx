@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "LArBadChannelTool/LArBadChannelDBAlg.h"
@@ -32,12 +32,9 @@ StatusCode LArBadChannelDBAlg::initialize() {
 
   ATH_MSG_INFO ( "initialize()" );
 
-  if(m_mode==0) {
-     ATH_CHECK (m_BCKey.initialize() );
-  }
-  if(m_mode==1) {
-     ATH_CHECK (m_BFKey.initialize() );
-  }
+  ATH_CHECK (m_BCKey.initialize(m_mode==0) );
+  ATH_CHECK (m_BFKey.initialize(m_mode==1) );
+
   return StatusCode::SUCCESS;
 }
 
@@ -45,7 +42,7 @@ StatusCode LArBadChannelDBAlg::execute()
 {return StatusCode::SUCCESS;}
 
 StatusCode LArBadChannelDBAlg::finalize() {
-  const DataHandle<LArOnlineID> onlineID; 
+  const LArOnlineID* onlineID = nullptr;
   ATH_CHECK( detStore()->retrieve(onlineID, "LArOnlineID") ); 
   if (m_mode == 0) {
     SG::ReadCondHandle<LArBadChannelCont> readHandle{m_BCKey};

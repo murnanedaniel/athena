@@ -50,6 +50,8 @@ _all_streams = [
     StreamInfo('Late', 'physics', True, True),
     # TLA/PEB/DATA SCOUTING (physics) STREAMS
     StreamInfo('TLA','physics',True,False),
+    StreamInfo('TLAJetPEB', 'physics', True, False),
+    StreamInfo('AFPPEB','physics',True,False),
     # EXPRESS STREAM
     StreamInfo('express', 'express', True, True),
     # MONITORING STREAMS
@@ -73,9 +75,15 @@ _all_streams = [
     StreamInfo('L1TopoMismatches', 'calibration', False, True),
     StreamInfo('ZDCCalib', 'calibration', False, False),
     StreamInfo('IDCalib', 'calibration', False, False),
+    StreamInfo('AFPCalib', 'calibration', False, False),
+    StreamInfo('PixelBeam', 'calibration', True, False),
+    StreamInfo('VdM', 'calibration', True, False),
+    StreamInfo('L1CaloCalib', 'calibration', False, False),
+    StreamInfo('NSWTriggerMonitor', 'calibration', False, True),
     # HI STREAMS
     StreamInfo('HardProbes', 'physics', True, True),
     StreamInfo('MinBias', 'physics', True, True),
+    StreamInfo('UPC', 'physics', True, True),
     # DELAYED STREAMS
     StreamInfo('VBFDelayed'  , 'physics', True, True),
     StreamInfo('BphysDelayed', 'physics', True, True),

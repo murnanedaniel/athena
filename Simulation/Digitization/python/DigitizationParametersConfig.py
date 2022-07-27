@@ -24,7 +24,9 @@ def writeDigitizationMetadata(ConfigFlags):
                           'IOVDbGlobalTag' : 'IOVDb.GlobalTag',
                           'DetDescrVersion' : 'GeoModel.AtlasVersion',
                           'finalBunchCrossing' : 'Digitization.PU.FinalBunchCrossing',
-                          'initialBunchCrossing' : 'Digitization.PU.InitialBunchCrossing'
+                          'initialBunchCrossing' : 'Digitization.PU.InitialBunchCrossing',
+                          'physicsList' : 'Sim.PhysicsList', #TODO migrate clients to use /Simulation/Parameters metadata?
+                          'digiSteeringConf' : 'Digitization.DigiSteeringConf'
                       }
     logDigitizationWriteMetadata.info('Filling Digitization MetaData')
     for testKey, testFlag in digitMetaDataKeys.items():
@@ -42,8 +44,7 @@ def writeDigitizationMetadata(ConfigFlags):
 
     # doMuonNoise no actual flag in new-style
     testKey = "doMuonNoise"
-    from AthenaConfiguration.Enums import ProductionStep
-    testValue = str(ConfigFlags.Common.ProductionStep != ProductionStep.Overlay) # Hardcoded for now
+    testValue = str(not ConfigFlags.Common.isOverlay) # Hardcoded for now
     dbFiller.addDigitParam(testKey, testValue)
     logDigitizationWriteMetadata.info('DigitizationMetaData: setting "%s" to be %s', testKey, testValue)
 

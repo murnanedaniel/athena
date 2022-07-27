@@ -30,8 +30,8 @@ extern void *__libc_stack_end;
 
 struct layout
 {
-  void *__unbounded next;
-  void *__unbounded return_address;
+  void *next;
+  void *return_address;
 };
 
 
@@ -89,8 +89,8 @@ struct layout
 int hhh_GenericBacktrace( void **array, int size )
 {
    struct layout *current;
-   void *__unbounded top_frame;
-   void *__unbounded top_stack;
+   void *top_frame;
+   void *top_stack;
    int cnt = 0;
 
 #if defined ( __i386 )
@@ -105,6 +105,7 @@ int hhh_GenericBacktrace( void **array, int size )
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wdangling-pointer"
 #endif
+   //cppcheck-suppress uninitvar
    top_stack = CURRENT_STACK_FRAME;
 #if __GNUC__ >= 12
 # pragma GCC diagnostic pop

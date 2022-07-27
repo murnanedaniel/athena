@@ -11,6 +11,7 @@ JetTagMonitorAlgorithm::JetTagMonitorAlgorithm( const std::string& name, ISvcLoc
   declareProperty("MuonsCollection",m_MuonContainerKey);
   declareProperty("ElectronsCollection",m_ElectronContainerKey);
 
+  declareProperty("SkipPreSelection", m_SkipPreSelection);
   declareProperty("SkipJetFilter", m_SkipJetFilter);
   declareProperty("DoExtraTaggerHistos", m_DoExtraTaggerHistos);
  
@@ -19,7 +20,6 @@ JetTagMonitorAlgorithm::JetTagMonitorAlgorithm( const std::string& name, ISvcLoc
   declareProperty("SoftMuonPtMin", m_SoftMuonPtMin);
   declareProperty("SoftMuonPtMax", m_SoftMuonPtMax);
 
-  declareProperty("TrackSelectionTool",m_TrackSelectionTool);
   declareProperty("MinGoodTrackCut", m_MinGoodTrackCut);
   declareProperty("TrackPtCut", m_TrackPtCut);
   declareProperty("Trackd0Cut", m_Trackd0Cut);
@@ -68,17 +68,14 @@ StatusCode JetTagMonitorAlgorithm::initialize() {
   ATH_CHECK(m_btagLinkKey.initialize());
 
   if (m_btagResultKey.empty()) {
-    if (m_TaggerName=="DL1dv00" || m_TaggerName=="DL1r") {
-      std::string rawJetContainerName = m_JetContainerKey.key();
-      const size_t jetStringItr = rawJetContainerName.find("Jets");
-      if (jetStringItr != std::string::npos) {
-        rawJetContainerName = rawJetContainerName.replace(jetStringItr, std::string::npos, "");
-      }
-      m_btagResultKey = "BTagging_" + rawJetContainerName + "." + m_TaggerName + "_pb";
-    }
+    std::string rawJetContainerName = m_JetContainerKey.key();
+    const size_t jetStringItr = rawJetContainerName.find("Jets");
+    if (jetStringItr != std::string::npos)
+      rawJetContainerName = rawJetContainerName.replace(jetStringItr, std::string::npos, "");
+    m_btagResultKey = "BTagging_" + rawJetContainerName + "." + m_TaggerName + "_pb";
   }
   ATH_CHECK(m_btagResultKey.initialize(SG::AllowEmpty));
-
+  
   ATH_CHECK(m_MuonEtIsoDecorKey.initialize());
   ATH_CHECK(m_MuonPtIsoDecorKey.initialize());
   ATH_CHECK(m_EleEtIsoDecorKey.initialize());
@@ -126,16 +123,20 @@ StatusCode JetTagMonitorAlgorithm::fillHistograms( const EventContext& ctx ) con
   auto PV_z = Monitored::Scalar<float>("PV_z",0);
   auto PV_tracks_n = Monitored::Scalar<int>("PV_tracks_n",0);
 
+  auto PV_n_on_mu = Monitored::Scalar<float>("PV_n_on_mu",0);
+  auto PV_tracks_n_on_mu = Monitored::Scalar<float>("PV_tracks_n_on_mu",0);
+
   float PVZ=0;
   
   SG::ReadHandle<xAOD::VertexContainer> vertices(m_VertContainerKey, ctx);
   if (!vertices.isValid()) {
-    ATH_MSG_WARNING("Could not find vertex AOD container with name " << m_VertContainerKey);
+    ATH_MSG_DEBUG("Could not find vertex AOD container with name " << m_VertContainerKey);
     return StatusCode::SUCCESS;
   }
   
   PV_n = vertices->size();
-  fill(tool,PV_n);
+  PV_n_on_mu = PV_n/Run_mu;
+  fill(tool,PV_n,PV_n_on_mu);
   
   if (vertices->size() < 2) {
     ATH_MSG_DEBUG("No vertices reconstructed");
@@ -164,10 +165,11 @@ StatusCode JetTagMonitorAlgorithm::fillHistograms( const EventContext& ctx ) con
       
       if (vertItr->nTrackParticles()>0) {
 	PV_tracks_n = vertItr->nTrackParticles();
+	PV_tracks_n_on_mu = PV_tracks_n/Run_mu;
 	ATH_MSG_DEBUG("PV has "<< PV_tracks_n <<" tracks");
       }
 
-      fill(tool,PV_x,PV_y,PV_z,PV_tracks_n);
+      fill(tool,PV_x,PV_y,PV_z,PV_tracks_n,PV_tracks_n_on_mu);
 
     }
   }
@@ -195,7 +197,7 @@ StatusCode JetTagMonitorAlgorithm::fillHistograms( const EventContext& ctx ) con
 
   SG::ReadHandle<xAOD::MuonContainer> muons(m_MuonContainerKey, ctx);
   if (! muons.isValid() ) {
-    ATH_MSG_WARNING("evtStore() does not contain muon Collection with name "<< m_MuonContainerKey);
+    ATH_MSG_DEBUG("evtStore() does not contain muon Collection with name "<< m_MuonContainerKey);
     return StatusCode::SUCCESS;
   }
 
@@ -235,7 +237,7 @@ StatusCode JetTagMonitorAlgorithm::fillHistograms( const EventContext& ctx ) con
 
   SG::ReadHandle<xAOD::ElectronContainer> electrons(m_ElectronContainerKey, ctx);
   if (! electrons.isValid() ) {
-    ATH_MSG_WARNING("evtStore() does not contain electron Collection with name "<< m_ElectronContainerKey);
+    ATH_MSG_DEBUG("evtStore() does not contain electron Collection with name "<< m_ElectronContainerKey);
     return StatusCode::SUCCESS;
   }
 
@@ -282,7 +284,7 @@ StatusCode JetTagMonitorAlgorithm::fillHistograms( const EventContext& ctx ) con
   if (IsolatedElectrons_n>0 || IsolatedMuons_n>0){
     Cutflow_Event = 4;
     fill(tool,Cutflow_Event);
-
+    
     if (IsolatedElectrons_n>0){ //at least one electron
       Cutflow_Event = 5;
       fill(tool,Cutflow_Event);
@@ -291,10 +293,16 @@ StatusCode JetTagMonitorAlgorithm::fillHistograms( const EventContext& ctx ) con
       Cutflow_Event = 6;
       fill(tool,Cutflow_Event);
     }
-
+    
   }
   else { //no single lepton
-    return StatusCode::SUCCESS;
+    if (m_SkipPreSelection){ //In case of Ion-Ion or Ion-proton collision
+      ATH_MSG_DEBUG("Skip single lepton pre-selection"); // Event accepted (skip pre-selection)
+    }
+    else{
+      ATH_MSG_DEBUG("Event not accepted by single lepton pre-selection");
+      return StatusCode::SUCCESS; // Event not accepted
+    }
   }
   
   //Events are selected
@@ -306,6 +314,7 @@ StatusCode JetTagMonitorAlgorithm::fillHistograms( const EventContext& ctx ) con
   ///////////////////////////////
         
   auto Tracks_n = Monitored::Scalar<int>("Tracks_n",0);
+  auto Tracks_n_on_mu = Monitored::Scalar<float>("Tracks_n_on_mu",0);
 
   uint8_t nIBLHits   = 0;
   uint8_t nPixelHits = 0;
@@ -321,12 +330,13 @@ StatusCode JetTagMonitorAlgorithm::fillHistograms( const EventContext& ctx ) con
 
   SG::ReadHandle<xAOD::TrackParticleContainer> tracks(m_TrackContainerKey, ctx);
   if (!tracks.isValid()) {
-    ATH_MSG_WARNING("Could not find track AOD container with name " << m_TrackContainerKey);
+    ATH_MSG_DEBUG("Could not find track AOD container with name " << m_TrackContainerKey);
     return StatusCode::SUCCESS;
   }
   
   Tracks_n = tracks->size();
-  fill(tool,Tracks_n);
+  Tracks_n_on_mu = Tracks_n/Run_mu;
+  fill(tool,Tracks_n,Tracks_n_on_mu);
 
   for (const auto trackItr : *tracks) {
     trackItr->summaryValue(nIBLHits, xAOD::numberOfInnermostPixelLayerHits);
@@ -357,7 +367,7 @@ StatusCode JetTagMonitorAlgorithm::fillHistograms( const EventContext& ctx ) con
 
   SG::ReadHandle<xAOD::JetContainer> jets(m_JetContainerKey, ctx);
   if (!jets.isValid()) {
-    ATH_MSG_WARNING("Could not find jet AOD container with name " << m_JetContainerKey);
+    ATH_MSG_DEBUG("Could not find jet AOD container with name " << m_JetContainerKey);
     return StatusCode::SUCCESS;
   }
 
@@ -495,7 +505,8 @@ StatusCode JetTagMonitorAlgorithm::fillHistograms( const EventContext& ctx ) con
     // Check if jet is taggable (defined as goodJet or suspectJet or badJet)
     Jet_t qualityLabel = getQualityLabel(jetItr, PVZ); 
 
-    if ( qualityLabel == goodJet ) {
+    //Fill Good jet plots including both good and suspect jets
+    if ( qualityLabel == goodJet || qualityLabel == suspectJet ) {
       Cutflow_Jet = 5;
 
       jet_pT_good = jetItr->pt() / Gaudi::Units::GeV;
@@ -578,13 +589,14 @@ StatusCode JetTagMonitorAlgorithm::fillHistograms( const EventContext& ctx ) con
 	++SMTJets_n;
       }
 
-    }
-    else if ( qualityLabel == suspectJet ) {
-      Cutflow_Jet = 6;
-      jet_eta_suspect = jetItr->eta();
-      jet_phi_suspect = jetItr->phi();
-      fill(tool,Cutflow_Jet,jet_eta_suspect,jet_phi_suspect);
-      fillSuspectJetHistos(jetItr); //other histograms to fill
+      //Suspect jets as sub-group of Good jets, but with separate plots
+      if ( qualityLabel == suspectJet ) {
+	Cutflow_Jet = 6;
+	jet_eta_suspect = jetItr->eta();
+	jet_phi_suspect = jetItr->phi();
+	fill(tool,Cutflow_Jet,jet_eta_suspect,jet_phi_suspect);
+	fillSuspectJetHistos(jetItr); //other histograms to fill
+      }
     }
     else if ( qualityLabel == badJet ) {
       Cutflow_Jet = 7;
@@ -663,7 +675,7 @@ bool JetTagMonitorAlgorithm::passJVTCut(const xAOD::Jet *jet) const {
 
   ATH_MSG_DEBUG("passJVTCut()");
   
-  static SG::AuxElement::Accessor<float> JVT( "Jvt" );
+  static const SG::AuxElement::Accessor<float> JVT( "Jvt" );
   float jvt = JVT(*jet);
 
   if( (jet->pt()/Gaudi::Units::GeV < m_JVTpTCut) && (std::abs(jet->eta())<m_JVTetaCut) && (jvt < m_JVTCut) )
@@ -678,21 +690,20 @@ double JetTagMonitorAlgorithm::getTaggerWeight(const xAOD::Jet *jet) const {
 
   const xAOD::BTagging *bTaggingObject = xAOD::BTaggingUtilities::getBTagging( *jet );
   if ( !bTaggingObject ) {
-    ATH_MSG_WARNING( "Could not retrieve b-tagging object from selected jet." );
+    ATH_MSG_DEBUG( "Could not retrieve b-tagging object from selected jet." );
     return 0;
   }
 
   double mv = 0, mv_pu = 0, mv_pb = 0, mv_pc = 0;  
 
-  if (m_TaggerName=="DL1dv00" || m_TaggerName=="DL1r"){
-    bTaggingObject->pu(m_TaggerName,mv_pu);
-    bTaggingObject->pc(m_TaggerName,mv_pc);
-    bTaggingObject->pb(m_TaggerName,mv_pb);
-    //DL1* formula (standard)
-    if ( mv_pb != 0 && (mv_pu != 0 || mv_pc != 0)) {
-      mv = log( mv_pb / ( mv_pu * ( 1 - m_cFraction ) + mv_pc * m_cFraction ) );
-    }
+  bTaggingObject->pu(m_TaggerName,mv_pu);
+  bTaggingObject->pc(m_TaggerName,mv_pc);
+  bTaggingObject->pb(m_TaggerName,mv_pb);
+  //DL1* formula (standard)
+  if ( mv_pb != 0 && (mv_pu != 0 || mv_pc != 0)) {
+    mv = log( mv_pb / ( mv_pu * ( 1 - m_cFraction ) + mv_pc * m_cFraction ) );
   }
+
   return mv;
 }
 
@@ -1068,7 +1079,7 @@ void JetTagMonitorAlgorithm::fillExtraTaggerHistos(const xAOD::Jet *jet) const {
 
   const xAOD::BTagging *bTaggingObject = xAOD::BTaggingUtilities::getBTagging( *jet );
   if ( !bTaggingObject ) {
-    ATH_MSG_WARNING( "Could not retrieve b-tagging object from selected jet." );
+    ATH_MSG_DEBUG( "Could not retrieve b-tagging object from selected jet." );
     return;
   }
 
@@ -1080,11 +1091,9 @@ void JetTagMonitorAlgorithm::fillExtraTaggerHistos(const xAOD::Jet *jet) const {
 
   double mv_pu = 0, mv_pb = 0, mv_pc = 0;  
 
-  if (m_TaggerName=="DL1dv00" || m_TaggerName=="DL1r"){
-    bTaggingObject->pu(m_TaggerName,mv_pu);
-    bTaggingObject->pc(m_TaggerName,mv_pc);
-    bTaggingObject->pb(m_TaggerName,mv_pb);
-  }
+  bTaggingObject->pu(m_TaggerName,mv_pu);
+  bTaggingObject->pc(m_TaggerName,mv_pc);
+  bTaggingObject->pb(m_TaggerName,mv_pb);
   jet_MV_pu_good = mv_pu;
   jet_MV_pc_good = mv_pc;
   jet_MV_pb_good = mv_pb;
@@ -1099,7 +1108,7 @@ JetTagMonitorAlgorithm::Jet_t JetTagMonitorAlgorithm::getQualityLabel(const xAOD
 
   const xAOD::BTagging *bTaggingObject = xAOD::BTaggingUtilities::getBTagging( *jet );
   if ( !bTaggingObject ) {
-    ATH_MSG_ERROR( "Could not retrieve b-tagging object from selected jet." );
+    ATH_MSG_DEBUG( "Could not retrieve b-tagging object from selected jet." );
     return badJet;
   }
 

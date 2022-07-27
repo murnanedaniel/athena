@@ -8,12 +8,22 @@
 # jet reco code.
 
 from JetRecConfig.JetDefinition import JetInputConstitSeq,JetInputConstit, xAODType, JetDefinition
+from ..Menu.SignatureDicts import JetRecoKeys as recoKeys
 from JetRecConfig import StandardJetContext
 # this is to define trigger specific JetModifiers (ex: ConstitFourMom_copy) : 
 from . import TriggerJetMods
 
 from AthenaCommon.Logging import logging
 log = logging.getLogger(__name__)
+
+##########################################################################################
+### --- Common jet eta ranges --- 
+etaRangeAbbrev = {
+    "j":"0eta320", # default
+    "a":"0eta490",
+    "c":"0eta240",
+    "f":"320eta490"
+}
 
 ##########################################################################################
 ### --- Extracting jet chain parts --- 
@@ -27,8 +37,6 @@ def jetChainParts(chainParts):
 
 ##########################################################################################
 ### --- General reco dict handling --- 
-
-recoKeys = ['recoAlg','constitType','clusterCalib','constitMod','jetCalib','trkopt','ionopt']
 
 # Extract the jet reco dict from the chainDict
 def extractRecoDict(chainParts):
@@ -105,12 +113,15 @@ def jetDefNeedsTracks(jetRecoDict):
 # Check if track reconstruction is enabled
 def doTracking(jetRecoDict):
     return jetRecoDict["trkopt"]!="notrk"
+# Check if full scan track reconstruction is enabled
+def doFSTracking(jetRecoDict):
+    return jetRecoDict["trkopt"]=="ftf"
 
 # Check if constituent type is pflow. Concurrently check that the tracking option is valid.
 def isPFlow(jetRecoDict):
     isPFlow = jetRecoDict["constitType"] == "pf"
-    if isPFlow and not doTracking(jetRecoDict):
-        raise ValueError("This is a PFlow chain but no tracking option is given!")
+    if isPFlow and not doFSTracking(jetRecoDict):
+        raise ValueError("This is a PFlow chain but an incompatible tracking option is given!")
     return isPFlow
 
 # return the min jet pT in MeV for the configured recoAlg
@@ -152,6 +163,8 @@ def getJetCalibDefaultString(recoDict):
         return 'subjes'
     elif recoDict['recoAlg'] == 'a10t':
         return 'jes'
+    elif recoDict['recoAlg'] == 'a10sd':
+        return 'jes'
     elif recoDict['recoAlg'] == 'a10r':
         return 'subjesIS' # calibration for the small-R jets used to reconstruct the reclustered jets
     else:
@@ -186,6 +199,10 @@ def getTrackMods(trkopt):
 # the calibration config helper
 def getCalibMods(jetRecoDict,dataSource,rhoKey="auto"):
 
+    ## Importing temporay validation flag for testing new online derived calibration
+    from AthenaConfiguration.AllConfigFlags import ConfigFlags
+    calibKey = "Trigger" if ConfigFlags.Trigger.Jet.useTriggerCalib else "TrigLS2"
+
     from TrigInDetConfig.ConfigSettings import getInDetTrigConfig
 
     config = getInDetTrigConfig( 'jet' )
@@ -205,12 +222,12 @@ def getCalibMods(jetRecoDict,dataSource,rhoKey="auto"):
 
         if jetRecoDict["constitType"] == "tc":
             calibContext,calibSeq = {
-                ("a4","subjes"):         ("TrigLS2","JetArea_EtaJES_GSC"),          # Calo GSC only ( + insitu in data)
-                ("a4","subjesIS"):       ("TrigLS2","JetArea_EtaJES_GSC"),          # Calo GSC only (no insitu)
-                ("a4","subjesgscIS"):    ("TrigLS2","JetArea_EtaJES_GSC"),          # Calo+Trk GSC ( + insitu in data)
-                ("a4","subresjesgscIS"): ("TrigLS2","JetArea_Residual_EtaJES_GSC"), # pu residual + calo+trk GSC ( + insitu in data)
-                ("a4","subjesgsc"):      ("TrigLS2","JetArea_EtaJES_GSC"),          # Calo+Trk GSC (no insitu)
-                ("a4","subresjesgsc"):   ("TrigLS2","JetArea_Residual_EtaJES_GSC"), # pu residual + calo+trk GSC (no insitu)
+                ("a4","subjes"):         (calibKey,"JetArea_EtaJES_GSC"),          # Calo GSC only ( + insitu in data)
+                ("a4","subjesIS"):       (calibKey,"JetArea_EtaJES_GSC"),          # Calo GSC only (no insitu)
+                ("a4","subjesgscIS"):    (calibKey,"JetArea_EtaJES_GSC"),          # Calo+Trk GSC ( + insitu in data)
+                ("a4","subresjesgscIS"): (calibKey,"JetArea_Residual_EtaJES_GSC"), # pu residual + calo+trk GSC ( + insitu in data)
+                ("a4","subjesgsc"):      (calibKey,"JetArea_EtaJES_GSC"),          # Calo+Trk GSC (no insitu)
+                ("a4","subresjesgsc"):   (calibKey,"JetArea_Residual_EtaJES_GSC"), # pu residual + calo+trk GSC (no insitu)
                 ("a10","subjes"):  ("TrigUngroomed","JetArea_EtaJES"),
                 ("a10t","jes"):    ("TrigTrimmed","EtaJES_JMS"),
                 }[(jetRecoDict["recoAlg"],jetRecoDict["jetCalib"])]
@@ -228,10 +245,10 @@ def getCalibMods(jetRecoDict,dataSource,rhoKey="auto"):
                 calibSeq = "EtaJES_JMS"
             else:
                 calibContext,calibSeq = {
-                  ("a4","subjesgsc"):    ("TrigLS2","JetArea_EtaJES_GSC"),            # w/o pu residual  + calo+trk GSC
-                  ("a4","subresjesgsc"): ("TrigLS2","JetArea_Residual_EtaJES_GSC"),   # pu residual + calo+trk GSC
-                  ("a4","subjesgscIS"): ("TrigLS2","JetArea_EtaJES_GSC"),             # w/o pu residual  + calo+trk GSC
-                  ("a4","subresjesgscIS"): ("TrigLS2","JetArea_Residual_EtaJES_GSC"), # pu residual + calo+trk GSC
+                  ("a4","subjesgsc"):    (calibKey,"JetArea_EtaJES_GSC"),            # w/o pu residual  + calo+trk GSC
+                  ("a4","subresjesgsc"): (calibKey,"JetArea_Residual_EtaJES_GSC"),   # pu residual + calo+trk GSC
+                  ("a4","subjesgscIS"): (calibKey,"JetArea_EtaJES_GSC"),             # w/o pu residual  + calo+trk GSC
+                  ("a4","subresjesgscIS"): (calibKey,"JetArea_Residual_EtaJES_GSC"), # pu residual + calo+trk GSC
                   }[(jetRecoDict["recoAlg"],jetRecoDict["jetCalib"])]
             pvname = config.vertex_jet
 
@@ -259,17 +276,22 @@ def getModSpec(modname,modspec=''):
 # Get list of jet attributes to be calculated for jet
 def getDecorList(jetRecoDict):
     # Basic jet info provided by the jet builder
-    decorlist = [ 'AlgorithmType', 'InputType',
+    decorlist = []
+
+    # return empty list for non-calibrated jets
+    if jetRecoDict['jetCalib'] == 'nojcalib': return decorlist
+
+    decorlist += [ 'AlgorithmType', 'InputType',
                   'ActiveArea', 'ActiveArea4vec_eta', 'ActiveArea4vec_m',
                   'ActiveArea4vec_phi', 'ActiveArea4vec_pt',
-                  'EMFrac','HECFrac','JvtRpt','EnergyPerSampling']
+                  'EMFrac','HECFrac','EnergyPerSampling','N90Constituents','constit','Tile0Frac']
 
-    if doTracking(jetRecoDict):
-        decorlist += ["GhostTrack",
+    if doFSTracking(jetRecoDict):
+        decorlist += ["GhostTrack_ftf",
                       "NumTrkPt500","NumTrkPt1000",
                       "SumPtTrkPt500","SumPtTrkPt1000",
                       "TrackWidthPt1000",
-                      "JVFCorr", "Jvt"]
+                      "JVFCorr", "JvtRpt", "Jvt"]
         if isPFlow(jetRecoDict):
             decorlist += ["SumPtChargedPFOPt500"]
     return decorlist
@@ -316,20 +338,11 @@ def defineJetConstit(jetRecoDict,clustersKey=None,pfoPrefix=None):
         if modstring == '':
             modstring='CHS'
 
-        # ** ATR-24619 : Adding flag for validation of xAOD FlowElement use **
-        # TO BE REMOVED following validation.
-        from AthenaConfiguration.AllConfigFlags import ConfigFlags
-        if ConfigFlags.Trigger.usexAODFlowElements:
-            inputxADOType = xAODType.FlowElement
-            log.debug("defining jet constituents with xAODType FlowElement.")
-        else:
-            inputxADOType = xAODType.ParticleFlow
-            log.debug("defining jet constituents with xAODType ParticleFlow.")
-        
+        inputxAODType = xAODType.FlowElement
         if not constitMods:
-            jetConstit = JetInputConstitSeq( "HLT_EMPFlow", inputxADOType, constitMods, inputname=inputPFO, outputname=pfoPrefix+"CHSParticleFlowObjects", label="EMPFlow", jetinputtype="EMPFlow")
+            jetConstit = JetInputConstitSeq( "HLT_EMPFlow", inputxAODType, constitMods, inputname=inputPFO, outputname=pfoPrefix+"CHSParticleFlowObjects", label="EMPFlow", jetinputtype="EMPFlow")
         else:
-            jetConstit = JetInputConstitSeq( "HLT_EMPFlow"+modstring, inputxADOType, constitMods, inputname=inputPFO, outputname=pfoPrefix+modstring+"ParticleFlowObjects",label='EMPFlow'+(modstring if modstring!='CHS' else ''), jetinputtype="EMPFlow" )
+            jetConstit = JetInputConstitSeq( "HLT_EMPFlow"+modstring, inputxAODType, constitMods, inputname=inputPFO, outputname=pfoPrefix+modstring+"ParticleFlowObjects",label='EMPFlow'+(modstring if modstring!='CHS' else ''), jetinputtype="EMPFlow" )
 
             
     if jetRecoDict["constitType"] == "tc":
@@ -367,7 +380,7 @@ def defineJetConstit(jetRecoDict,clustersKey=None,pfoPrefix=None):
     
 # Arbitrary min pt for fastjet, set to be low enough for MHT(?)
 # Could/should adjust higher for large-R
-def defineJets(jetRecoDict,clustersKey=None,prefix='',pfoPrefix=None):
+def defineJets(jetRecoDict,clustersKey=None,prefix='',suffix='',pfoPrefix=None):
     minpt = {
         4:  7000,
         10: 50000,
@@ -376,10 +389,9 @@ def defineJets(jetRecoDict,clustersKey=None,prefix='',pfoPrefix=None):
     actualradius = float(jetradius)/10
     jetConstit = defineJetConstit(jetRecoDict,clustersKey,pfoPrefix)
 
-    suffix="_"+jetRecoDict["jetCalib"]
+    suffix="_"+jetRecoDict["jetCalib"]+'_'*(suffix.strip()!='')+suffix
     if jetDefNeedsTracks(jetRecoDict):
         suffix += "_{}".format(jetRecoDict["trkopt"])
-    
 
     jetDef = JetDefinition( "AntiKt", actualradius, jetConstit, ptmin=minpt[jetradius], prefix=prefix, suffix=suffix, context=jetRecoDict["trkopt"])
     return jetDef
@@ -401,6 +413,13 @@ def defineGroomedJets(jetRecoDict,ungroomedDef):#,ungroomedJetsName):
         "t" :JetTrimming(ungroomedDef,RClus=0.2,PtFrac=0.04, suffix=suffix),
     }[groomAlg]
     return groomDef
+
+#Jet Definition for VR track jets
+def defineVRTrackJets(Rmax, Rmin, VRMassScale, Ptmin, prefix, suffix):
+    jetconstit = JetInputConstit("PV0Track", xAODType.TrackParticle, "PV0JetSelectedTracks_ftf")
+    VRTrackJetDef = JetDefinition("AntiKt", Rmax, jetconstit, ptmin=Ptmin, VRMinR=Rmin, VRMassSc=VRMassScale, prefix=prefix, suffix=suffix, lock=True)
+    return VRTrackJetDef
+
 
 def defineHIJets(jetRecoDict,clustersKey=None,prefix='',suffix=''):
     minpt = {

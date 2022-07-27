@@ -17,6 +17,7 @@ InDetSecVertexTruthMatchTool::InDetSecVertexTruthMatchTool( const std::string & 
   declareProperty("trackPtCut", m_trkPtCut = 1000. );
   declareProperty("pdgIds", m_pdgIds = "36" );
   declareProperty("fillHist", m_fillHist = true );
+  declareProperty("AugString", m_AugString = "" );
 }
 
 StatusCode InDetSecVertexTruthMatchTool::initialize() {
@@ -332,7 +333,7 @@ size_t indexOfMatchInfo( std::vector<VertexTruthMatchInfo> & matches, const Elem
 }
 
 StatusCode InDetSecVertexTruthMatchTool::matchVertices( const xAOD::VertexContainer & vtxContainer,
-                                                        const xAOD::TruthVertexContainer & truthVtxContainer) const {
+                                                        const xAOD::TruthVertexContainer & truthVtxContainer) {
 
   ATH_MSG_DEBUG("Start vertex matching");
 
@@ -416,6 +417,10 @@ StatusCode InDetSecVertexTruthMatchTool::matchVertices( const xAOD::VertexContai
       totalPt += trk.pt();
 
       // get the linked truth particle
+      if (!trk_truthPartAcc.isAvailable(trk)) {
+        ATH_MSG_DEBUG("The truth particle link decoration isn't available.");
+        continue;
+      }  
       const ElementLink<xAOD::TruthParticleContainer> & truthPartLink = trk_truthPartAcc( trk );
       float prob = trk_truthProbAcc( trk );
       ATH_MSG_DEBUG("Truth prob: " << prob);
@@ -491,7 +496,7 @@ StatusCode InDetSecVertexTruthMatchTool::matchVertices( const xAOD::VertexContai
 
     std::vector<VertexTruthMatchInfo> & info = matchInfoDecor( *vtxContainer[i] );
 
-    if (info.size() == 0) {                                // no true decay vertices matched 
+    if (info.empty()) {                                // no true decay vertices matched 
       ATH_MSG_DEBUG("No true decay vertices matched. Vertex is fake.");
       matchTypeDecor( *vtxContainer[i] ) = FAKE;
     } else if (info.size() >= 2 ) {                        // more than one true deacy vertices matched
@@ -520,7 +525,7 @@ StatusCode InDetSecVertexTruthMatchTool::matchVertices( const xAOD::VertexContai
         //equality test is in code but doesnt seem to work for ElementLinks that I have?
         //so i am just checking that the contianer key hash and the index are the same
         if (matchTypeDecor( *vtxContainer[j] ) == FAKE) continue;
-        if (info2.size() > 0 && std::get<0>(info2[0]).isValid() && std::get<0>(info[0]).key() == std::get<0>(info2[0]).key() && std::get<0>(info[0]).index() == std::get<0>(info2[0]).index() ) {
+        if (!info2.empty() && std::get<0>(info2[0]).isValid() && std::get<0>(info[0]).key() == std::get<0>(info2[0]).key() && std::get<0>(info[0]).index() == std::get<0>(info2[0]).index() ) {
           //add split links; first between first one found and newest one
           splitPartnerDecor( *vtxContainer[i] ).emplace_back( vtxContainer, j );
           splitPartnerDecor( *vtxContainer[j] ).emplace_back( vtxContainer, i );
@@ -548,7 +553,7 @@ StatusCode InDetSecVertexTruthMatchTool::matchVertices( const xAOD::VertexContai
 
 }
 
-StatusCode InDetSecVertexTruthMatchTool::labelTruthVertices( const xAOD::TruthVertexContainer & truthVtxContainer) const {
+StatusCode InDetSecVertexTruthMatchTool::labelTruthVertices( const xAOD::TruthVertexContainer & truthVtxContainer) {
   
   ATH_MSG_DEBUG("Labeling truth vertices");
 
@@ -572,7 +577,7 @@ StatusCode InDetSecVertexTruthMatchTool::labelTruthVertices( const xAOD::TruthVe
     const xAOD::TruthParticle* truthPart = truthVtx->incomingParticle(0);
     if(not truthPart) continue;
     if(std::find(m_pdgIdList.begin(), m_pdgIdList.end(), std::abs(truthPart->pdgId())) == m_pdgIdList.end()) continue;
-    
+    if(truthVtx->nOutgoingParticles()<2){continue;} //Skipping vertices with only 1 outgoing particle.
     ATH_MSG_DEBUG("Analysing Truth Vertex " << truthVtx->barcode() );
     std::vector<const xAOD::TruthParticle*> reconstructibleParticles;
     countReconstructibleDescendentParticles( *truthVtx, reconstructibleParticles );
@@ -617,7 +622,7 @@ StatusCode InDetSecVertexTruthMatchTool::labelTruthVertices( const xAOD::TruthVe
       matchTypeDecor(*truthVtx) = ACCEPTED;
     }
     if(vertexInfo.at(2) > 1){
-      ATH_MSG_DEBUG("Vertex is has at least two tracks passing track selection: " << vertexInfo.at(2));
+      ATH_MSG_DEBUG("Vertex has at least two tracks passing track selection: " << vertexInfo.at(2));
       matchTypeDecor(*truthVtx) = SEEDED;
     }
     if(isMatched(*truthVtx)){
@@ -641,7 +646,7 @@ StatusCode InDetSecVertexTruthMatchTool::labelTruthVertices( const xAOD::TruthVe
 
 std::vector<int> InDetSecVertexTruthMatchTool::checkParticle(const xAOD::TruthParticle &truthPart, const xAOD::TrackParticleContainer &trkCont) const {
 
-  xAOD::TrackParticle::ConstAccessor<char>  trackPass("is_selected");
+  xAOD::TrackParticle::ConstAccessor<char>  trackPass("is_selected"+m_AugString);
   xAOD::TrackParticle::ConstAccessor<ElementLink<xAOD::TruthParticleContainer> > trk_truthPartAcc("truthParticleLink");
   xAOD::TrackParticle::ConstAccessor<float> trk_truthProbAcc("truthMatchProbability");
 
@@ -676,7 +681,7 @@ std::vector<int> InDetSecVertexTruthMatchTool::checkParticle(const xAOD::TruthPa
   return {0,0,0};
 }
 
-StatusCode InDetSecVertexTruthMatchTool::fillRecoPlots( const xAOD::Vertex& secVtx ) const {
+StatusCode InDetSecVertexTruthMatchTool::fillRecoPlots( const xAOD::Vertex& secVtx ) {
   
   // set of accessors for tracks and weights
   xAOD::Vertex::ConstAccessor<xAOD::Vertex::TrackParticleLinks_t> trkAcc("trackParticleLinks");
@@ -714,6 +719,10 @@ StatusCode InDetSecVertexTruthMatchTool::fillRecoPlots( const xAOD::Vertex& secV
 
   ATH_MSG_DEBUG("Loop over tracks");
   for(size_t t = 0; t < ntracks; t++){
+    if(!trkParts[t].isValid()){
+      ATH_MSG_DEBUG("Track " << t << " is bad!");
+      continue;
+    }
     const xAOD::TrackParticle & trk = **trkParts[t];
 
     m_recoTrk_errD0->Fill(trk.definingParametersCovMatrix()(0,0));
@@ -750,6 +759,10 @@ StatusCode InDetSecVertexTruthMatchTool::fillRecoPlots( const xAOD::Vertex& secV
     TLorentzVector v_minus_iv(0,0,0,0);
     for(size_t j = 0; j < ntracks; j++){
       if (j == t){ continue; }
+      if(!trkParts[j].isValid()){
+        ATH_MSG_DEBUG("Track " << j << " is bad!");
+        continue;
+      }
 
       const xAOD::TrackParticle & trk_2 = **trkParts[j];
 
@@ -774,7 +787,7 @@ StatusCode InDetSecVertexTruthMatchTool::fillRecoPlots( const xAOD::Vertex& secV
     xAOD::TrackParticle::ConstAccessor<float> Trk_Chi2("chiSquared");
     xAOD::TrackParticle::ConstAccessor<float> Trk_nDoF("numberDoF");
 
-    if ( Trk_Chi2(trk) && Trk_nDoF(trk) )  {
+    if ( Trk_Chi2.isAvailable(trk) && Trk_Chi2(trk) && Trk_nDoF.isAvailable(trk) && Trk_nDoF(trk) )  {
       m_recoTrk_Chi2->Fill(trk.chiSquared() / trk.numberDoF());
       m_recoTrk_nDoF->Fill(trk.numberDoF()); 
     }
@@ -885,7 +898,7 @@ StatusCode InDetSecVertexTruthMatchTool::fillRecoPlots( const xAOD::Vertex& secV
   return StatusCode::SUCCESS;
 }
 
-StatusCode InDetSecVertexTruthMatchTool::fillTruthPlots( const xAOD::TruthVertex& truthVtx) const {
+StatusCode InDetSecVertexTruthMatchTool::fillTruthPlots( const xAOD::TruthVertex& truthVtx) {
   
   ATH_MSG_DEBUG("Plotting truth vertex");
 
@@ -1000,5 +1013,4 @@ void InDetSecVertexTruthMatchTool::countReconstructibleDescendentParticles(const
     }
   }
   
-  return;
-}
+  }

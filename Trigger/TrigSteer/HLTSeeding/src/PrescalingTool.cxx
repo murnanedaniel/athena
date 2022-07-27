@@ -87,7 +87,8 @@ StatusCode PrescalingTool::start() {
 
 StatusCode PrescalingTool::prescaleChains( const EventContext& ctx,
                                            const HLT::IDVec& initiallyActive,
-                                           HLT::IDVec& remainActive ) const {
+                                           HLT::IDVec& remainActive,
+                                           bool forExpressStream) const {
    if ( initiallyActive.empty() ) {
       return StatusCode::SUCCESS;
    }
@@ -134,7 +135,11 @@ StatusCode PrescalingTool::prescaleChains( const EventContext& ctx,
 
    auto getPrescale = [&](const HLT::Identifier& ch) -> const TrigConf::HLTPrescalesSet::HLTPrescale& {
       try {
-         return hltPrescaleSet->prescale( ch.numeric() );
+         if (forExpressStream) {
+            return hltPrescaleSet->prescale_express( ch.numeric() );
+         } else {
+            return hltPrescaleSet->prescale( ch.numeric() );
+         }
       } catch(const std::out_of_range & ex) {
          // if chain with that name is not found in the prescale set
          if (m_keepUnknownChains.value()) {
@@ -162,13 +167,17 @@ StatusCode PrescalingTool::prescaleChains( const EventContext& ctx,
       double relativePrescale{};
    };
 
-   ChainSet activeChainSet{ initiallyActive.begin(), initiallyActive.end() };
-
    for ( auto [groupName, chainIDs]: m_CPSGroups) {
-      if ( std::find(initiallyActive.begin(), initiallyActive.end(), chainIDs.front()) != initiallyActive.end() ) {
-         // this group is seeded
+      // check if this group is seeded
+      // only need to find one CPS chain if initiallyActive is L1seeded HLT id's
+      if ( forExpressStream || std::find(initiallyActive.begin(), initiallyActive.end(), chainIDs.front()) != initiallyActive.end() ) {
          std::vector<ChainAndPrescale> psValueSorted;
          for ( const HLT::Identifier& ch: chainIDs ) {
+            // in express stream initiallyActive are HLT accept id's, but chainIDs contain all chains in the group
+            // regardless of HLT accept; skip the HLT reject id's to ensure remainActive is a subset of initiallyActive
+            if ( forExpressStream && std::find(initiallyActive.begin(), initiallyActive.end(), ch) == initiallyActive.end() ) {
+               continue;
+            }
             auto ps = getPrescale(ch);
             if ( ps.enabled ) // exclude prescaled out chains
                psValueSorted.emplace_back( ChainAndPrescale({ch, ps}) );

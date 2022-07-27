@@ -259,9 +259,16 @@ def getPileUpEventLoopMgr(name="PileUpEventLoopMgr", **kwargs):
         kwargs.setdefault('BeamLuminosity', noProfileSvc)
         ServiceMgr += noProfileSvc
 
+    evtIdModifierSvc = getService("EvtIdModifierSvc")
+    kwargs.setdefault('EvtIdModifierSvc', evtIdModifierSvc)
+
     kwargs.setdefault('EventInfoName', 'Input_EventInfo')
     # Note that this is a hack. It is needed to fix beam spot information
     # as original xAOD::EventInfo is created before conditions data could
     # be read. Only the "EventInfoName" should change.
+
+    from AthenaCommon.AthenaCommonFlags import athenaCommonFlags
+    if athenaCommonFlags.MCChannelNumber() > 0:
+        kwargs.setdefault("MCChannelNumber", athenaCommonFlags.MCChannelNumber())
 
     return CfgMgr.PileUpEventLoopMgr(name, **kwargs)

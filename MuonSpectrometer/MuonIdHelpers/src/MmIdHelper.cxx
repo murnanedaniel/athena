@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "MuonIdHelpers/MmIdHelper.h"
@@ -8,7 +8,7 @@
 
 /*******************************************************************************/
 // Constructor/Destructor
-MmIdHelper::MmIdHelper() : MuonIdHelper("MmIdHelper"), m_GASGAP_INDEX(6) {}
+MmIdHelper::MmIdHelper() : MuonIdHelper("MmIdHelper") {}
 /*******************************************************************************/
 // Initialize dictionary
 int MmIdHelper::initialize_from_dictionary(const IdDictMgr& dict_mgr) {
@@ -203,26 +203,23 @@ int MmIdHelper::initialize_from_dictionary(const IdDictMgr& dict_mgr) {
     // test to see that the multi range is not empty
     if (m_full_module_range.size() == 0) {
         if (m_msgSvc) { log << MSG::ERROR << "MicroMegas MultiRange ID is empty for modules" << endmsg; }
-        status = 1;
     }
 
     // test to see that the detector element multi range is not empty
     if (m_full_detectorElement_range.size() == 0) {
         if (m_msgSvc) { log << MSG::ERROR << "MicroMegas MultiRange ID is empty for detector elements" << endmsg; }
-        status = 1;
     }
 
     // test to see that the multi range is not empty
     if (m_full_channel_range.size() == 0) {
         if (m_msgSvc) { log << MSG::ERROR << "MicroMegas MultiRange ID is empty for channels" << endmsg; }
-        status = 1;
     }
 
     // Setup the hash tables for MicroMegas
     if (m_msgSvc) { log << MSG::INFO << "Initializing MicroMegas hash indices ... " << endmsg; }
-    status = init_hashes();
-    status = init_detectorElement_hashes();  // same as module hash
-    status = init_id_to_hashes();
+    init_hashes();
+    init_detectorElement_hashes();  // same as module hash
+    init_id_to_hashes();
 
     /*
     //comment out this bit to test the identifiers
@@ -298,14 +295,14 @@ Identifier MmIdHelper::multilayerID(const Identifier& channelID) const {
     return result;
 }
 /*******************************************************************************/
-Identifier MmIdHelper::multilayerID(const Identifier& moduleID, int multilayer, bool check, bool* isValid) const {
-    bool val = false;
+Identifier MmIdHelper::multilayerID(const Identifier& moduleID, int multilayer) const {
     Identifier result(moduleID);
     m_mplet_impl.pack(multilayer, result);
-    if (check) {
-        val = this->validElement(result);
-        if (isValid) *isValid = val;
-    }
+    return result;
+}
+Identifier MmIdHelper::multilayerID(const Identifier& moduleID, int multilayer, bool& isValid) const {
+    const Identifier result = multilayerID(moduleID, multilayer);
+    isValid = validElement(result);
     return result;
 }
 /*******************************************************************************/
@@ -585,14 +582,15 @@ bool MmIdHelper::valid(const Identifier& id) const {
     return true;
 }  // end MmIdHelper::valid
 /*******************************************************************************/
+bool MmIdHelper::isStNameInTech(const std::string& stationName) const {
+    return stationName[0] == 'M';
+}
 bool MmIdHelper::validElement(const Identifier& id) const {
     int station = stationName(id);
-    std::string name = stationNameString(station);
-
-    if ('M' != name[0]) {
+    if (!validStation(station)) {
         if (m_msgSvc) {
             MsgStream log(m_msgSvc, m_logName);
-            log << MSG::WARNING << "Invalid stationName=" << name << endmsg;
+            log << MSG::WARNING << "Invalid stationName=" << stationNameString(station) << endmsg;
         }
         return false;
     }
@@ -601,7 +599,7 @@ bool MmIdHelper::validElement(const Identifier& id) const {
     if (eta < stationEtaMin(id) || eta > stationEtaMax(id)) {
         if (m_msgSvc) {
             MsgStream log(m_msgSvc, m_logName);
-            log << MSG::WARNING << "Invalid stationEta=" << eta << " for stationName=" << name << " stationIndex=" << station
+            log << MSG::WARNING << "Invalid stationEta=" << eta << " for stationName=" << stationNameString(station) << " stationIndex=" << station
                 << " stationEtaMin=" << stationEtaMin(id) << " stationEtaMax=" << stationEtaMax(id) << endmsg;
         }
         return false;
@@ -611,7 +609,7 @@ bool MmIdHelper::validElement(const Identifier& id) const {
     if (phi < stationPhiMin(id) || phi > stationPhiMax(id)) {
         if (m_msgSvc) {
             MsgStream log(m_msgSvc, m_logName);
-            log << MSG::WARNING << "Invalid stationPhi=" << phi << " for stationName=" << name << " stationIndex=" << station
+            log << MSG::WARNING << "Invalid stationPhi=" << phi << " for stationName=" << stationNameString(station) << " stationIndex=" << station
                 << " stationPhiMin=" << stationPhiMin(id) << " stationPhiMax=" << stationPhiMax(id) << endmsg;
         }
         return false;
@@ -622,19 +620,17 @@ bool MmIdHelper::validElement(const Identifier& id) const {
 /*******************************************************************************/
 // Private validation of levels
 bool MmIdHelper::validElement(const Identifier& id, int stationName, int stationEta, int stationPhi) const {
-    std::string name = stationNameString(stationName);
-
-    if ('M' != name[0]) {
+    if (!validStation(stationName)) {
         if (m_msgSvc) {
             MsgStream log(m_msgSvc, m_logName);
-            log << MSG::WARNING << "Invalid stationName=" << name << endmsg;
+            log << MSG::WARNING << "Invalid stationName=" << stationNameString(stationName) << endmsg;
         }
         return false;
     }
     if (stationEta < stationEtaMin(id) || stationEta > stationEtaMax(id)) {
         if (m_msgSvc) {
             MsgStream log(m_msgSvc, m_logName);
-            log << MSG::WARNING << "Invalid stationEta=" << stationEta << " for stationName=" << name << " stationIndex=" << stationName
+            log << MSG::WARNING << "Invalid stationEta=" << stationEta << " for stationName=" << stationNameString(stationName) << " stationIndex=" << stationName
                 << " stationEtaMin=" << stationEtaMin(id) << " stationEtaMax=" << stationEtaMax(id) << endmsg;
         }
         return false;
@@ -642,7 +638,7 @@ bool MmIdHelper::validElement(const Identifier& id, int stationName, int station
     if (stationPhi < stationPhiMin(id) || stationPhi > stationPhiMax(id)) {
         if (m_msgSvc) {
             MsgStream log(m_msgSvc, m_logName);
-            log << MSG::WARNING << "Invalid stationPhi=" << stationPhi << " for stationName=" << name << " stationIndex=" << stationName
+            log << MSG::WARNING << "Invalid stationPhi=" << stationPhi << " for stationName=" << stationNameString(stationName) << " stationIndex=" << stationName
                 << " stationPhiMin=" << stationPhiMin(id) << " stationPhiMax=" << stationPhiMax(id) << endmsg;
         }
         return false;
@@ -684,36 +680,37 @@ bool MmIdHelper::validChannel(const Identifier& id, int stationName, int station
 }  // end MmIdHelper::validChannel
    /*******************************************************************************/
    // Construct ID from components
-Identifier MmIdHelper::elementID(int stationName, int stationEta, int stationPhi, bool check, bool* isValid) const {
+
+Identifier MmIdHelper::elementID(int stationName, int stationEta, int stationPhi) const {
     // pack fields independently
     Identifier result((Identifier::value_type)0);
-    bool val = false;
     m_muon_impl.pack(muon_field_value(), result);
     m_sta_impl.pack(stationName, result);
     m_eta_impl.pack(stationEta, result);
     m_phi_impl.pack(stationPhi, result);
     m_tec_impl.pack(mm_field_value(), result);
-    if (check) {
-        val = this->validElement(result, stationName, stationEta, stationPhi);
-        if (isValid) *isValid = val;
-    }
     return result;
 }
-/*******************************************************************************/
-Identifier MmIdHelper::elementID(std::string_view stationNameStr, int stationEta, int stationPhi, bool check, bool* isValid) const {
-    Identifier id;
-    int stationName = stationNameIndex(stationNameStr);
-    id = elementID(stationName, stationEta, stationPhi, check, isValid);
-    return id;
+Identifier MmIdHelper::elementID(int stationName, int stationEta, int stationPhi, bool& isValid) const  {
+    const Identifier result = elementID(stationName, stationEta, stationPhi);
+    isValid = validElement(result, stationName, stationEta, stationPhi);
+    return result;
 }
+
+/*******************************************************************************/
+Identifier MmIdHelper::elementID(const std::string& stationNameStr, int stationEta, int stationPhi) const {
+    return  elementID(stationNameIndex(stationNameStr), stationEta, stationPhi);
+}
+Identifier MmIdHelper::elementID(const std::string& stationNameStr, int stationEta, int stationPhi, bool& isValid) const {
+    return  elementID(stationNameIndex(stationNameStr), stationEta, stationPhi, isValid);
+}
+
 /*******************************************************************************/
 Identifier MmIdHelper::elementID(const Identifier& id) const { return parentID(id); }
 /*******************************************************************************/
-Identifier MmIdHelper::channelID(int stationName, int stationEta, int stationPhi, int multilayer, int gasGap, int channel, bool check,
-                                 bool* isValid) const {
+Identifier MmIdHelper::channelID(int stationName, int stationEta, int stationPhi, int multilayer, int gasGap, int channel) const {
     // pack fields independently
     Identifier result((Identifier::value_type)0);
-    bool val = false;
     m_muon_impl.pack(muon_field_value(), result);
     m_sta_impl.pack(stationName, result);
     m_eta_impl.pack(stationEta, result);
@@ -722,32 +719,35 @@ Identifier MmIdHelper::channelID(int stationName, int stationEta, int stationPhi
     m_mplet_impl.pack(multilayer, result);
     m_gap_impl.pack(gasGap, result);
     m_cha_impl.pack(channel, result);
-    if (check) {
-        val = validChannel(result, stationName, stationEta, stationPhi, multilayer, gasGap, channel);
-        if (isValid) *isValid = val;
-    }
+    return result;
+}
+Identifier MmIdHelper::channelID(int stationName, int stationEta, int stationPhi, int multilayer, int gasGap, int channel, bool& isValid) const {
+    const Identifier result = channelID(stationName, stationEta, stationPhi, multilayer, gasGap, channel);
+    isValid = validChannel(result, stationName, stationEta, stationPhi, multilayer, gasGap, channel);
     return result;
 }
 /*******************************************************************************/
 Identifier MmIdHelper::channelID(const std::string& stationNameStr, int stationEta, int stationPhi, int multilayer, int gasGap, int channel,
-                                 bool check, bool* isValid) const {
-    Identifier id;
-    int stationName = stationNameIndex(stationNameStr);
-    id = channelID(stationName, stationEta, stationPhi, multilayer, gasGap, channel, check, isValid);
-    return id;
+                                 bool& isValid) const {
+    return channelID(stationNameIndex(stationNameStr), stationEta, stationPhi, multilayer, gasGap, channel, isValid);  
 }
+Identifier MmIdHelper::channelID(const std::string& stationNameStr, int stationEta, int stationPhi, int multilayer, int gasGap, int channel) const {
+    return channelID(stationNameIndex(stationNameStr), stationEta, stationPhi, multilayer, gasGap, channel);  
+}
+
 /*******************************************************************************/
-Identifier MmIdHelper::channelID(const Identifier& id, int multilayer, int gasGap, int channel, bool check, bool* isValid) const {
+Identifier MmIdHelper::channelID(const Identifier& id, int multilayer, int gasGap, int channel) const {
     Identifier result(id);
-    bool val = false;
     m_mplet_impl.pack(multilayer, result);
     m_gap_impl.pack(gasGap, result);
     m_cha_impl.pack(channel, result);
-    if (check) {
-        val = this->valid(result);
-        if (isValid) *isValid = val;
-    }
+  
     return result;
+}
+Identifier MmIdHelper::channelID(const Identifier& id, int multilayer, int gasGap, int channel, bool& isValid) const{
+  const Identifier result = channelID(id, multilayer,gasGap, channel);
+  isValid = valid(result);
+  return result;
 }
 /*******************************************************************************/
 // get parent id from strip or gang identifier

@@ -31,6 +31,7 @@ from IOVSvc.IOVSvcConf import CondInputLoader
 from AthenaServices.AthenaServicesConf import Athena__ConditionsCleanerSvc
 from AthenaServices.AthenaServicesConf import Athena__DelayedConditionsCleanerSvc
 from AthenaCommon.AlgSequence import AthSequencer
+from AthenaCommon.ConcurrencyFlags import jobproperties as jp
 
 
 svcMgr += CondSvc()
@@ -38,12 +39,15 @@ svcMgr += CondSvc()
 condSeq = AthSequencer("AthCondSeq")
 if not hasattr(condSeq, "CondInputLoader"):
     condInputLoader = CondInputLoader( "CondInputLoader")
-    condSeq += condInputLoader
+    # We always want CondInputLoader to be first in the condSeq
+    # for serial running
+    condSeq.insert(0, condInputLoader)
 else:
     condInputLoader = condSeq.CondInputLoader
 
 # Enable conditions garbage collection.
-cleaner = Athena__DelayedConditionsCleanerSvc()
+nConcurrentEvents = max(1,jp.ConcurrencyFlags.NumConcurrentEvents())
+cleaner = Athena__DelayedConditionsCleanerSvc(RingSize = 2*nConcurrentEvents)
 svcMgr += cleaner
 svcMgr += Athena__ConditionsCleanerSvc (CleanerSvc = cleaner)
 

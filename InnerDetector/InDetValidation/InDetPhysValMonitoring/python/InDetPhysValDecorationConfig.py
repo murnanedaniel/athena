@@ -17,23 +17,6 @@ def monManName():
     '''
     return 'PhysValMonManager'
 
-def getMetaData(flags):
-    '''
-    Try to determine from the meta data whether the decoration has been performed already.
-    '''
-
-    from PyUtils.MetaReader import read_metadata
-    infile = flags.Input.Files[0]
-    thisFileMD = read_metadata(infile, None, 'full')
-    metadata = thisFileMD[infile]
-
-    try:
-        return metadata['/TagInfo'][metaDataKey()]
-    except Exception:
-        pass
-    return ''
-
-
 def canAddDecorator(flags):
     '''
     check whether the decorator can be added.
@@ -41,10 +24,13 @@ def canAddDecorator(flags):
     A decorator can be added if a track particle converter alg is in the sequence or
     if ESDs or AODs are read.
     '''
+
     if not (flags.Detector.GeometryID or flags.Detector.GeometryITk):
         return False
 
-    return ("StreamESD" in flags.Input.ProcessingTags or "StreamAOD" in flags.Input.ProcessingTags) and flags.IDPVM.runDecoration
+    return flags.PhysVal.IDPVM.runDecoration and ("StreamESD" in flags.Input.ProcessingTags
+                                                  or "StreamAOD" in flags.Input.ProcessingTags
+                                                  or "StreamDAOD" in flags.Input.ProcessingTags[0]) # Look for substring StreamDAOD in first processing tag to cover all DAOD flavors
 
     '''
     if rec.readTAG:
@@ -62,9 +48,9 @@ def canAddDecorator(flags):
 
         except Exception:
             pass
-    '''
 
     return False
+    '''
 
 
 def createExtendNameIfNotDefaultCfg(alg,
@@ -87,12 +73,10 @@ def createExtendNameIfNotDefaultCfg(alg,
 
     return acc
 
-
-def PhysValMonInDetHoleSearchToolCfg(flags, name="PhysValMonInDetHoleSearchTool", **kwargs):
-    from InDetConfig.InDetRecToolConfig import TrackHoleSearchToolCfg
-    return TrackHoleSearchToolCfg(flags, name=name, **kwargs)
-
 def InDetPhysHitDecoratorAlgCfg(flags, **kwargs):
+    if flags.Detector.GeometryITk:
+        return ITkPhysHitDecoratorAlgCfg(flags, **kwargs)
+
     '''
     create decoration algorithm which decorates track particles with the unbiased hit residuals and pulls.
     If the collection name TrackParticleContainerName is specified and differs from the default, the name
@@ -100,18 +84,57 @@ def InDetPhysHitDecoratorAlgCfg(flags, **kwargs):
     '''
     acc = ComponentAccumulator()
 
-    kwargs.setdefault( "InDetTrackHoleSearchTool", acc.popToolsAndMerge(PhysValMonInDetHoleSearchToolCfg(flags)) )
+    if 'InDetTrackHoleSearchTool' not in kwargs:
+        from InDetConfig.InDetTrackHoleSearchConfig import InDetTrackHoleSearchToolCfg
+        InDetTrackHoleSearchTool = acc.popToolsAndMerge(InDetTrackHoleSearchToolCfg(flags))
+        acc.addPublicTool(InDetTrackHoleSearchTool)
+        kwargs.setdefault("InDetTrackHoleSearchTool", InDetTrackHoleSearchTool)
 
-    from InDetConfig.TrackingCommonConfig import InDetUpdatorCfg
-    Updator = acc.popToolsAndMerge(InDetUpdatorCfg(flags))
-    kwargs.setdefault( "Updator", Updator )
+    if 'Updator' not in kwargs:
+        from TrkConfig.TrkMeasurementUpdatorConfig import InDetUpdatorCfg
+        Updator = acc.popToolsAndMerge(InDetUpdatorCfg(flags))
+        acc.addPublicTool(Updator)
+        kwargs.setdefault( "Updator", Updator )
+
+    if 'LorentzAngleTool' not in kwargs:
+        from SiLorentzAngleTool.PixelLorentzAngleConfig import PixelLorentzAngleToolCfg
+        PixelLorentzAngleTool = acc.popToolsAndMerge(PixelLorentzAngleToolCfg(flags))
+        kwargs.setdefault("LorentzAngleTool", PixelLorentzAngleTool )
 
     acc.merge(createExtendNameIfNotDefaultCfg(CompFactory.InDetPhysHitDecoratorAlg,
                                               'TrackParticleContainerName', 'InDetTrackParticles',
                                               kwargs))
     return acc
 
+def ITkPhysHitDecoratorAlgCfg(flags, **kwargs):
+    '''
+    create decoration algorithm which decorates track particles with the unbiased hit residuals and pulls.
+    If the collection name TrackParticleContainerName is specified and differs from the default, the name
+    of the algorithm will be extended by the collection name
+    '''
+    acc = ComponentAccumulator()
 
+    if 'InDetTrackHoleSearchTool' not in kwargs:
+        from InDetConfig.InDetTrackHoleSearchConfig import ITkTrackHoleSearchToolCfg
+        ITkTrackHoleSearchTool = acc.popToolsAndMerge(ITkTrackHoleSearchToolCfg(flags))
+        acc.addPublicTool(ITkTrackHoleSearchTool)
+        kwargs.setdefault("InDetTrackHoleSearchTool", ITkTrackHoleSearchTool)
+
+    if 'Updator' not in kwargs:
+        from TrkConfig.TrkMeasurementUpdatorConfig import ITkUpdatorCfg
+        Updator = acc.popToolsAndMerge(ITkUpdatorCfg(flags))
+        acc.addPublicTool(Updator)
+        kwargs.setdefault("Updator", Updator )
+
+    if 'LorentzAngleTool' not in kwargs:
+        from SiLorentzAngleTool.ITkPixelLorentzAngleConfig import ITkPixelLorentzAngleToolCfg
+        ITkPixelLorentzAngleTool = acc.popToolsAndMerge(ITkPixelLorentzAngleToolCfg(flags))
+        kwargs.setdefault("LorentzAngleTool", ITkPixelLorentzAngleTool )
+
+    acc.merge(createExtendNameIfNotDefaultCfg(CompFactory.InDetPhysHitDecoratorAlg,
+                                              'TrackParticleContainerName', 'InDetTrackParticles',
+                                              kwargs))
+    return acc
 
 def ParameterErrDecoratorAlgCfg(flags, **kwargs):
     '''
@@ -192,10 +215,10 @@ def AddDecoratorCfg(flags,**kwargs):
 
         acc.merge(InDetPhysValTruthDecoratorAlgCfg(flags))
 
-    if flags.IDPVM.doValidateGSFTracks:
+    if flags.PhysVal.IDPVM.doValidateGSFTracks:
         acc.merge(AddGSFTrackDecoratorAlgCfg(flags))
 
-    if flags.IDPVM.doValidateDBMTracks and ("DBMTrackParticles" in flags.Input.Collections):
+    if flags.PhysVal.IDPVM.doValidateDBMTracks and ("DBMTrackParticles" in flags.Input.Collections):
         acc.merge(DBMTrackDecoratorsCfg(flags))
 
     return acc
@@ -206,13 +229,13 @@ def AddGSFTrackDecoratorAlgCfg(flags,**kwargs):
     #Search egamma algorithm and add the GSF TrackParticle decorator after the it.
     acc = ComponentAccumulator()
 
-    if flags.IDPVM.doValidateGSFTracks:
+    if flags.PhysVal.IDPVM.doValidateGSFTracks:
         # print ('DEBUG add addGSFTrackDecoratorAlg')
 
         acc.merge(GSFTrackDecoratorsCfg(flags))
 
         from  InDetPhysValMonitoring.ConfigUtils import extractCollectionPrefix
-        for col in flags.IDPVM.validateExtraTrackCollections :
+        for col in flags.PhysVal.IDPVM.validateExtraTrackCollections :
             prefix=extractCollectionPrefix(col)
             decorator = acc.popToolsAndMerge(TrackDecoratorsCfg(flags))
             decorator.TrackParticleContainerName=prefix+"TrackParticles"
@@ -229,10 +252,7 @@ def AddDecoratorIfNeededCfg(flags):
         print('DEBUG addDecoratorIfNeeded ? Stage is too early or too late for running the decoration. Needs reconstructed tracks. Try again during next stage ?')
         return acc
 
-    meta_data = getMetaData(flags)
-    if len(meta_data) == 0:
-        # decoration has not been ran
-        acc.merge(AddDecoratorCfg(flags))
+    acc.merge(AddDecoratorCfg(flags))
 
     return acc
 

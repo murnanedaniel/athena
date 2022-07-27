@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "RPC_CondCabling/RPCchamberdata.h"
@@ -20,7 +20,7 @@ RPCchamberdata::RPCchamberdata(DBline& data, int type) : BaseObject(Logic, "RPC 
     if (!(data("made of") >> chams >> "chamber. Strips in connectors:")) return;
     if (!(data("eta") >> stripsInEtaCon)) return;
     if (!(data("phi") >> stripsInPhiCon)) return;
-
+    assert(stripsInEtaCon !=0);
     (++data)("{");
     do {
         RPCchamber::chamberParameters params{};
@@ -30,7 +30,7 @@ RPCchamberdata::RPCchamberdata(DBline& data, int type) : BaseObject(Logic, "RPC 
         params.stripsInPhiCon = stripsInPhiCon;
 
         if (get_data(data, params)) { m_rpc.emplace_back(params); }
-        data++;
+        ++data;
     } while (!data("}"));
 }
 

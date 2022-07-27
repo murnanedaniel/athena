@@ -1,21 +1,19 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "ISF_FastCaloSimParametrization/CaloGeometryFromCaloDDM.h"
 #include "CaloDetDescr/CaloDetDescrElement.h"
-//#include "ISF_FastCaloSimParametrization/CaloGeoDetDescrElement.h"
 #include "CaloDetDescr/CaloDetDescrManager.h"
 
-using namespace std;
-
-CaloGeometryFromCaloDDM::CaloGeometryFromCaloDDM() : CaloGeometry()
+CaloGeometryFromCaloDDM::CaloGeometryFromCaloDDM()
+  : CaloGeometry()
+  , AthMessaging("CaloGeometryFromCaloDDM")
 {
 }
 
 CaloGeometryFromCaloDDM::~CaloGeometryFromCaloDDM()
-{
-}
+= default;
 
 bool CaloGeometryFromCaloDDM::LoadGeometryFromCaloDDM(const CaloDetDescrManager* calo_dd_man)
 {
@@ -25,7 +23,7 @@ bool CaloGeometryFromCaloDDM::LoadGeometryFromCaloDDM(const CaloDetDescrManager*
     addcell(pcell);
   
     if(jentry%25000==0) {
-      cout<<jentry<<" : "<<pcell->getSampling()<<", "<<pcell->identify()<<endl;
+      ATH_MSG_DEBUG(jentry<<" : "<<pcell->getSampling()<<", "<<pcell->identify());
     }
     ++jentry;
   }

@@ -5,12 +5,9 @@ Run material mapping for tracking geometry.
 Uses as MaterialStepsCollections as input.
 
 """
-from AthenaCommon.Configurable import Configurable
 from AthenaCommon.Logging import log
 from argparse import ArgumentParser
 from AthenaConfiguration.AllConfigFlags import ConfigFlags
-
-Configurable.configurableRun3Behavior = True
 
 # Argument parsing
 parser = ArgumentParser("RunMaterialMappingITk.py")
@@ -26,7 +23,7 @@ parser.add_argument("-S", "--verboseStoreGate", default=False,
                     help="Dump the StoreGate(s) each event iteration")
 parser.add_argument("--maxEvents",default=10, type=int,
                     help="The number of events to run. 0 skips execution")
-parser.add_argument("--geometrytag",default="ATLAS-P2-ITK-24-00-00", type=str,
+parser.add_argument("--geometrytag",default="ATLAS-P2-RUN4-01-00-00", type=str,
                     help="The geometry tag to use")
 parser.add_argument("--inputfile",
                     default="MaterialStepCollection.root",
@@ -58,8 +55,10 @@ if os.path.exists('./PoolFileCatalog.xml') :
 
 ConfigFlags.Input.isMC             = True
 
+ConfigFlags.Input.Files = []
+
 if args.localgeo:
-  ConfigFlags.GeoModel.useLocalGeometry = True
+  ConfigFlags.ITk.Geometry.AllLocal = True
   
 from AthenaConfiguration.DetectorConfigFlags import setupDetectorsFromList
 detectors = args.detectors if 'detectors' in args and args.detectors else ['ITkPixel', 'ITkStrip', 'HGTD']

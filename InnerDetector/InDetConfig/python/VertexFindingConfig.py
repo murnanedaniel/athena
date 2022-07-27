@@ -1,4 +1,5 @@
 # Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
 
@@ -11,17 +12,20 @@ def primaryVertexFindingCfg(flags, **kwargs):
     else:
         vtxFlags = flags.InDet.PriVertex
 
-    vertexSorter = None
     if vtxFlags.sortingSetup == 'SumPt2Sorting':
         vertexWeightTool = CompFactory.Trk.SumPtVertexWeightCalculator(
             DoSumPt2Selection=True
         )
+        decorName = "sumPt2"
     elif vtxFlags.sortingSetup == "SumPtSorting":
         vertexWeightTool = CompFactory.Trk.SumPtVertexWeightCalculator(
             DoSumPt2Selection=False
         )
+        decorName = "sumPt"
+
     vertexSorter = CompFactory.Trk.VertexCollectionSortingTool(
-            VertexWeightCalculator=vertexWeightTool,
+        VertexWeightCalculator=vertexWeightTool,
+        decorationName=decorName,
     )
     # finder tool
     finderTool = None
@@ -69,41 +73,6 @@ def primaryVertexFindingCfg(flags, **kwargs):
     return acc
 
 
-def VtxInDetTrackSelectionCfg(flags, **kwargs):
-    acc = ComponentAccumulator()
-
-    if flags.Detector.GeometryITk:
-        vtxFlags = flags.ITk.PriVertex
-    else:
-        vtxFlags = flags.InDet.PriVertex
-
-    for key in (
-        "maxAbsEta",
-        "maxD0",
-        "maxNPixelHoles",
-        "maxSigmaD0",
-        "maxSigmaZ0SinTheta",
-        "maxZ0",
-        "maxZ0SinTheta",
-        "minNInnermostLayerHits",
-        "minNPixelHits",
-        "minNSctHits",
-        "minNSiHits",
-        "minNTrtHits",
-        "minPt",
-    ):
-        kwargs.setdefault(key, getattr(vtxFlags, key))
-
-    # TODO find out which of the settings below need to be picked from flags
-    InDetTrackSelectorTool = CompFactory.InDet.InDetTrackSelectionTool(
-        CutLevel="TightPrimary",
-        UseTrkTrackTools=False,
-        **kwargs,
-    )
-    acc.setPrivateTools(InDetTrackSelectorTool)
-    return acc
-
-
 def AdaptiveMultiFindingBaseCfg(flags, doGauss, **kwargs):
     acc = ComponentAccumulator()
     if "SeedFinder" not in kwargs:
@@ -121,6 +90,7 @@ def AdaptiveMultiFindingBaseCfg(flags, doGauss, **kwargs):
             )
 
     if "TrackSelector" not in kwargs:
+        from InDetConfig.InDetTrackSelectionToolConfig import VtxInDetTrackSelectionCfg
         kwargs["TrackSelector"] = acc.popToolsAndMerge(
             VtxInDetTrackSelectionCfg(flags)
         )
@@ -156,8 +126,8 @@ def AdaptiveMultiFindingBaseCfg(flags, doGauss, **kwargs):
     kwargs.setdefault("useBeamConstraint", vtxFlags.useBeamConstraint)
     kwargs.setdefault("selectiontype", 0)
     kwargs.setdefault("TracksMaxZinterval", vtxFlags.maxZinterval)
-    kwargs.setdefault("do3dSplitting", vtxFlags.doPrimaryVertex3DFinding)
-    kwargs.setdefault("m_useSeedConstraint", False)
+    kwargs.setdefault("do3dSplitting", not vtxFlags.useBeamConstraint)
+    kwargs.setdefault("useSeedConstraint", False)
     finderTool = CompFactory.InDet.InDetAdaptiveMultiPriVxFinderTool(
         name="InDetAdaptiveMultiPriVxFinderTool",
         **kwargs,
@@ -183,6 +153,7 @@ def IterativeFindingBaseCfg(flags, doGauss, **kwargs):
             )
 
     if "TrackSelector" not in kwargs:
+        from InDetConfig.InDetTrackSelectionToolConfig import VtxInDetTrackSelectionCfg
         kwargs["TrackSelector"] = acc.popToolsAndMerge(
             VtxInDetTrackSelectionCfg(flags)
         )
@@ -242,18 +213,21 @@ def ActsGaussAdaptiveMultiFindingBaseCfg(flags, **kwargs):
     )
 
     if "TrackSelector" not in kwargs:
+        from InDetConfig.InDetTrackSelectionToolConfig import VtxInDetTrackSelectionCfg
         kwargs["TrackSelector"] = acc.popToolsAndMerge(
             VtxInDetTrackSelectionCfg(flags)
         )
-    actsGeoAcc, geometry = ActsTrackingGeometryToolCfg(flags)
-    acc.merge(actsGeoAcc)
+    geometry = acc.getPrimaryAndMerge(ActsTrackingGeometryToolCfg(flags))
     trackExtrapolator = acc.getPrimaryAndMerge(ActsExtrapolationToolCfg(flags))
     if flags.Detector.GeometryITk:
         vtxFlags = flags.ITk.PriVertex
     else:
         vtxFlags = flags.InDet.PriVertex
+
+    kwargs.setdefault("useBeamConstraint", vtxFlags.useBeamConstraint)
     kwargs.setdefault("tracksMaxZinterval", vtxFlags.maxZinterval)
-    finderTool = CompFactory.ActsAdaptiveMultiPriVtxFinderTool(
+    kwargs.setdefault("do3dSplitting", not vtxFlags.useBeamConstraint)
+    finderTool = CompFactory.ActsTrk.AdaptiveMultiPriVtxFinderTool(
         "ActsAdaptiveMultiPriVtxFinderTool",
         **kwargs,
         ExtrapolationTool=trackExtrapolator,
@@ -265,9 +239,6 @@ def ActsGaussAdaptiveMultiFindingBaseCfg(flags, **kwargs):
 
 if __name__ == "__main__":
     from AthenaCommon.Logging import logging
-    from AthenaCommon.Configurable import Configurable
-
-    Configurable.configurableRun3Behavior = 1
     from AthenaConfiguration.AllConfigFlags import ConfigFlags as flags
     from AthenaConfiguration.TestDefaults import defaultTestFiles
     from AthenaConfiguration.ComponentAccumulator import printProperties

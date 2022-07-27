@@ -1,8 +1,9 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "TrackParticleTPCnv/TrackParticleContainerCnv_tlp1.h"
+#include "CxxUtils/checker_macros.h"
 
 TrackParticleContainerCnv_tlp1::TrackParticleContainerCnv_tlp1()
 {
@@ -75,7 +76,6 @@ TrackParticleContainerCnv_tlp1::TrackParticleContainerCnv_tlp1()
    addTPConverter( &m_muonTrackSummaryCnv );
 
    //Added with TrackParticleTPCnv-00-02-06          
-   addTPConverter( &m_indetTrackSummaryCnv );
 
    addTPConverter( &m_rotatedDiamondBoundsCnv);
 
@@ -144,7 +144,6 @@ void TrackParticleContainerCnv_tlp1::setPStorage( Rec::TrackParticleContainer_tl
     m_rotatedTrapesoidBoundsCnv.   setPStorage( &storage->m_rotatedTrapesoidBounds); 
 
     m_trackSummaryCnv.         setPStorage(&storage->m_trackSummaries);
-    m_indetTrackSummaryCnv.     setPStorage(&storage->m_indetTrackSummaries);
     m_muonTrackSummaryCnv.     setPStorage(&storage->m_muonTrackSummaries);
     
     m_fitQualityCnv.           setPStorage(&storage->m_fitQualities);
@@ -163,7 +162,12 @@ persToTrans (const Rec::TrackParticleContainer_tlp1* pers,
              Rec::TrackParticleContainer* trans,
              MsgStream& msg)
 {
-  setPStorage (const_cast<Rec::TrackParticleContainer_tlp1*> (pers));
+    // FIXME: TPConverter uses the same non-const member m_pStorage
+    // for both reading and writing, but we want it to be const
+    // in the former case.
+    Rec::TrackParticleContainer_tlp1* pers_nc ATLAS_THREAD_SAFE =
+      const_cast<Rec::TrackParticleContainer_tlp1*> (pers);
+    setPStorage (pers_nc);
   m_mainConverter.pstoreToTrans (0, trans, msg);
 }
 

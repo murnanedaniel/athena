@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef BTAG_JET_AUGMENTER_HH
@@ -33,8 +33,10 @@ public:
 
 private:
   bool jfIsDefaults(const xAOD::BTagging &btag) const;
+  double getDmesonMass(int secondaryVtx_track_number, float secondaryVtx_charge, std::vector<TLorentzVector> secondaryVtx_4momentum_vector, std::vector<float> secondaryVtx_charge_vector, const float track_mass, const float track_kaon) const;
 
   float safelog_prob(float p_up, float p_down) const;
+  
 
   typedef SG::AuxElement AE;
 
@@ -43,6 +45,8 @@ private:
   AE::Decorator<float> m_pt_uncalib;
   AE::Decorator<float> m_eta_uncalib;
   AE::Decorator<float> m_abs_eta_uncalib;
+
+  AE::Decorator<float> m_scalarSumTrackPt;
 
   AE::ConstAccessor<std::vector<float> > m_ip2d_weightBOfTracks;
   AE::Decorator<int> m_ip2d_nTrks;
@@ -88,12 +92,18 @@ private:
   AE::Decorator<float> m_secondaryVtx_min_trk_flightDirRelEta;
   AE::Decorator<float> m_secondaryVtx_max_trk_flightDirRelEta;
   AE::Decorator<float> m_secondaryVtx_avg_trk_flightDirRelEta;
+  // Add new variable
+  AE::Decorator<float> m_DMeson_m;
+  AE::Decorator<char> m_DMeson_isDefaults;
+
   AE::Decorator<float> m_min_trk_flightDirRelEta;
   AE::Decorator<float> m_max_trk_flightDirRelEta;
   AE::Decorator<float> m_avg_trk_flightDirRelEta;
 
   AE::ConstAccessor<char> m_rnnip_pbIsValid;
   AE::Decorator<char> m_rnnip_isDefaults;
+  
+  FlipTagConfig m_flipConfig;  
 
 };
 

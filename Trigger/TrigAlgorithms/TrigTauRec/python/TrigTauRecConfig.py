@@ -9,12 +9,11 @@ class TrigTauRecMerged_TauCaloOnlyMVA (TrigTauRecMerged) :
             super( TrigTauRecMerged_TauCaloOnlyMVA , self ).__init__( name )
             self.MonTool = tauMonitoringCaloOnlyMVA()
             self._mytools = [] 
-          
+
             import TrigTauRec.TrigTauAlgorithmsHolder as taualgs
             tools = []
 
             taualgs.setPrefix("TrigTauCaloOnlyMVA_")
-
 
             # Only include tools needed for calo pre-selection
 
@@ -25,23 +24,22 @@ class TrigTauRecMerged_TauCaloOnlyMVA (TrigTauRecMerged) :
             # Decorate the clusters
             tools.append(taualgs.getTauClusterFinder())
             tools.append(taualgs.getTauVertexedClusterDecorator())
-            # Calibrate to TES
-            tools.append(taualgs.getEnergyCalibrationLC(caloOnly=True))
             # Calculate cell-based quantities: strip variables, EM and Had energies/radii, centFrac, isolFrac and ring energies
             tools.append(taualgs.getCellVariables(cellConeSize=0.2))
             # Compute MVA TES (ATR-17649), stores MVA TES as default tau pt()
             tools.append(taualgs.getMvaTESVariableDecorator())
             tools.append(taualgs.getMvaTESEvaluator())
 
+            from AthenaConfiguration.AllConfigFlags import ConfigFlags
             for tool in tools:
                 tool.inTrigger = True
-                tool.calibFolder = 'TrigTauRec/00-11-02/'
+                tool.calibFolder = ConfigFlags.Trigger.Offline.Tau.tauRecToolsCVMFSPath
 
             self.Tools = tools
 
 class TrigTauRecMerged_TauPrecisionMVA (TrigTauRecMerged) :
 
-        def __init__(self, name = "TrigTauRecMerged_TauPrecisionMVA", doTrackBDT=False, doRNN=False, doLLP=False):
+        def __init__(self, name = "TrigTauRecMerged_TauPrecisionMVA", doTrackBDT=False, doLLP=False):
         
             super( TrigTauRecMerged_TauPrecisionMVA , self ).__init__( name )
             self.MonTool = tauMonitoringPrecisionMVA()
@@ -73,9 +71,6 @@ class TrigTauRecMerged_TauPrecisionMVA (TrigTauRecMerged) :
                 # BDT track classification is deprecated, RNN track classification feasibility under study
                 log.warning( "BDT track classifier is deprecated and won't be scheduled")
 
-            # Calibrate to calo TES
-            tools.append(taualgs.getEnergyCalibrationLC())
-
             # Compute MVA TES (ATR-17649), stores MVA TES as default tau pt()
             tools.append(taualgs.getMvaTESVariableDecorator())
             tools.append(taualgs.getMvaTESEvaluator())
@@ -90,44 +85,17 @@ class TrigTauRecMerged_TauPrecisionMVA (TrigTauRecMerged) :
             # Cluster-based sub-structure, with dRMax also
             tools.append(taualgs.getTauSubstructure())
 
-            #Run either nominal or LLP RNN ID, not both 
-            if doLLP and doRNN:
-               log.warning( "WARNING doLLP and doRNN flags both set to True -> will set doRNN to False")
-               doRNN = False
-               
-            if doLLP:
-                # RNN tau ID for displaced tau signatures (placeholder configs)
-                tools.append(taualgs.getTauJetRNNEvaluator(NetworkFile0P="llpdev/net_experimental_llz_0p.json",
-                                                           NetworkFile1P="llpdev/net_experimental_llz_1p.json",
-                                                           NetworkFile3P="llpdev/net_experimental_llz_mp.json",
-                                                           MaxTracks=10,
-                                                           MaxClusters=6,
-                                                           MaxClusterDR=1.0,
-                                                           suffix = "_LLP"))
-                # flattened RNN score and WP
-                tools.append(taualgs.getTauWPDecoratorJetLLP())       
-            elif doRNN:
-                # RNN tau ID
-                tools.append(taualgs.getTauJetRNNEvaluator(NetworkFile0P="rnnid_config_0p_v3.json",
-                                                           NetworkFile1P="rnnid_config_1p_v3.json",
-                                                           NetworkFile3P="rnnid_config_mp_v3.json",
-                                                           MaxTracks=10, 
-                                                           MaxClusters=6,
-                                                           MaxClusterDR=1.0))
-                # flattened RNN score and WP
-                tools.append(taualgs.getTauWPDecoratorJetRNN())
+            # RNN tau ID, either nominal or LLP
+            tools.append(taualgs.getTauJetRNNEvaluator(LLP = doLLP))
+            # flattened RNN score and WP
+            tools.append(taualgs.getTauWPDecoratorJetRNN(LLP = doLLP))
 
+            from AthenaConfiguration.AllConfigFlags import ConfigFlags
             for tool in tools:
                 tool.inTrigger = True
-                tool.calibFolder = 'TrigTauRec/00-11-02/'
+                tool.calibFolder = ConfigFlags.Trigger.Offline.Tau.tauRecToolsCVMFSPath
 
             self.Tools = tools
-
-            ## add beam type flag
-            from AthenaCommon.BeamFlags import jobproperties
-            self.BeamType = jobproperties.Beam.beamType()
-
-
 
 # this is the newJO fragment
 class TrigTauDefaultsKeys:
@@ -151,11 +119,13 @@ def TrigTauRecMergedOnlyMVACfg(flags):
     # Decorate the clusters
     tools.append(CompFactory.TauClusterFinder(UseOriginalCluster = False)) # TODO use JetRec.doVertexCorrection once available
 
-    tools.append(CompFactory.TauVertexedClusterDecorator(SeedJet = flags.Tau.SeedJetCollection))
+    tools.append(CompFactory.TauVertexedClusterDecorator(SeedJet = flags.Trigger.Offline.Tau.SeedJetCollection))
 
     # Calibrate to TES
-    tools.append(CompFactory.TauCalibrateLC(calibrationFile = flags.Tau.CalibrateLCConfig,
+    # non-MVA TES calibration is deprecated and should be phased out
+    tools.append(CompFactory.TauCalibrateLC(calibrationFile = flags.Trigger.Offline.Tau.CalibrateLCConfig,
                                             Key_vertexInputContainer = ""))
+
     # Calculate cell-based quantities: strip variables, EM and Had energies/radii, centFrac, isolFrac and ring energies
     from AthenaCommon.SystemOfUnits import GeV
     tools.append(CompFactory.TauCellVariables(StripEthreshold = 0.2*GeV,
@@ -165,16 +135,15 @@ def TrigTauRecMergedOnlyMVACfg(flags):
     tools.append(CompFactory.MvaTESVariableDecorator(Key_vertexInputContainer='',
                                                      EventShapeKey='',
                                                      VertexCorrection = False))
-    tools.append(CompFactory.MvaTESEvaluator(WeightFileName = flags.Tau.MvaTESConfig))
+    tools.append(CompFactory.MvaTESEvaluator(WeightFileName = flags.Trigger.Offline.Tau.MvaTESConfig))
 
     for tool in tools:
         tool.inTrigger = True
-        tool.calibFolder = 'TrigTauRec/00-11-02/'
+        tool.calibFolder = flags.Trigger.Offline.Tau.tauRecToolsCVMFSPath
 
 
-            ## add beam type flag
+    ## add beam type flag
     alg = CompFactory.TrigTauRecMerged("TrigTauRecMergedOnlyMVA",
-                                        BeamType=flags.Beam.Type.value, 
                                         Tools=tools)
 
     alg.Key_trackPartInputContainer = ''
@@ -192,8 +161,6 @@ def TrigTauRecMergedOnlyMVACfg(flags):
 
 
 if __name__ == "__main__":
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior = 1
     from AthenaConfiguration.AllConfigFlags import ConfigFlags as flags
     from AthenaConfiguration.TestDefaults import defaultTestFiles
     flags.Input.Files = defaultTestFiles.RAW

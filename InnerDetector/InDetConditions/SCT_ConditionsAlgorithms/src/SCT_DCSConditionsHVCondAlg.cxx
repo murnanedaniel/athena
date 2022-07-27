@@ -1,10 +1,11 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "SCT_DCSConditionsHVCondAlg.h"
 
 #include "Identifier/IdentifierHash.h"
+#include "AthenaKernel/IOVInfiniteRange.h"
 
 #include <memory>
 
@@ -16,19 +17,10 @@ SCT_DCSConditionsHVCondAlg::SCT_DCSConditionsHVCondAlg(const std::string& name, 
 StatusCode SCT_DCSConditionsHVCondAlg::initialize() {
   ATH_MSG_DEBUG("initialize " << name());
 
-  // CondSvc
-  ATH_CHECK(m_condSvc.retrieve());
-
   // Read Cond Handle
   ATH_CHECK(m_readKey.initialize(m_returnHVTemp));
   // Write Cond Handle
   ATH_CHECK(m_writeKey.initialize(m_returnHVTemp));
-  if (m_returnHVTemp) {
-    if (m_condSvc->regHandle(this, m_writeKey).isFailure()) {
-      ATH_MSG_FATAL("unable to register WriteCondHandle " << m_writeKey.fullKey() << " with CondSvc");
-      return StatusCode::FAILURE;
-    }
-  }
 
   return StatusCode::SUCCESS;
 }
@@ -49,6 +41,8 @@ StatusCode SCT_DCSConditionsHVCondAlg::execute(const EventContext& ctx) const {
                   << " if multiple concurrent events are being processed out of order.");
     return StatusCode::SUCCESS; 
   }
+
+  writeHandle.addDependency(IOVInfiniteRange::infiniteMixed());
 
   // Read Cond Handle
   SG::ReadCondHandle<CondAttrListCollection> readHandle{m_readKey, ctx};

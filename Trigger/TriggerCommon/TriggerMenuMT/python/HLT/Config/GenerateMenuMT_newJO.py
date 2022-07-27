@@ -92,8 +92,9 @@ def generateChainConfig(flags, chain, sigGenMap):
     else:
         theChainConfig = listOfChainConfigs[0]
 
-    mainChainDict["alignmentLengths"] = alignmentLengths
+    mainChainDict["alignmentLengths"] = alignmentLengths    
     return mainChainDict, theChainConfig
+
 
 
 def doMenuAlignment(chains):
@@ -102,11 +103,13 @@ def doMenuAlignment(chains):
 
     Input is a list of pairs, (chain dict, chain config)
     """
+                        
     groups = [c[0]['alignmentGroups'] for c in chains]
     log.info('Alignment Combinations %s', groups)
-    alignmentCombinations = set([tuple(set(g)) for g in groups if len(g) > 1])
-    alignmentGroups = set(*alignmentCombinations)
-    log.info('Alignment Combinations %s', alignmentCombinations)
+    
+    alignmentCombinations = set([tuple(set(g)) for g in groups if len(set(g)) > 1])
+    log.info('Alignment reduced Combinations %s', alignmentCombinations)
+    alignmentGroups=set(list(itertools.chain(*alignmentCombinations)))
     log.info('Alignment Groups %s', alignmentGroups)
 
     alignmentLengths = dict.fromkeys(list(itertools.chain(*groups)), 0)
@@ -159,12 +162,70 @@ def loadChains(flags):
     doMenuAlignment( listDictsAndConfigs )
     log.info("Menu aligned")
 
+class FilterChainsToGenerate(object):
+    """
+    class to use filters for chains
+    """
+    def __init__(self,flags):
+        self.enabledSignatures  = flags.Trigger.enabledSignatures  if flags.hasFlag("Trigger.enabledSignatures") else []
+        self.disabledSignatures = flags.Trigger.disabledSignatures if flags.hasFlag("Trigger.disabledSignatures") else []
+        self.selectChains       = flags.Trigger.selectChains       if flags.hasFlag("Trigger.selectChains") else []
+        self.disableChains      = flags.Trigger.disableChains      if flags.hasFlag("Trigger.disableChains") else []          
+    def __call__(self, signame, chain):            
+        return ((signame in self.enabledSignatures and signame not in self.disabledSignatures) and \
+            (not self.selectChains or chain in self.selectChains) and chain not in self.disableChains)
+     
 
-def generateMenu(flags):
+def generateMenuMT(flags): 
+    """
+    Interface between CA and MenuMT using ChainConfigurationBase
+    """
+        
+    
+
+    # Generate the menu, stolen from HLT_standalone
+    from TriggerMenuMT.HLT.Config.GenerateMenuMT import GenerateMenuMT
+    menu = GenerateMenuMT() 
+        
+    chainsToGenerate = FilterChainsToGenerate(flags)          
+    menu.setChainFilter(chainsToGenerate)        
+    finalListOfChainConfigs = menu.generateAllChainConfigs(flags)
+    
+    log.info("Length of FinalListofChainConfigs %s", len(finalListOfChainConfigs))
+ 
+    # make sure that we didn't generate any steps that are fully empty in all chains
+    # if there are empty steps, remove them
+    finalListOfChainConfigs = menu.resolveEmptySteps(finalListOfChainConfigs)
+
+    log.info("finalListOfChainConfig %s", finalListOfChainConfigs)
+
+    log.info("Making the HLT configuration tree")
+    menuAcc=generateMenuAcc(flags)
+
+    # generate L1 menu
+    # This probably will go to TriggerConfig.triggerRunCfg
+    from TrigConfigSvc.TrigConfigSvcCfg import generateL1Menu, createL1PrescalesFileFromMenu
+    generateL1Menu(flags)
+    createL1PrescalesFileFromMenu(flags)
+    return menuAcc
+
+def LoadAndGenerateMenu(flags):
+    """
+    Load and generate Chain configurations, without ChainConfigurationBase
+    """
+    loadChains(flags)
+    menuAcc= generateMenuAcc(flags)
+    # The L1 presacles do not get created in the menu setup
+    from TrigConfigSvc.TrigConfigSvcCfg import generateL1Menu, createL1PrescalesFileFromMenu
+    generateL1Menu(flags)
+    createL1PrescalesFileFromMenu(flags)
+    return menuAcc
+    
+
+def generateMenuAcc(flags):
     """
     Generate appropriate Control Flow Graph wiht all HLT algorithms
     """
-    loadChains(flags)
 
     menuAcc = generateDecisionTree(flags, HLTMenuConfig.configsList())
     menuAcc.wasMerged()
@@ -193,14 +254,12 @@ if __name__ == "__main__":
     assert "Electron" in sigMap, "Electrons missing"
     log.info("Generators laoding works ok")
 
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior = 1
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
     from AthenaConfiguration.TestDefaults import defaultTestFiles
 
     ConfigFlags.Input.Files = defaultTestFiles.RAW
     ConfigFlags.Trigger.triggerMenuSetup = "Dev_pp_run3_v1"
-    ca = generateMenu(ConfigFlags)
+    ca = LoadAndGenerateMenu(ConfigFlags)
     ca.printConfig()
     ca.wasMerged()
     log.info("All ok")

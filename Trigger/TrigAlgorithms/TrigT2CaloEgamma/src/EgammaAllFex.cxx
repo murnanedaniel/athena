@@ -77,7 +77,7 @@ StatusCode EgammaAllFex::execute(xAOD::TrigEMCluster &rtrigEmCluster,
 
     // TileCAL
           // Finished to access RegionSelector
-          TileCellCollection seltile;
+          std::vector<const TileCell*> seltile;
           ATH_CHECK(m_dataSvc->loadCollections(context, roi, seltile));
 
 
@@ -85,7 +85,6 @@ StatusCode EgammaAllFex::execute(xAOD::TrigEMCluster &rtrigEmCluster,
 
       double energyCell = tilecell->energy();
       totalEnergy += energyCell;
-      //samp = CaloSampling::getSampling(*tilecell);
       samp = tilecell->caloDDE()->getSampling();
       rtrigEmCluster.setEnergy(samp,rtrigEmCluster.energy(samp) + energyCell);
       rtrigEmCluster.setRawEnergy(samp,rtrigEmCluster.rawEnergy(samp) + energyCell);

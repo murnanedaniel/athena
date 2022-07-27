@@ -22,7 +22,7 @@ def checkCPSGroups(chainDicts):
   for hlt in chainDicts:
     # Extract all CPS items
     for group in hlt["groups"]:
-      if group.startswith('RATE:CPS'):        
+      if 'CPS' in group:
         # Add if not existing
         if group not in cps_to_chain:
           cps_to_chain[group] = []
@@ -31,6 +31,10 @@ def checkCPSGroups(chainDicts):
   CPS_OK = True
   for CPS_group, HLT_list in cps_to_chain.items():
     CPS_item = CPS_group.split('CPS_',1)[1]
+    
+    if not CPS_group.startswith('RATE:CPS'):
+      log.error("Malformed CPS group %s", CPS_group)
+      CPS_OK = False
 
     # Checks for each CPS item
     if len(HLT_list)<2:
@@ -46,7 +50,7 @@ def checkCPSGroups(chainDicts):
 
       # Verify L1 item matches CPS group
       if CPS_item != hlt['L1item'][3:]:
-        log.error("CPS group %s does not match L1 item %s", CPS_group, hlt['L1item'])
+        log.error("CPS group %s for HLT chain %s does not match L1 item %s", CPS_group, hlt['chainName'], hlt['L1item'])
         CPS_OK = False
       # Passing this check also implies that there is exactly 1 L1 for the CPS group
 

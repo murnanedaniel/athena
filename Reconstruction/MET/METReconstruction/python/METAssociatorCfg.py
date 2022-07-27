@@ -1,10 +1,7 @@
 # Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
 
-from METReconstruction.METRecoFlags import metFlags
 from METReconstruction.METAssocCfg import AssocConfig, METAssocConfig,getMETAssocAlg
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
-from METUtilities.METMakerConfig import getMETMakerAlg
-
 
 def METAssociatorCfg(configFlags, jetType):
     sequencename = "METAssociation"
@@ -74,7 +71,7 @@ def METAssociatorCfg(configFlags, jetType):
                                     configFlags,
                                     associators,
                                     doPFlow=True,
-                                    usePFOLinks=metFlags.UseFELinks()
+                                    usePFOLinks=configFlags.MET.UseFELinks
                                     )
         components_akt4pf= getAssocCA(cfg_akt4pf,sequencename='METAssoc_AntiKt4EMPFlow',METName='AntiKt4EMPFlow')
         components.merge(components_akt4pf)
@@ -90,7 +87,4 @@ def getAssocCA(config,sequencename='METAssociation',METName=''):
     components.addSequence( AthSequencer(sequencename) )
     assocAlg = getMETAssocAlg(algName='METAssociation_'+METName,configs={config.suffix:config})
     components.addEventAlgo(assocAlg,sequencename)
-    if not METName=='':
-        makerAlg=getMETMakerAlg(METName)
-        components.addEventAlgo(makerAlg,sequencename)
     return components

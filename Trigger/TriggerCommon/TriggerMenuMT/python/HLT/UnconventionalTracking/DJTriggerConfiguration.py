@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 from AthenaCommon.CFElements import (seqAND, parOR)
 from TriggerMenuMT.HLT.Config.MenuComponents import MenuSequence
@@ -15,7 +15,7 @@ logging.getLogger().info("Importing %s",__name__)
 log = logging.getLogger(__name__)
 
 def DJPromptStep():
-    from TrigLongLivedParticlesHypo.TrigDJHypoConfig import (TrigDJHypoPromptToolFromDict, TrigDJPromptHypoAlgMonTool)
+    from TrigLongLivedParticlesHypo.TrigDJHypoConfig import (TrigDJHypoPromptToolFromDict)
     from TrigLongLivedParticlesHypo.TrigLongLivedParticlesHypoConf import (DisplacedJetPromptHypoAlg)
 
     hypo_alg = DisplacedJetPromptHypoAlg("DJTrigPromptHypoAlg")
@@ -23,12 +23,11 @@ def DJPromptStep():
     #get the jet tracking config to get the track collection name
     fscfg = getInDetTrigConfig("jet")
 
-    hypo_alg.min_trk_pt = 2
-    hypo_alg.min_evt_jet_pt = 200
+    hypo_alg.min_trk_pt = 1.0
     hypo_alg.stdTracksKey = fscfg.tracks_FTF()
     hypo_alg.jetContainerKey = recordable("HLT_AntiKt4EMTopoJets_subjesIS")
     hypo_alg.vtxKey = fscfg.vertex_jet
-    hypo_alg.MonTool = TrigDJPromptHypoAlgMonTool()
+    hypo_alg.countsKey = "DispJetTrigger_Counts"
 
     #run at the event level
     from AthenaConfiguration.ComponentAccumulator import conf2toConfigurable
@@ -63,7 +62,7 @@ def DJEDStep():
 
 def DJDispFragment(ConfigFlags):
     lrtcfg = getInDetTrigConfig( 'DJetLRT' )
-    roiTool = ViewCreatorCentredOnIParticleROITool('ViewCreatorDJRoI', RoisWriteHandleKey = recordable(lrtcfg.roi), RoIEtaWidth = 0.4, RoIPhiWidth = 0.4)
+    roiTool = ViewCreatorCentredOnIParticleROITool('ViewCreatorDJRoI', RoisWriteHandleKey = recordable(lrtcfg.roi), RoIEtaWidth = lrtcfg.etaHalfWidth, RoIPhiWidth = lrtcfg.phiHalfWidth)
     InputMakerAlg = EventViewCreatorAlgorithm("IMDJRoIFTF",mergeUsingFeature = True, RoITool = roiTool,Views = "DJRoIViews",InViewRoIs = "InViewRoIs",RequireParentView = False,ViewFallThrough = True)
     fscfg = getInDetTrigConfig("jet")
     from TrigInDetConfig.InDetTrigFastTracking import makeInDetTrigFastTracking
@@ -90,6 +89,7 @@ def DJDispStep():
 
     hypo_alg.lrtTracksKey = lrtcfg.tracks_FTF()
     hypo_alg.vtxKey = fscfg.vertex_jet
+    hypo_alg.infoKey = "DispJetTrigger_Info"
 
     ( alg_seq ,im_alg) = RecoFragmentsPool.retrieve(DJDispFragment,ConfigFlags)
 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "tauRecTools/TauRecToolBase.h"
@@ -124,8 +124,6 @@ StatusCode TauRecToolBase::readConfig() {
 
 TauRecToolBase::TauRecToolBase(const std::string& name) :
   asg::AsgTool(name) {
-  declareProperty("inTrigger", m_in_trigger=false);
-  declareProperty("calibFolder", m_tauRecToolsTag="tauRecTools/R22_preprod");
 }
 
 StatusCode TauRecToolBase::initialize(){
@@ -196,7 +194,7 @@ StatusCode TauRecToolBase::executePi0nPFO(xAOD::TauJet& /*pTau*/, xAOD::PFOConta
   return StatusCode::FAILURE;
 }
 
-StatusCode TauRecToolBase::executePanTau(xAOD::TauJet& /*pTau*/, xAOD::ParticleContainer& /*particleContainer*/) {
+StatusCode TauRecToolBase::executePanTau(xAOD::TauJet& /*pTau*/, xAOD::ParticleContainer& /*particleContainer*/) const {
   ATH_MSG_ERROR("function not implemented");
   return StatusCode::FAILURE;
 }

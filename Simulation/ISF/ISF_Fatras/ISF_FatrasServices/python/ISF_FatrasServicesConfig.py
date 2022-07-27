@@ -245,12 +245,10 @@ def getFatrasStaticNavigationEngine(name="ISF_FatrasStaticNavigationEngine", **k
 
 # Not used anywhere - not migrated to CA config
 def getG4RunManagerHelper(name="ISF_G4RunManagerHelper", **kwargs):
-    from ISF_Geant4Tools.ISF_Geant4ToolsConf import iGeant4__G4RunManagerHelper
-    return iGeant4__G4RunManagerHelper(name, **kwargs)
+    return CfgMgr.iGeant4__G4RunManagerHelper(name, **kwargs)
 
 def getFatrasPdgG4Particle(name="ISF_FatrasPdgG4Particle", **kwargs):
-    from ISF_FatrasToolsG4.ISF_FatrasToolsG4Conf import iFatras__PDGToG4Particle
-    return iFatras__PDGToG4Particle(name, **kwargs )
+    return CfgMgr.iFatras__PDGToG4Particle(name, **kwargs )
 
 def getFatrasParticleDecayHelper(name="ISF_FatrasParticleDecayHelper", **kwargs):
     from G4AtlasApps.SimFlags import simFlags
@@ -267,8 +265,7 @@ def getFatrasParticleDecayHelper(name="ISF_FatrasParticleDecayHelper", **kwargs)
     kwargs.setdefault("PhysicsValidationTool"       , getPublicTool('ISF_FatrasPhysicsValidationTool'))
     #kwargs.setdefault("G4RunManagerHelper"  , getPublicTool('ISF_G4RunManagerHelper'))
 
-    from ISF_FatrasToolsG4.ISF_FatrasToolsG4Conf import iFatras__G4ParticleDecayHelper
-    return iFatras__G4ParticleDecayHelper(name, **kwargs )
+    return CfgMgr.iFatras__G4ParticleDecayHelper(name, **kwargs )
 
 ############################################################################
 # (1)  Charged Leptons and Hadrons
@@ -289,8 +286,7 @@ def getFatrasG4HadIntProcessor(name="ISF_FatrasG4HadIntProcessor", **kwargs):
     kwargs.setdefault('ValidationMode'      , ISF_Flags.ValidationMode())
     kwargs.setdefault("MomentumCut"        , FatrasTuningFlags.MomCutOffSec())
 
-    from ISF_FatrasToolsG4.ISF_FatrasToolsG4Conf import iFatras__G4HadIntProcessor
-    return iFatras__G4HadIntProcessor(name, **kwargs )
+    return CfgMgr.iFatras__G4HadIntProcessor(name, **kwargs )
 
 def getFatrasParametricHadIntProcessor(name="ISF_FatrasParametricHadIntProcessor", **kwargs):
     from G4AtlasApps.SimFlags import simFlags
@@ -552,21 +548,6 @@ def getFatrasStaticExtrapolator(name="ISF_FatrasStaticExEngine", **kwargs):
     from TrkExEngine.TrkExEngineConf import Trk__StaticEngine
     return Trk__StaticEngine(name, **kwargs)
 
-# Used only in TransportEngine config (getFatrasSimEngine) which is not migrated to CA config
-# getFatrasExEngine not migrated to CA
-def getFatrasExEngine(name="ISF_FatrasExEngine", **kwargs):
-    # load the tracking geometry service
-    # assign the tools
-    kwargs.setdefault("ExtrapolationEngines"    , [ getPublicTool('ISF_FatrasStaticExEngine') ] )
-    kwargs.setdefault("PropagationEngine"       , getPublicTool('ISF_FatrasStaticPropagator'))
-    # configure output formatting 
-    kwargs.setdefault("OutputPrefix"     , '[ME] - ')
-    kwargs.setdefault("OutputPostfix"    , ' - ')
-    kwargs.setdefault("OutputLevel"      ,  ISF_FatrasFlags.OutputLevelGeneral())
-       
-    from TrkExEngine.TrkExEngineConf import Trk__ExtrapolationEngine
-    return Trk__ExtrapolationEngine(name="ISF_FatrasExEngine", **kwargs )
-
 ################################################################################
 # HIT CREATION SECTION
 ################################################################################
@@ -589,6 +570,7 @@ def getFatrasHitCreatorPixel(name="ISF_FatrasHitCreatorPixel", **kwargs):
     kwargs.setdefault("IdHelperName"    , 'PixelID')
     kwargs.setdefault("CollectionName"  , hits_collection_name)
 
+    kwargs.setdefault("ConditionsTool", "")
     kwargs.setdefault("UseConditionsTool", False)
 
     from ISF_FatrasToolsID.ISF_FatrasToolsIDConf import iFatras__HitCreatorSilicon
@@ -608,6 +590,8 @@ def getFatrasHitCreatorSCT(name="ISF_FatrasHitCreatorSCT", **kwargs):
     kwargs.setdefault("RandomStreamName"    , ISF_FatrasFlags.RandomStreamName())
     kwargs.setdefault("IdHelperName"    , 'SCT_ID')
     kwargs.setdefault("CollectionName"  , hits_collection_name)
+
+    kwargs.setdefault("ConditionsTool", "")
     kwargs.setdefault("UseConditionsTool", False)
 
     from ISF_FatrasToolsID.ISF_FatrasToolsIDConf import iFatras__HitCreatorSilicon
@@ -626,6 +610,8 @@ def getFatrasHitCreatorTRT(name="ISF_FatrasHitCreatorTRT", **kwargs):
     kwargs.setdefault("RandomNumberService" , simFlags.RandomSvc() )
     kwargs.setdefault("RandomStreamName"    , ISF_FatrasFlags.RandomStreamName())
     kwargs.setdefault("CollectionName"  , hits_collection_name)
+
+    kwargs.setdefault("StrawStatusSummaryTool", "")
 
     from ISF_FatrasToolsID.ISF_FatrasToolsIDConf import iFatras__HitCreatorTRT
     return iFatras__HitCreatorTRT(name, **kwargs )
@@ -682,12 +668,36 @@ def getFatrasSimHitCreatorMS(name="ISF_FatrasSimHitCreatorMS", **kwargs):
                                                                   mergeable_collection_suffix,
                                                                   tgc_merger_input_property,
                                                                   region)
-    csc_bare_collection_name = "CSC_Hits"
-    csc_merger_input_property = "CSCHits"
-    csc_hits_collection_name = generate_mergeable_collection_name(csc_bare_collection_name,
+    from AtlasGeoModel.MuonGMJobProperties import MuonGeometryFlags
+    if MuonGeometryFlags.hasCSC() and DetFlags.simulate.CSC_on():
+        csc_bare_collection_name = "CSC_Hits"
+        csc_merger_input_property = "CSCHits"
+        csc_hits_collection_name = generate_mergeable_collection_name(csc_bare_collection_name,
+                                                                      mergeable_collection_suffix,
+                                                                      csc_merger_input_property,
+                                                                      region)
+    else:
+        csc_hits_collection_name = "CSC_Hits_Fatras"
+
+    if MuonGeometryFlags.hasSTGC() and DetFlags.simulate.sTGC_on():
+        stgc_bare_collection_name = "sTGC_Hits"
+        stgc_merger_input_property = "sTGCHits"
+        stgc_hits_collection_name = generate_mergeable_collection_name(stgc_bare_collection_name,
                                                                   mergeable_collection_suffix,
-                                                                  csc_merger_input_property,
+                                                                  stgc_merger_input_property,
                                                                   region)
+    else:
+        stgc_hits_collection_name = "sTGC_Hits_Fatras"
+
+    if MuonGeometryFlags.hasMM() and DetFlags.simulate.MM_on():
+        mm_bare_collection_name = "MM_Hits"
+        mm_merger_input_property = "MMHits"
+        mm_hits_collection_name = generate_mergeable_collection_name(mm_bare_collection_name,
+                                                                  mergeable_collection_suffix,
+                                                                  mm_merger_input_property,
+                                                                  region)
+    else:
+        mm_hits_collection_name = "MM_Hits_Fatras"
 
     from G4AtlasApps.SimFlags import simFlags
     kwargs.setdefault("RandomNumberService" , simFlags.RandomSvc() )
@@ -697,6 +707,8 @@ def getFatrasSimHitCreatorMS(name="ISF_FatrasSimHitCreatorMS", **kwargs):
     kwargs.setdefault("RPCCollectionName", rpc_hits_collection_name)
     kwargs.setdefault("TGCCollectionName", tgc_hits_collection_name)
     kwargs.setdefault("CSCCollectionName", csc_hits_collection_name)
+    kwargs.setdefault("sTGCCollectionName", stgc_hits_collection_name)
+    kwargs.setdefault("MMCollectionName", mm_hits_collection_name)
 
     from MuonTGRecTools.MuonTGRecToolsConf import Muon__MuonTGMeasurementTool
     MuonTGMeasurementTool = Muon__MuonTGMeasurementTool(  name = 'MuonTGMeasurementTool', 
@@ -742,32 +754,6 @@ def getFatrasSimTool(name="ISF_FatrasSimTool", **kwargs):
 
     from ISF_FatrasTools.ISF_FatrasToolsConf import iFatras__TransportTool
     return iFatras__TransportTool(name, **kwargs )
-
-# Not used anywhere - not migrated to CA config
-def getFatrasSimEngine(name="ISF_FatrasSimEngine", **kwargs):
-    kwargs.setdefault("SimHitCreatorID" , getPublicTool('ISF_FatrasSimHitCreatorID'))
-    # TODO: G4 Tools can not be used at the same time as Geant4 inside ISF
-    kwargs.setdefault("ParticleDecayHelper" , getPublicTool('ISF_FatrasParticleDecayHelper'))
-    # the filter setup
-    kwargs.setdefault("TrackFilter"         , getPublicTool('ISF_FatrasKinematicFilter'))
-    kwargs.setdefault("NeutralFilter"       , getPublicTool('ISF_FatrasKinematicFilter'))
-    kwargs.setdefault("PhotonFilter"        , getPublicTool('ISF_FatrasKinematicFilter'))
-    # extrapolator - test setup
-    kwargs.setdefault("Extrapolator"        , getPublicTool('ISF_FatrasExEngine'))
-    #
-    kwargs.setdefault("ProcessSamplingTool" , getPublicTool('ISF_FatrasProcessSamplingTool'))
-    # set the output level
-    # kwargs.setdefault("OutputLevel"         , ISF_FatrasFlags.OutputLevelGeneral())
-    # the validation
-    kwargs.setdefault("ValidationMode"              , ISF_Flags.ValidationMode())
-    kwargs.setdefault("PhysicsValidationTool"       , getPublicTool('ISF_FatrasPhysicsValidationTool'))
-    # random number service
-    from G4AtlasApps.SimFlags import simFlags
-    kwargs.setdefault( "RandomNumberService", simFlags.RandomSvc())
-
-    from ISF_FatrasTools.ISF_FatrasToolsConf import iFatras__TransportEngine
-    return iFatras__TransportEngine(name, **kwargs )
-
 
 def getFatrasPileupSimTool(name="ISF_FatrasPileupSimTool", **kwargs):
     kwargs.setdefault("SimHitCreatorID" , getPublicTool('ISF_FatrasPileupSimHitCreatorID'))

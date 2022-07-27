@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "MuonCondAlg/MdtCalibDbAlg.h"
@@ -50,7 +50,6 @@ MdtCalibDbAlg::MdtCalibDbAlg(const std::string &name, ISvcLocator *pSvcLocator) 
 
 StatusCode MdtCalibDbAlg::initialize() {
     ATH_MSG_DEBUG("initialize " << name());
-    ATH_CHECK(m_condSvc.retrieve());
 
     // if timeslew correction vector m_MeanCorrectionVsR has non-zero size then set
     // m_TsCorrectionT0=m_MeanCorrectionVsR[0] and subtract this each value in the vector.
@@ -103,19 +102,6 @@ StatusCode MdtCalibDbAlg::initialize() {
     ATH_CHECK(m_writeKeyRt.initialize());
     ATH_CHECK(m_writeKeyTube.initialize());
     ATH_CHECK(m_writeKeyCor.initialize());
-
-    if (m_condSvc->regHandle(this, m_writeKeyRt).isFailure()) {
-        ATH_MSG_FATAL("unable to register WriteCondHandle " << m_writeKeyRt.fullKey() << " with CondSvc");
-        return StatusCode::FAILURE;
-    }
-    if (m_condSvc->regHandle(this, m_writeKeyTube).isFailure()) {
-        ATH_MSG_FATAL("unable to register WriteCondHandle " << m_writeKeyTube.fullKey() << " with CondSvc");
-        return StatusCode::FAILURE;
-    }
-    if (m_condSvc->regHandle(this, m_writeKeyCor).isFailure()) {
-        ATH_MSG_FATAL("unable to register WriteCondHandle " << m_writeKeyCor.fullKey() << " with CondSvc");
-        return StatusCode::FAILURE;
-    }
 
     ATH_CHECK(detStore()->retrieve(m_detMgr));
     return StatusCode::SUCCESS;
@@ -218,16 +204,14 @@ StatusCode MdtCalibDbAlg::defaultRt(std::unique_ptr<MdtRtRelationCollection> &wr
         ATH_MSG_DEBUG("defaultRt new MuonCalib::IRtResolution");
 
         // create RT and resolution "I" objects
-        MuonCalib::IRtRelation *rtRel = MuonCalib::MdtCalibrationFactory::createRtRelation("RtRelationLookUp", rtPars);
+        std::unique_ptr<MuonCalib::IRtRelation> rtRel {MuonCalib::MdtCalibrationFactory::createRtRelation("RtRelationLookUp", rtPars)};
         if (!rtRel) ATH_MSG_WARNING("ERROR creating RtRelationLookUp ");
 
-        MuonCalib::IRtResolution *resoRel = MuonCalib::MdtCalibrationFactory::createRtResolution("RtResolutionLookUp", resoPars);
+        std::unique_ptr<MuonCalib::IRtResolution> resoRel{MuonCalib::MdtCalibrationFactory::createRtResolution("RtResolutionLookUp", resoPars)};
         if (!resoRel) ATH_MSG_WARNING("ERROR creating RtResolutionLookUp ");
 
         // if either RT and resolution are not OK then delete both and try next RT in file
         if (!resoRel || !rtRel) {
-            if (resoRel) delete resoRel;
-            if (rtRel) delete rtRel;
             continue;
         }
 
@@ -256,9 +240,7 @@ StatusCode MdtCalibDbAlg::defaultRt(std::unique_ptr<MdtRtRelationCollection> &wr
             }
         }
 
-        delete resoRel;
-        delete rtRel;
-
+        
         break;  // only need the first good RT from the text file
 
     }  // end loop over RTs in file
@@ -865,7 +847,7 @@ StatusCode MdtCalibDbAlg::loadTube() {
         // need to check validity of Identifier since database contains all Run 2 MDT chambers, e.g. also EI chambers which are
         // potentially replaced by NSW
         bool isValid = true;  // the elementID takes a bool pointer to check the validity of the Identifier
-        Identifier chId = m_idHelperSvc->mdtIdHelper().elementID(name, ieta, iphi, true, &isValid);
+        Identifier chId = m_idHelperSvc->mdtIdHelper().elementID(name, ieta, iphi, isValid);
         if (!isValid) {
             static std::atomic<bool> idWarningPrinted = false;
             if (!idWarningPrinted) {
@@ -916,7 +898,7 @@ StatusCode MdtCalibDbAlg::loadTube() {
         // retrieve the existing one (created by defaultt0() )
         tubes = (*writeCdoTube)[hash];
 
-        if (tubes == nullptr) {
+        if (!tubes) {
             ATH_MSG_INFO("Illegal station (2)! (" << name << "," << iphi << "," << ieta << ")");
             continue;
         }
@@ -927,9 +909,14 @@ StatusCode MdtCalibDbAlg::loadTube() {
         int size = nml * nlayers * ntubesLay;
 
         if (size != ntubes) {
-            ATH_MSG_ERROR("Mismatch between number of tubes in MdtTubeCalibContainer for chamber "
-                          << name << "," << iphi << "," << ieta << " (" << size << ") and COOL DB (" << ntubes << ")");
-            return StatusCode::FAILURE;
+            if(m_checkTubes) {
+                ATH_MSG_ERROR("Mismatch between number of tubes in MdtTubeCalibContainer for chamber "
+                              << name << "," << iphi << "," << ieta << " (" << size << ") and COOL DB (" << ntubes << ")");
+                return StatusCode::FAILURE;
+            } else {
+                ATH_MSG_WARNING("Mismatch between number of tubes in MdtTubeCalibContainer for chamber "
+                              << name << "," << iphi << "," << ieta << " (" << size << ") and COOL DB (" << ntubes << ")");                
+            }
         }
 
         // Extract T0, ADCcal, valid flag for each tube from payload.

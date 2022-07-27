@@ -1,5 +1,5 @@
 #
-#  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+#  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #
 
 def TrigTauMonConfig(inputFlags):
@@ -10,7 +10,7 @@ def TrigTauMonConfig(inputFlags):
     from AthenaMonitoring import AthMonitorCfgHelper
     helper = AthMonitorCfgHelper(inputFlags,'TrigTauAthMonitorCfg')
 
-    from TrigTauMonitoring.TrigTauMonitoringConfigMT import TrigTauMonAlgBuilder
+    from TrigTauMonitoring.TrigTauMonitoringConfig import TrigTauMonAlgBuilder
     monAlgCfg = TrigTauMonAlgBuilder( helper ) 
     # build monitor and book histograms
     monAlgCfg.configure()
@@ -23,10 +23,6 @@ def TrigTauMonConfig(inputFlags):
     return helper.result()
 
 if __name__=='__main__':
-    # Setup the Run III behavior
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior = 1
-
     # Setup logs
     from AthenaCommon.Logging import log
     from AthenaCommon.Constants import DEBUG

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "LengthIntegrator.h"
@@ -222,7 +222,7 @@ namespace G4UA
  }
 
 
-  std::string LengthIntegrator::getMaterialClassification(std::string name)
+  std::string LengthIntegrator::getMaterialClassification(const std::string& name)
   {
 
     if((name.find("DM_Atlas_Air") != std::string::npos) || (name.find("DM_Atlas") != std::string::npos) ||
@@ -366,7 +366,7 @@ namespace G4UA
 
   }
 
-  std::string LengthIntegrator::getVolumeType(std::string s){
+  std::string LengthIntegrator::getVolumeType(const std::string& s){
 
     std::string type = "";
     if(m_splitModerator && ( s.find("Moderator") != std::string::npos || s.find("BoratedPolyethylene") != std::string::npos)) type = "Moderator";
@@ -415,7 +415,8 @@ namespace G4UA
    void LengthIntegrator::UserSteppingAction(const G4Step* aStep)
   {
 
-    G4TouchableHistory* touchHist = (G4TouchableHistory*) aStep->GetPreStepPoint()->GetTouchable();
+    const G4TouchableHistory* touchHist =
+      static_cast<const G4TouchableHistory*>(aStep->GetPreStepPoint()->GetTouchable());
     G4LogicalVolume* lv = touchHist->GetVolume()->GetLogicalVolume();
     G4ThreeVector hitPoint = aStep->GetPreStepPoint()->GetPosition();
     G4ThreeVector endPoint = aStep->GetPostStepPoint()->GetPosition();

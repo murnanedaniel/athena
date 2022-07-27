@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "EgammaValidationPlots.h"
@@ -16,6 +16,6 @@ void EgammaValidationPlots::fill(const xAOD::Electron& electron) {
   m_oElectronAllPlots.fill(electron);
 }
 
-void EgammaValidationPlots::fill(const xAOD::Photon& photon){
+void EgammaValidationPlots::fill(const xAOD::Photon& photon) {
   m_oPhotonAllPlots.fill(photon);
 }

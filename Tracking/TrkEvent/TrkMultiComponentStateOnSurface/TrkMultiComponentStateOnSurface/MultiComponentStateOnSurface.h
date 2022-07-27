@@ -35,12 +35,19 @@ description          : This class is a multi component adaptation of the
 #include <iostream>
 
 class MsgStream;
+class TrackCollectionCnv;
+class TrackStateOnSurfaceCnv_p3;
 namespace Trk {
 class MaterialEffectsBase;
 class MeasurementBase;
 
+
 class MultiComponentStateOnSurface final : public TrackStateOnSurface
 {
+
+friend class ::TrackCollectionCnv;
+friend class ::TrackStateOnSurfaceCnv_p3;
+
 public:
   /** Default constructor for POOL. This should not be used! */
   MultiComponentStateOnSurface();
@@ -107,9 +114,8 @@ public:
   /** Virtual destructor */
   virtual ~MultiComponentStateOnSurface() = default;
 
-  /** Clone method for deep copy of MultiComponentStateOnSurface - overidden
-   * from base class */
-  virtual TrackStateOnSurface* clone() const override final;
+  /** Clone method for deep copy of MultiComponentStateOnSurface - overidden*/
+  virtual MultiComponentStateOnSurface* clone() const override final;
 
   /** This is Multi, since we MultiComponent */
   virtual TrackStateOnSurface::Variety variety() const override final;

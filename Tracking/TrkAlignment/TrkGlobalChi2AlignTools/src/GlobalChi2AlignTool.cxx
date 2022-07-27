@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 
@@ -140,7 +140,7 @@ namespace Trk {
   }
   
   //________________________________________________________________________
-  bool GlobalChi2AlignTool::accumulate(const AlignTrack* alignTrack)
+  bool GlobalChi2AlignTool::accumulate(AlignTrack* alignTrack)
   {
     ATH_MSG_DEBUG("in GlobalChi2AlignTool::accumulate()");
 
@@ -182,9 +182,9 @@ namespace Trk {
     // check if the track belongs to a vertex. If yes, retrieve the relevant objects:
     bool                                  fullVertex   = false;
     AlignVertex                         * ptrVertex    = alignTrack->getVtx();
-    Amg::Vector3D                       * ptrPosition  = nullptr;
-    AmgSymMatrix(3)                     * ptrCovariance = nullptr;
-    std::vector<AlignModuleVertexDerivatives>   * ptrX = nullptr;
+    const Amg::Vector3D                 * ptrPosition  = nullptr;
+    const AmgSymMatrix(3)               * ptrCovariance = nullptr;
+    const std::vector<AlignModuleVertexDerivatives>   * ptrX = nullptr;
     AlignVertex::AlignVertexType          vtxType      = AlignVertex::Unknown;
     if( ptrVertex )  {
       fullVertex       = true;
@@ -211,10 +211,10 @@ namespace Trk {
     m_nMatrixIndices=0;
 
     // get pointers so we can reuse them if they're valid
-    Amg::SymMatrixX                 * ptrWeights   = alignTrack->weightMatrix();
-    Amg::SymMatrixX                 * ptrWeightsFD = alignTrack->weightMatrixFirstDeriv();
-    Amg::VectorX                    * ptrResiduals = alignTrack->residualVector();
-    std::vector<AlignModuleDerivatives> * ptrDerivs    = alignTrack->derivatives();
+    const Amg::SymMatrixX           * ptrWeights   = alignTrack->weightMatrix();
+    const Amg::SymMatrixX           * ptrWeightsFD = alignTrack->weightMatrixFirstDeriv();
+    const Amg::VectorX              * ptrResiduals = alignTrack->residualVector();
+    const std::vector<AlignModuleDerivatives> * ptrDerivs    = alignTrack->derivatives();
 
     // check if pointers are valid
     if (!ptrWeights || !ptrWeightsFD || !ptrResiduals || !ptrDerivs) {
@@ -227,40 +227,40 @@ namespace Trk {
     }
 
     // get weight matrices
-    Amg::SymMatrixX&                weights           = *ptrWeights;
-    Amg::SymMatrixX&                weightsFirstDeriv = *ptrWeightsFD;
+    const Amg::SymMatrixX&          weights           = *ptrWeights;
+    const Amg::SymMatrixX&          weightsFirstDeriv = *ptrWeightsFD;
     ATH_MSG_VERBOSE("weights="<<weights);
     ATH_MSG_VERBOSE("weightsFirstDeriv="<<weightsFirstDeriv);
 
     // get vectors
-    Amg::VectorX&                        residuals     = *ptrResiduals;
+    const Amg::VectorX&                  residuals     = *ptrResiduals;
     std::vector<AlignModuleDerivatives>  derivatives   = *ptrDerivs;
-    std::vector<AlignModuleDerivatives>* derivativeErr = alignTrack->derivativeErr();
-    std::vector<std::pair<const AlignModule*,std::vector<double> > >* secDerivs = alignTrack->actualSecondDerivatives();
+    const std::vector<AlignModuleDerivatives>* derivativeErr = alignTrack->derivativeErr();
+    const std::vector<std::pair<AlignModule*,std::vector<double> > >* secDerivs = alignTrack->actualSecondDerivatives();
 
 
 
     std::vector<AlignPar*> allAlignPars;
     std::vector<Amg::VectorX*> allDerivatives;
-    std::vector<Amg::VectorX*> allDerivativeErr;
+    std::vector<const Amg::VectorX*> allDerivativeErr;
     std::vector<double> allActualSecDeriv;
     int    WSize(weights.cols());
-    std::unique_ptr<Amg::MatrixX>  matrix_F( new Amg::MatrixX(3,WSize) );
-    matrix_F->setZero();
+    Amg::MatrixX  matrix_F(3,WSize );
+    matrix_F.setZero();
 
     // get all alignPars and all derivatives
     msg(MSG::DEBUG) << "accumulate: The derivative vector size is  " << derivatives.size() << endmsg;
     std::vector<AlignModuleDerivatives>::iterator derivIt     = derivatives.begin();
     std::vector<AlignModuleDerivatives>::iterator derivIt_end = derivatives.end();
 
-    std::vector<AlignModuleDerivatives>::iterator derivErrIt;
-    std::vector<std::pair<const AlignModule*,std::vector<double> > >::iterator secDerivIt;
+    std::vector<AlignModuleDerivatives>::const_iterator derivErrIt;
+    std::vector<std::pair<AlignModule*,std::vector<double> > >::const_iterator secDerivIt;
     if (derivativeErr) derivErrIt=derivativeErr->begin();
     if (secDerivs)     secDerivIt=secDerivs->begin();
     for ( ; derivIt!=derivIt_end ; ++derivIt) {
 
       // get AlignModule
-      const AlignModule* module=derivIt->first;
+      AlignModule* module=derivIt->first;
 
       // increment track counter
       module->addTrack();
@@ -286,7 +286,7 @@ namespace Trk {
       }
       for (int i=0;i<3;i++) {
         for (int j=0;j<WSize;j++) {
-          (*matrix_F)(i,j) += deriv_vec[nModPars+i][j];        // in the derivIT loop the complete F matrix is built
+          matrix_F(i,j) += deriv_vec[nModPars+i][j];        // in the derivIT loop the complete F matrix is built
         }
       }
 
@@ -305,8 +305,8 @@ namespace Trk {
     }
 
     // increment hit counters in modules
-    AlignTSOSCollection::const_iterator iatsos      = alignTrack->firstAtsos();
-    AlignTSOSCollection::const_iterator iatsos_last = alignTrack->lastAtsos();
+    AlignTSOSCollection::iterator iatsos      = alignTrack->firstAtsos();
+    AlignTSOSCollection::iterator iatsos_last = alignTrack->lastAtsos();
     for (; iatsos != iatsos_last; ++iatsos)
       if ((*iatsos)->module())
         (*iatsos)->module()->addHit();
@@ -406,15 +406,15 @@ namespace Trk {
 
       ATH_MSG_DEBUG( "accumulate: Contribution from the fullVTX will be added " );
      
-      Amg::MatrixX RHM = (*ptrCovariance) * (*matrix_F) * (weightsFirstDeriv * residuals);
+      Amg::MatrixX RHM = (*ptrCovariance) * (matrix_F) * (weightsFirstDeriv * residuals);
 
-      std::vector<AlignPar*>         vtxAlignPars;
-      std::vector<Amg::VectorX*>     vtxDerivatives;
+      std::vector<AlignPar*>           vtxAlignPars;
+      std::vector<const Amg::VectorX*> vtxDerivatives;
 
       // get all alignPars and all derivatives
       msg(MSG::DEBUG) << "accumulate: The Vertex derivative vector size is  " << ptrX->size() << endmsg;
-      std::vector<AlignModuleVertexDerivatives>::iterator XIt     = ptrX->begin();
-      std::vector<AlignModuleVertexDerivatives>::iterator XIt_end = ptrX->end();
+      std::vector<AlignModuleVertexDerivatives>::const_iterator XIt     = ptrX->begin();
+      std::vector<AlignModuleVertexDerivatives>::const_iterator XIt_end = ptrX->end();
 
       for ( ; XIt!=XIt_end ; ++XIt) {
 
@@ -422,7 +422,7 @@ namespace Trk {
         const AlignModule* module=XIt->first;
 
         // get alignment parameters
-        std::vector<Amg::VectorX>& X_vec = XIt->second;
+        const std::vector<Amg::VectorX>& X_vec = XIt->second;
         msg(MSG::DEBUG) << "accumulate: The X_vec size is  " << X_vec.size() << endmsg;
         DataVector<AlignPar>* alignPars = m_alignModuleTool->getAlignPars(module);
         int nModPars = alignPars->size();

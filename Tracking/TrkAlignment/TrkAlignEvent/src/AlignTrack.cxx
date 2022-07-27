@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "TrkTrack/Track.h"
@@ -95,7 +95,7 @@ namespace Trk {
     , m_derivativeErr(atrack.m_derivativeErr ?
         new std::vector<AlignModuleDerivatives>(*(atrack.m_derivativeErr)) : nullptr)
     , m_actualSecondDerivatives(atrack.m_actualSecondDerivatives ?
-        new std::vector<std::pair<const AlignModule*,std::vector<double> > > (*(atrack.m_actualSecondDerivatives)) : nullptr)
+        new std::vector<std::pair<AlignModule*,std::vector<double> > > (*(atrack.m_actualSecondDerivatives)) : nullptr)
     , m_residuals(atrack.m_residuals ?
         new Amg::VectorX(*(atrack.m_residuals)) : nullptr)
     , m_weights(atrack.m_weights ?
@@ -191,7 +191,7 @@ namespace Trk {
           new std::vector<AlignModuleDerivatives>(*(atrack.m_derivativeErr)) : nullptr;
       delete m_actualSecondDerivatives;
       m_actualSecondDerivatives = atrack.m_actualSecondDerivatives ?
-          new std::vector<std::pair<const AlignModule*,std::vector<double> > > (*(atrack.m_actualSecondDerivatives)) : nullptr;
+          new std::vector<std::pair<AlignModule*,std::vector<double> > > (*(atrack.m_actualSecondDerivatives)) : nullptr;
       delete m_localErrorMat;
       m_localErrorMat = atrack.m_localErrorMat ?
           new Amg::SymMatrixX(*(atrack.m_localErrorMat)) : nullptr;
@@ -451,12 +451,15 @@ namespace Trk {
           auto meot=dynamic_cast<const Trk::MaterialEffectsOnTrack*>(meb.get());
           if (meot) {
             double tinX0=meot->thicknessInX0();
-            const Trk::EnergyLoss* eLoss=meot->energyLoss() ? meot->energyLoss()->clone() : nullptr;
-            const Trk::Surface& surf=meot->associatedSurface();
+            std::unique_ptr<Trk::EnergyLoss> eLoss =
+              meot->energyLoss()
+                ? std::unique_ptr<Trk::EnergyLoss>(meot->energyLoss()->clone())
+                : nullptr;
+            const Trk::Surface& surf = meot->associatedSurface();
             std::bitset<MaterialEffectsBase::NumberOfMaterialEffectsTypes> typeMaterial;
             if (eLoss) typeMaterial.set(MaterialEffectsBase::EnergyLossEffects);
             const Trk::MaterialEffectsOnTrack* newmeot=
-                new Trk::MaterialEffectsOnTrack(tinX0,std::nullopt,eLoss,surf,typeMaterial);
+                new Trk::MaterialEffectsOnTrack(tinX0,std::nullopt,std::move(eLoss),surf,typeMaterial);
             meb.reset(newmeot);
           }
         }

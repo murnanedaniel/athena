@@ -58,15 +58,6 @@ try:
 except Exception:
     treatException("Could not include EventAthenaPool/EventAthenaPoolItemList_joboptions.py")
 
-# RawInfoSummaryForTag
-try:
-    fullItemList = []
-    protectedInclude ( "EventTagAthenaPOOL/EventTagAthenaPOOLItemList_joboptions.py")
-    fullAODList += CfgItemList( "EventTagAthenaPOOL",
-                                items = fullItemList,
-                                allowWildCard = True )
-except Exception:
-    treatException("Could not include EventTagAthenaPOOL/EventTagAthenaPOOLItemList_joboptions.py")
     
 # MC Event Collection. Should be moved to a separate jobO
 if rec.doTruth():
@@ -176,9 +167,9 @@ except Exception:
 #isolation, EventShape containers for ED correction
 try:
     include("IsolationAlgs/IsoEventShapeOutputItemList_jobOptions.py")
-    fullAODList += CfgItemList( "Isolation", items = IsoAODESList)
+    fullAODList += CfgItemList("Isolation", items=IsoAODList)
 except Exception:
-    treatException("Could not load IsoEventShape item list")   
+    treatException("Could not load IsoEventShape item list")
 
 # uncomment
 # FIXME : there is a logic inconsistency
@@ -319,7 +310,6 @@ if rec.doCaloRinger():
     try:
         include ( "CaloRingerAlgs/CaloRingerOutputItemList_jobOptions.py" )
         fullAODList += CfgItemList( "caloRingerAod", items = caloRingerAODList )
-        StreamAOD_Augmented.AddMetaDataItem( caloRingerMetaDataList )
     except Exception:
         treatException("Could not load CaloRingerAlgs/CaloRingerOutputItemList_jobOptions.py" )
 

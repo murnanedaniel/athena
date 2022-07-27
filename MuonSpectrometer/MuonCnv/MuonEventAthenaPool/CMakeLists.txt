@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # Declare the package name:
 atlas_subdir( MuonEventAthenaPool )
@@ -75,7 +75,7 @@ find_package( AthenaPoolUtilitiesTest )
 
 if( ATHENAPOOLUTILITIESTEST_FOUND )
   set( MUONEVENTATHENAPOOL_REFERENCE_TAG
-       MuonEventAthenaPoolReference-04-00-00 )
+       MuonEventAthenaPoolReference-04-00-01 )
   run_tpcnv_test( MuonEventTPCnv_17.0.0 ESD-17.0.0
                   REFERENCE_TAG ${MUONEVENTATHENAPOOL_REFERENCE_TAG} )
   run_tpcnv_test( MuonEventTPCnv_20.1.7.2 ESD-20.1.7.2
@@ -109,13 +109,15 @@ foreach( name
     TgcRawDataCnv_p1_test
     TgcRawDataCnv_p2_test
     TgcRawDataCnv_p3_test
+    TgcRawDataCnv_p4_test
     TgcRdoCnv_p1_test
     TgcRdoCnv_p2_test
-    TgcRdoCnv_p3_test )
+    TgcRdoCnv_p3_test
+    TgcRdoCnv_p4_test )
 
    atlas_add_test( ${name}
       SOURCES test/${name}.cxx
-      LINK_LIBRARIES IdDictParser MuonEventAthenaPoolLib TestTools
+      LINK_LIBRARIES CxxUtils IdDictParser MuonEventAthenaPoolLib TestTools
       PROPERTIES TIMEOUT 300
       ENVIRONMENT "JOBOPTSEARCHPATH=${_jobOPath}" )
 

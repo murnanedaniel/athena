@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "CscPrepDataContainerCnv.h"
@@ -49,9 +49,9 @@ CscPrepDataContainer_PERS*    CscPrepDataContainerCnv::createPersistent (Muon::C
 
 Muon::CscPrepDataContainer* CscPrepDataContainerCnv::createTransient() {
     MsgStream log(msgSvc(), "CscPrepDataContainerCnv" );
-    static pool::Guid   p0_guid("C48250B1-7575-DFA1-1313-01AAAF759AEA"); // before t/p split
-    static pool::Guid   p1_guid("B941657D-1ABF-4A88-B23C-6C4212CD04B3"); // with CscPrepData_tlp1
-    static pool::Guid   p2_guid("BF5DA875-6D5B-4DCA-9CD8-E0ABC4FD92F5"); // with CscPrepDataContainer_p2
+    static const pool::Guid   p0_guid("C48250B1-7575-DFA1-1313-01AAAF759AEA"); // before t/p split
+    static const pool::Guid   p1_guid("B941657D-1ABF-4A88-B23C-6C4212CD04B3"); // with CscPrepData_tlp1
+    static const pool::Guid   p2_guid("BF5DA875-6D5B-4DCA-9CD8-E0ABC4FD92F5"); // with CscPrepDataContainer_p2
     if (log.level() <= MSG::DEBUG) log<<MSG::DEBUG<<"createTransient(): main converter"<<endmsg;
     Muon::CscPrepDataContainer* p_collection(nullptr);
     if( compareClassGuid(p2_guid) ) {

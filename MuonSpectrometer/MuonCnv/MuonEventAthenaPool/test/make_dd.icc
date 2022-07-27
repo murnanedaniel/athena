@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 /**
  * @file MuonEventAthenaPool/test/make_dd.icc
@@ -20,15 +20,12 @@
 #include "GaudiKernel/EventContext.h"
 #include "GaudiKernel/ThreadLocalContext.h"
 
-
-
-void make_dd()
+void make_dd (IdDictParser& parser)
 {
   ISvcLocator* svcLoc = Gaudi::svcLocator();
   StoreGateSvc* sg = 0;
   assert ( svcLoc->service("DetectorStore", sg).isSuccess() );
 
-  static IdDictParser parser;
   parser.register_external_entity ("InnerDetector",
                                    "IdDictInnerDetector.xml");
   parser.register_external_entity ("MuonSpectrometer",
@@ -42,7 +39,6 @@ void make_dd()
 
   auto rpc_id = std::make_unique<RpcIdHelper>();
   rpc_id->initialize_from_dictionary (idd);
-  RDOindex::setRpcIdHelper (rpc_id.get());
   assert ( sg->record (std::move (rpc_id), "RPCIDHELPER") );
 
 }
@@ -81,7 +77,7 @@ EventIDBase runlbn (int run, int lbn)
 
 
 void make_cond (TestRCUSvc& rcusvc,
-                const std::vector<Identifier> ids = std::vector<Identifier>())
+                const std::vector<Identifier>& ids = std::vector<Identifier>())
 {
   EventContext ctx;
   ctx.setEventID (runlbn (1, 1));
@@ -98,7 +94,7 @@ void make_cond (TestRCUSvc& rcusvc,
   EventIDRange r (runlbn(0, 0), runlbn (10000000, 0));
   DataObjID id ("RpcCablingCondData", key);
   auto cc = std::make_unique<CondCont<RpcCablingCondData> > (rcusvc, id);
-  assert (cc->insert (r, std::move(data), ctx).isSuccess());
+  if (cc->insert (r, std::move(data), ctx).isFailure()) std::abort();
 
   ServiceHandle<StoreGateSvc> condStore ("StoreGateSvc/ConditionStore", "test");
   assert (condStore.retrieve().isSuccess());

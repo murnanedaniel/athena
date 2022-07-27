@@ -78,6 +78,7 @@
 #include "InDetCoolCoralClientUtils/ConfDBif.h"
 
 #include "InDetCoolCoralClientUtils/CoolCoralClient.h"
+#include <memory>
 
 using namespace cool;
 using namespace std;
@@ -792,7 +793,6 @@ void COOLCORALClient::fillTables(const std::string& part_trt){
   std::vector<char> buffer(999);
   if (itAfile.is_open()){
     while (itAfile.getline(&buffer[0],999,'\n')) {
-      std::string sline(buffer.begin(),buffer.begin()+strlen(&buffer[0]));
       std::istringstream sbuf(&buffer[0]);
       sbuf >> tuid >> iovfkttc
 	   >> tbyteswap >> tphysaddr
@@ -885,7 +885,6 @@ void COOLCORALClient::fillTables(const std::string& part_trt){
   ifstream itGRfile (filename);
   if (itGRfile.is_open()){
     while (itGRfile.getline(&buffer[0],999,'\n')) {
-      std::string sline(buffer.begin(),buffer.begin()+strlen(&buffer[0]));
       std::istringstream sbuf(&buffer[0]);
       sbuf >> tgruid >> tgrname >> group 
 	   >> duty
@@ -985,7 +984,6 @@ void COOLCORALClient::fillTables(const std::string& part_trt){
 
   if (irAfile.is_open()){
     while (irAfile.getline(&buffer[0],999,'\n')) {
-      std::string sline(buffer.begin(),buffer.begin()+strlen(&buffer[0]));
       std::istringstream sbuf(&buffer[0]);
       sbuf >> rodid 
 	   >> rodbyteswap >> rodphysaddr
@@ -1072,7 +1070,6 @@ void COOLCORALClient::fillTables(const std::string& part_trt){
 
   if (idAfile.is_open()){
     while (idAfile.getline(&buffer[0],999,'\n')) {
-      std::string sline(buffer.begin(),buffer.begin()+strlen(&buffer[0]));
       std::istringstream sbuf(&buffer[0]);
       sbuf >> byteswap >> physaddr
 	   >> fragtype >> dtname
@@ -1303,7 +1300,6 @@ void COOLCORALClient::createConnect(const std::string& part_trt){
   std::vector<char> buffer(999);
   if (itAfile.is_open()){
     while (itAfile.getline(&buffer[0],999,'\n')) {
-      std::string sline(buffer.begin(),buffer.begin()+strlen(&buffer[0]));
       if (part_trt=="barrel"){
 	std::istringstream sbuf(&buffer[0]);
 	sbuf >> part >> crate >> slot 
@@ -1363,10 +1359,10 @@ int COOLCORALClient::GetTTCdummy(int ttc_id){
 
 
   struct timeval start_time{}, end_time{};
-  int total_usecs;
+  int total_usecs=0;
   gettimeofday(&start_time, nullptr);
-  TTCobj_t *ttc_param;
-  std::vector<TTCobj_t *> ttc_params;
+  std::unique_ptr<TTCobj_t> ttc_param;
+  std::vector<std::unique_ptr<TTCobj_t>> ttc_params;
   TTCGroupobj_t ttcgr_param;
   DTMROCobj_t  dtmroc_param;
 
@@ -1413,7 +1409,7 @@ int COOLCORALClient::GetTTCdummy(int ttc_id){
 
 
   coral::IQuery* query00 = m_session->nominalSchema().tableHandle(BCONNECT_TABLE).newQuery();
-
+  if (not query00) return -1;
   query00->addToOutputList("phi1" ); 
   query00->addToOutputList("phi2" ); 
 
@@ -1488,7 +1484,7 @@ int COOLCORALClient::GetTTCdummy(int ttc_id){
   // query on TTCGROUP
 
   coral::IQuery* query1 = m_session->nominalSchema().tableHandle(TTCGR_TABLE).newQuery();
-
+  if (not query1) return -1;
   query1->addToOutputList("Group" );
   query1->addToOutputList("DutyCycle" );
   query1->addToOutputList("EdgeSelect");
@@ -1507,7 +1503,7 @@ int COOLCORALClient::GetTTCdummy(int ttc_id){
   // query on dtmroc
 
   coral::IQuery* query2 = m_session->nominalSchema().tableHandle(DTMROC_TABLE).newQuery();
-
+  if (not query2) return -1;
   query2->addToOutputList( "ChipID" ); 
   query2->addToOutputList( "ChipValid" ); 
   query2->addToOutputList( "RODGroup" ); 
@@ -1537,7 +1533,7 @@ int COOLCORALClient::GetTTCdummy(int ttc_id){
   int nRows = 0;
   while ( cursor0.next() ) {
     const coral::AttributeList &row0 = cursor0.currentRow();
-    ttc_param = new TTCobj_t;
+    ttc_param = std::make_unique<TTCobj_t>();
 
     ttc_param->VMEslot = row0[1].data<int>();
     ttc_param->Delay = row0[2].data<int>();
@@ -1555,6 +1551,7 @@ int COOLCORALClient::GetTTCdummy(int ttc_id){
     if(m_verbose) std::cout << "TTCGROUP = " << ttcgr_condData[0].data<int>() << std::endl;
     if(m_verbose) std::cout << "TTCGROUP = " << ttcgr_condData[1].data<int>() << std::endl;
     int nRows1 = 0;
+    if (not query1) continue;
     coral::ICursor& cursor1 = query1->execute();
 
     while ( cursor1.next() ) {
@@ -1632,7 +1629,7 @@ int COOLCORALClient::GetTTCdummy(int ttc_id){
     }      
     delete query2; query2=nullptr;
     printf("Total  %d    DTMROC records\n", nRows2);
-    ttc_params.push_back(ttc_param);
+    ttc_params.push_back(std::move(ttc_param));
     ++nRows;
   }
   delete query0; query0=nullptr;
@@ -1670,7 +1667,7 @@ TTCobj_t* COOLCORALClient::GetTTC(int ttc_id){
   int total_usecs;
   gettimeofday(&start_time, nullptr);
 
-  TTCobj_t *ttc_param=nullptr;
+  std::unique_ptr<TTCobj_t> ttc_param;
   TTCGroupobj_t ttcgr_param;
   DTMROCobj_t  dtmroc_param;
 
@@ -1699,7 +1696,7 @@ TTCobj_t* COOLCORALClient::GetTTC(int ttc_id){
 
 
   coral::IQuery* query00 = m_session->nominalSchema().tableHandle(BCONNECT_TABLE).newQuery();
-
+  if (not query00) return nullptr;
   query00->addToOutputList("phi" ); 
 
 
@@ -1744,7 +1741,7 @@ TTCobj_t* COOLCORALClient::GetTTC(int ttc_id){
   // QUERY on TTC
 
   coral::IQuery* query0 = m_session->nominalSchema().tableHandle(TTC_TABLE).newQuery();
-    
+  if (not query0) return nullptr;
   query0->addToOutputList("DetID" ); 
   query0->addToOutputList("VMESlot" ); 
   query0->addToOutputList("Delay" ); 
@@ -1766,7 +1763,7 @@ TTCobj_t* COOLCORALClient::GetTTC(int ttc_id){
   // query on TTCGROUP
 
   coral::IQuery* query1 = m_session->nominalSchema().tableHandle(TTCGR_TABLE).newQuery();
-
+  if (not query1) return nullptr;
   query1->addToOutputList("Group" );
   query1->addToOutputList("DutyCycle" );
   query1->addToOutputList("EdgeSelect");
@@ -1828,7 +1825,7 @@ TTCobj_t* COOLCORALClient::GetTTC(int ttc_id){
   coral::ICursor& cursor0 = query0->execute();
   while ( cursor0.next() ) {
     const coral::AttributeList &row0 = cursor0.currentRow();
-    ttc_param = new TTCobj_t;
+    ttc_param = std::make_unique< TTCobj_t>();
 
     ttc_param->VMEslot = row0[1].data<int>();
     ttc_param->Delay = row0[2].data<int>();
@@ -1846,7 +1843,7 @@ TTCobj_t* COOLCORALClient::GetTTC(int ttc_id){
    
 
     ttcgr_condData[1].data<int>() = ttc_id*10 + nrgroups;
-
+    if (not query1) continue;
     coral::ICursor& cursor1 = query1->execute();
     while ( cursor1.next() ) {
       const coral::AttributeList &row1 = cursor1.currentRow();
@@ -1945,7 +1942,7 @@ TTCobj_t* COOLCORALClient::GetTTC(int ttc_id){
   if(m_verbose) std::cout << "****************************" << std::endl;
 
 
-  return ttc_param;
+  return ttc_param.release();
 
 }
 
@@ -2007,7 +2004,7 @@ RODobj_t* COOLCORALClient::GetROD(int rod_id){
   m_session->transaction().start(true);
 
   coral::IQuery* query0 = m_session->nominalSchema().tableHandle(ROD_TABLE).newQuery();
-    
+  if (not query0) return nullptr;
   query0->addToOutputList("RODVMESlot" ); 
   query0->addToOutputList("RODHalf" ); 
   query0->addToOutputList("EdgeSelect0" ); 
@@ -2036,7 +2033,7 @@ RODobj_t* COOLCORALClient::GetROD(int rod_id){
   // query on dtmroc
 
   coral::IQuery* query2 = m_session->nominalSchema().tableHandle(DTMROC_TABLE).newQuery();
-
+  if (not query2) return nullptr;
   query2->addToOutputList( "ChipID" ); 
   query2->addToOutputList( "ChipValid" ); 
   query2->addToOutputList( "RODGroup" ); 
@@ -2087,7 +2084,7 @@ RODobj_t* COOLCORALClient::GetROD(int rod_id){
     dtmroc_condData[0].data<int>() = part_nr*100000+phi_id*1000+(firstroc-1);
     dtmroc_condData[1].data<int>() = part_nr*100000+phi_id*1000+
       (nrdtmrocs-1);
-
+    if (not query2) continue;
     coral::ICursor& cursor2 = query2->execute();
     while ( cursor2.next() ) {
       const coral::AttributeList &row2 = cursor2.currentRow();
@@ -2581,7 +2578,6 @@ void COOLCORALClient::fillFolderTables(const std::string& part_trt, const std::s
   std::vector<char> buffer(999);
   if (itAfile.is_open()){
     while (itAfile.getline(&buffer[0],999,'\n')) {
-      std::string sline(buffer.begin(),buffer.begin()+strlen(&buffer[0]));
       std::istringstream sbuf(&buffer[0]);
       sbuf >> tuid >> iovfkttc
 	   >> tbyteswap >> tphysaddr
@@ -2684,7 +2680,6 @@ void COOLCORALClient::fillFolderTables(const std::string& part_trt, const std::s
 
   if (itGRfile.is_open()){
     while (itGRfile.getline(&buffer[0],999,'\n')) {
-      std::string sline(buffer.begin(),buffer.begin()+strlen(&buffer[0]));
       std::istringstream sbuf(&buffer[0]);
       sbuf >> tgruid >> tgrname >> group 
 	   >> duty
@@ -2793,7 +2788,6 @@ void COOLCORALClient::fillFolderTables(const std::string& part_trt, const std::s
 
   if (irAfile.is_open()){
     while (irAfile.getline(&buffer[0],999,'\n')) {
-      std::string sline(buffer.begin(),buffer.begin()+strlen(&buffer[0]));
       std::istringstream sbuf(&buffer[0]);
       sbuf >> rodid 
 	   >> rodbyteswap >> rodphysaddr
@@ -2888,7 +2882,6 @@ void COOLCORALClient::fillFolderTables(const std::string& part_trt, const std::s
 
   if (idAfile.is_open()){
     while (idAfile.getline(&buffer[0],999,'\n')) {
-      std::string sline(buffer.begin(),buffer.begin()+strlen(&buffer[0]));
       std::istringstream sbuf(&buffer[0]);
       sbuf >> byteswap >> physaddr
 	   >> fragtype >> dtname
@@ -4119,8 +4112,6 @@ void COOLCORALClient::fillMap(){
   std::vector<char> buffer(999);
   if (itAfile.is_open()){
     while (itAfile.getline(&buffer[0],999,'\n')) {
-      std::string sline(buffer.begin(),buffer.begin()+strlen(&buffer[0]));
-
       std::istringstream sbuf(&buffer[0]);
       sbuf >> conn_struct.part >> conn_struct.crate 
 	   >> conn_struct.slot 

@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # Declare the package name:
 atlas_subdir( DataQualityUtils )
@@ -10,6 +10,7 @@ find_package( CORAL COMPONENTS CoralBase CoralKernel RelationalAccess )
 find_package( ROOT COMPONENTS Graf Gpad MathCore RooFit RooFitCore Minuit Cint Core Tree TreePlayer Hist RIO pthread MathMore Minuit2 Matrix Physics HistPainter Rint Graf3d Html Postscript Gui GX11TTF GX11 )
 find_package( stomppy )
 find_package( FFTW ) # Needed for RooFFTConvPdf
+find_package( nlohmann_json )
 
 # Component(s) in the package:
 atlas_add_root_dictionary( DataQualityUtils
@@ -20,7 +21,6 @@ atlas_add_root_dictionary( DataQualityUtils
 atlas_add_library( DataQualityUtils
                    src/HanOutputFile.cxx
                    src/MonitoringFile.cxx
-                   src/MonitoringFile_CSCPostProcess.cxx
                    src/MonitoringFile_RPCPostProcess.cxx
                    src/MonitoringFile_TGCPostProcess.cxx
                    src/MonitoringFile_MDTvsTGCPostProcess.cxx
@@ -48,8 +48,6 @@ atlas_add_library( DataQualityUtils
                    src/CoolMdt.cxx
                    src/CoolTgc.cxx
                    src/MdtDeadNoisyUtils.cxx
-                   src/MonitoringFile_CSCChamberEfficiency.cxx
-                   src/MonitoringFile_CSCClusterFit.cxx
                    src/MonitoringFile_TgcHistogramDivision.cxx
                    src/MonitoringFile_HLTMuonHistogramDivision.cxx
                    src/MonitoringFile_HLTEgammaEfficiency.cxx
@@ -64,12 +62,21 @@ atlas_add_library( DataQualityUtils
                    ${DataQualityUtilsDictSource}
                    PUBLIC_HEADERS DataQualityUtils
                    INCLUDE_DIRS ${Boost_INCLUDE_DIRS} ${COOL_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS} ${CORAL_INCLUDE_DIRS}
-                   LINK_LIBRARIES ${Boost_LIBRARIES} ${COOL_LIBRARIES} ${ROOT_LIBRARIES} ${CORAL_LIBRARIES}
+                   LINK_LIBRARIES ${Boost_LIBRARIES} ${COOL_LIBRARIES} ${ROOT_LIBRARIES} ${CORAL_LIBRARIES} nlohmann_json::nlohmann_json
                    PRIVATE_LINK_LIBRARIES DataQualityInterfaces )
 
+# With gcc8, need to link with -lstdc++fs in order to use std::filesystem.
+if( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND                 
+    "${CMAKE_CXX_COMPILER_VERSION}" VERSION_GREATER_EQUAL 8 AND
+    "${CMAKE_CXX_COMPILER_VERSION}" VERSION_LESS 9 )
+  set( filesystem_lib stdc++fs )
+else()
+  set( filesystem_lib )
+endif()
+    
 atlas_add_executable( han-results-print
                       src/han_results_print.cxx
-                      LINK_LIBRARIES DataQualityUtils )
+                      LINK_LIBRARIES DataQualityUtils ${filesystem_lib} )
 
 # Install files from the package:
 atlas_install_python_modules( python/*.py
@@ -91,3 +98,26 @@ atlas_add_alias( CreateMDTConfig_readme "CreateMDTConfig_readme.sh" )
 atlas_add_alias( DQHistogramMerge "DQHistogramMerge.py" )
 atlas_add_alias( DQWebDisplay "DQWebDisplay.py" )
 atlas_add_alias( CreateMDTConfig_chambers "CreateMDTConfig_chambers.sh" )
+
+# Tests:
+atlas_add_test( physval_make_web_display_test
+    SCRIPT physval_make_web_display.py /cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/AthDataQuality/example_root/Data.root
+    PROPERTIES TIMEOUT 300
+    POST_EXEC_SCRIPT nopost.sh
+)
+
+atlas_add_test( physval_make_web_display_test2
+    SCRIPT "physval_make_web_display.py \
+        /cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/AthDataQuality/example_root/Data.root \
+        --reffile ref1:/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/AthDataQuality/example_root/Reference.root,ref2:/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/AthDataQuality/example_root/Reference.root \
+        --startpath eb1 \
+        --refstartpath ref1:eb1"
+    PROPERTIES TIMEOUT 300
+    POST_EXEC_SCRIPT nopost.sh
+)
+
+atlas_add_test( han_results_print_test
+    SCRIPT test/test_han_results_print.sh ${CMAKE_CURRENT_SOURCE_DIR}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/unitTestRun_han_results_print_test
+    PROPERTIES TIMEOUT 300
+)

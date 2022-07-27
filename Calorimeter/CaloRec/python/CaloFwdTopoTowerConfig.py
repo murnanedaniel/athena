@@ -1,8 +1,8 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
-from   AthenaCommon.Logging import logging
+from AthenaCommon.Logging import logging
 
 def CaloFwdTopoTowerCfg(flags,**kwargs):
 
@@ -141,13 +141,35 @@ def CaloFwdTopoTowerCfg(flags,**kwargs):
     caloTowerMerger.TopoSignalContainerKey  = 'CaloCalTopoSignals'
     
     result.addEventAlgo(caloTowerMerger)
+
+    #Output Config: 
+    from OutputStreamAthenaPool.OutputStreamConfig import  addToAOD, addToESD
+    toESD=[f"xAOD::CaloClusterContainer#{towerContainerKey}", 
+           f"xAOD::CaloClusterAuxContainer#{towerContainerKey}Aux.",
+           f"CaloClusterCellLinkContainer#{towerContainerKey}_links"]
+
+
+    AODAuxItems=f"xAOD::CaloClusterAuxContainer#{towerContainerKey}Aux"
+    for mom in  ("CENTER_LAMBDA", 
+                 #"CENTER_MAG",
+                 "LONGITUDINAL",
+                 #"FIRST_ENG_DENS",
+                 #"ENG_FRAC_MAX",
+                 "ENG_FRAC_EM",
+                 #"PTD",
+                 "SIGNIFICANCE",
+                 "ENG_POS"):
+        AODAuxItems+="."+mom
+
+    toAOD=[f"xAOD::CaloClusterContainer#{towerContainerKey}",AODAuxItems]
+
+    result.merge(addToESD(flags, toESD))
+    result.merge(addToAOD(flags, toAOD))
+
     return result
 
 
 if __name__=="__main__":
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior=1
-
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
 
     ConfigFlags.Input.Files = ["/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/RecExRecoTest/mc20e_13TeV/valid1.410000.PowhegPythiaEvtGen_P2012_ttbar_hdamp172p5_nonallhad.ESD.e4993_s3227_r12689/myESD.pool.root"]  

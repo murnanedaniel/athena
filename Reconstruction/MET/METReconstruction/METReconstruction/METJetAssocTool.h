@@ -1,7 +1,7 @@
 ///////////////////////// -*- C++ -*- /////////////////////////////
 
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // METJetAssocTool.h 
@@ -35,11 +35,10 @@ namespace met{
 
     // Constructor with name
     METJetAssocTool(const std::string& name);
-    ~METJetAssocTool();
+    ~METJetAssocTool() = default;
 
     // AsgTool Hooks
-    StatusCode  initialize();
-    StatusCode  finalize();
+    virtual StatusCode initialize() override;
 
     /////////////////////////////////////////////////////////////////// 
     // Const methods: 
@@ -54,32 +53,37 @@ namespace met{
     /////////////////////////////////////////////////////////////////// 
     protected: 
 
-    StatusCode executeTool(xAOD::MissingETContainer* metCont, xAOD::MissingETAssociationMap* metMap) const;
+    virtual
+    StatusCode executeTool(xAOD::MissingETContainer* metCont, xAOD::MissingETAssociationMap* metMap) const override;
 
+    virtual
     StatusCode extractPFO(const xAOD::IParticle*,
                           std::vector<const xAOD::IParticle*>&,
                           const met::METAssociator::ConstitHolder&,
-                          std::map<const xAOD::IParticle*,MissingETBase::Types::constvec_t>&) const
+                          std::map<const xAOD::IParticle*,MissingETBase::Types::constvec_t>&) const override
     {return StatusCode::FAILURE;} // should not be called
+    virtual
     StatusCode extractFE(const xAOD::IParticle*,
                          std::vector<const xAOD::IParticle*>&,
                          const met::METAssociator::ConstitHolder&,
-                         std::map<const xAOD::IParticle*,MissingETBase::Types::constvec_t>&) const
+                         std::map<const xAOD::IParticle*,MissingETBase::Types::constvec_t>&) const override
     {return StatusCode::FAILURE;} // should not be called
+    virtual
     StatusCode extractTracks(const xAOD::IParticle*,
                              std::vector<const xAOD::IParticle*>&,
-                             const met::METAssociator::ConstitHolder&) const
+                             const met::METAssociator::ConstitHolder&) const override
     {return StatusCode::FAILURE;} // should not be called
+    virtual
     StatusCode extractTopoClusters(const xAOD::IParticle*,
                                    std::vector<const xAOD::IParticle*>&,
-                                   const met::METAssociator::ConstitHolder&) const
+                                   const met::METAssociator::ConstitHolder&) const override
     {return StatusCode::FAILURE;} // should not be called
 
     private:
  
     /// Default constructor: 
     METJetAssocTool();
-    SG::ReadHandleKey<xAOD::JetContainer> m_jetContKey;
+    SG::ReadHandleKey<xAOD::JetContainer> m_jetContKey{this, "InputCollection", "AntiKt4EMPFlowJets", "jets input key"};
     void getPFOs(const xAOD::Jet *jet,
                  std::vector<const xAOD::IParticle*> &consts,
                  const met::METAssociator::ConstitHolder& constits,
@@ -89,7 +93,7 @@ namespace met{
                   std::vector<const xAOD::IParticle*> &consts,
                   std::set<const xAOD::IParticle*> *newConst) const;
 
-    double m_matchRadius;
+    Gaudi::Property<double> m_matchRadius{this, "MatchRadius", 0.4, ""};
   }; 
 
 }

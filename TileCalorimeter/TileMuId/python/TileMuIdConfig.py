@@ -93,29 +93,16 @@ def TileLookForMuAlgCfg(flags, **kwargs):
     TileLookForMuAlg=CompFactory.TileLookForMuAlg
     acc.addEventAlgo(TileLookForMuAlg(**kwargs), primary = True)
 
-    return acc
 
-
-def TileLookForMuAlgOutputCfg(flags, streamName = 'ESD', **kwargs):
-
-    acc = TileLookForMuAlgCfg(flags, **kwargs)
-    lookForMuAlg = acc.getPrimary()
-
-    muContainer = lookForMuAlg.TileMuTagsOutputName
-    muContainer = muContainer.split('+').pop()
-    outputItemList = ['TileMuContainer#' + muContainer]
-
-    from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
-    acc.merge( OutputStreamCfg(flags, streamName, ItemList = outputItemList) )
+    from OutputStreamAthenaPool.OutputStreamConfig import addToESD, addToAOD
+    toStore="TileMuContainer#"+kwargs["TileMuTagsOutputName"]
+    acc.merge(addToESD(flags,toStore))
+    acc.merge(addToAOD(flags,toStore))
 
     return acc
 
 
 if __name__=='__main__':
-
-    # Setup the Run III behavior
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior = True
 
     # Setup logs
     from AthenaCommon.Logging import log

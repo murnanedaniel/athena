@@ -16,7 +16,6 @@ from .MuonAlignFlags import muonAlignFlags
 # defaults have to be re-set maybe 
 muonAlignFlags.setDefaults()
 
-
 ###############################################################
 # There are 3 types of problems in some old global tags (already locked)
 # Pb 1: no TGC alignment folders exist
@@ -26,6 +25,11 @@ muonAlignFlags.setDefaults()
 # To avoid crashes, a check on old, locked global tags is done and action is taken not to read some alignment folders
 ###############################################################
 
+####
+# A very grumpy but helpful comment to my dear successor or a future developer, if you're faced to scheduling problems in serial athena
+# The TrackingGeometryCondAlg/python/AtlasTrackingGeometryCondAlg reshuffles all the geometry algortihms. 
+# If you ever add an extra dependency to the MuonDetectorManager please have a look there and check that the alg
+# is also considered properly by this reshuffling!
 
 logMuon.info("Reading alignment constants from DB")
 if not conddb.folderRequested('/MUONALIGN/Onl/MDT/BARREL') and not conddb.folderRequested('/MUONALIGN/MDT/BARREL'):
@@ -36,6 +40,8 @@ if not conddb.folderRequested('/MUONALIGN/Onl/TGC/SIDEA') and not conddb.folderR
     conddb.addFolderSplitOnline('MUONALIGN','/MUONALIGN/Onl/TGC/SIDEA','/MUONALIGN/TGC/SIDEA',className='CondAttrListCollection')
     conddb.addFolderSplitOnline('MUONALIGN','/MUONALIGN/Onl/TGC/SIDEC','/MUONALIGN/TGC/SIDEC',className='CondAttrListCollection')
 
+from AtlasGeoModel.CommonGMJobProperties import CommonGeometryFlags
+
 from AtlasGeoModel.MuonGM import GeoModelSvc
 MuonDetectorTool = GeoModelSvc.DetectorTools[ "MuonDetectorTool" ]
 condSequence = AthSequencer("AthCondSeq")
@@ -43,7 +49,6 @@ condSequence = AthSequencer("AthCondSeq")
 from MuonCondAlg.MuonCondAlgConf import MuonAlignmentCondAlg
 from AtlasGeoModel.MuonGMJobProperties import MuonGeometryFlags
 MuonAlignAlg = MuonAlignmentCondAlg()
-MuonAlignAlg.DoCSCs = MuonGeometryFlags.hasCSC()
 MuonAlignAlg.ParlineFolders = ["/MUONALIGN/MDT/BARREL",
                                "/MUONALIGN/MDT/ENDCAP/SIDEA",
                                "/MUONALIGN/MDT/ENDCAP/SIDEC",
@@ -86,14 +91,23 @@ if muonAlignFlags.UseIlines and MuonGeometryFlags.hasCSC():
 # here define if As-Built (MDT chamber alignment) are enabled
 if muonAlignFlags.UseAsBuilt:
     if conddb.dbdata == 'COMP200' or conddb.dbmc == 'COMP200' or \
-       'HLT' in globalflags.ConditionsTag() or conddb.isOnline :
+       'HLT' in globalflags.ConditionsTag() or conddb.isOnline or conddb.isMC:
         logMuon.info("No MDT As-Built parameters applied.")
         MuonDetectorTool.EnableMdtAsBuiltParameters = 0
+        MuonDetectorTool.EnableNswAsBuiltParameters = 0
     else :
         logMuon.info("Reading As-Built parameters from conditions database")
         MuonDetectorTool.EnableMdtAsBuiltParameters = 1
-        conddb.addFolder('MUONALIGN_OFL','/MUONALIGN/MDT/ASBUILTPARAMS',className='CondAttrListCollection')
+        MuonDetectorTool.EnableNswAsBuiltParameters = 0
+        conddb.addFolder('MUONALIGN_OFL','/MUONALIGN/MDT/ASBUILTPARAMS' ,className='CondAttrListCollection')
         MuonAlignAlg.ParlineFolders += ["/MUONALIGN/MDT/ASBUILTPARAMS"]
+        if CommonGeometryFlags.Run not in ["RUN1","RUN2"]: 
+            MuonDetectorTool.EnableNswAsBuiltParameters = 0
+            ## disable for now, otherwise standard tests crash (ATLASRECTS-7017)
+            #MuonDetectorTool.EnableNswAsBuiltParameters = 1
+            #conddb.addFolder('MUONALIGN_OFL','/MUONALIGN/ASBUILTPARAMS/MM'  ,className='CondAttrListCollection')
+            #conddb.addFolder('MUONALIGN_OFL','/MUONALIGN/ASBUILTPARAMS/STGC',className='CondAttrListCollection')
+            #MuonAlignAlg.ParlineFolders += ['/MUONALIGN/ASBUILTPARAMS/MM','/MUONALIGN/ASBUILTPARAMS/STGC']
 
 # nuisance parameter used during track fit to account for alignment uncertainty
 if conddb.dbdata != 'COMP200' and conddb.dbmc != 'COMP200' and \
@@ -102,12 +116,19 @@ if conddb.dbdata != 'COMP200' and conddb.dbmc != 'COMP200' and \
     conddb.addFolder("MUONALIGN_OFL","/MUONALIGN/ERRS",className='CondAttrListCollection')
     condSequence += MuonAlignmentErrorDbAlg("MuonAlignmentErrorDbAlg")
 
-from MuonGeoModel.MuonGeoModelConf import MuonDetectorCondAlg
-MuonDetectorManagerCond = MuonDetectorCondAlg()
-MuonDetectorManagerCond.MuonDetectorTool = MuonDetectorTool
-MuonDetectorManagerCond.MuonDetectorTool.FillCacheInitTime = 1 # CondAlg cannot update itself later - not threadsafe
+if muonAlignFlags.applyMMPassivation() and not hasattr(condSequence, "NswPassivationDbAlg"):
+    from MuonCondAlg.MuonTopCondAlgConfigRUN2 import NswPassivationDbAlg
+    NswPassAlg = NswPassivationDbAlg("NswPassivationDbAlg")
+    condSequence += NswPassAlg
 
-if conddb.dbdata != 'COMP200' and conddb.dbmc != 'COMP200' and \
-   'HLT' not in globalflags.ConditionsTag() and not conddb.isOnline :
-    MuonDetectorManagerCond.IsData = False
-condSequence+=MuonDetectorManagerCond
+if not hasattr(condSequence, "MuonDetectorCondAlg"):
+    from MuonGeoModel.MuonGeoModelConf import MuonDetectorCondAlg
+    MuonDetectorManagerCond = MuonDetectorCondAlg("MuonDetectorCondAlg")
+    MuonDetectorManagerCond.applyMmPassivation = muonAlignFlags.applyMMPassivation()
+    MuonDetectorManagerCond.MuonDetectorTool = MuonDetectorTool
+    MuonDetectorManagerCond.MuonDetectorTool.FillCacheInitTime = 1 # CondAlg cannot update itself later - not threadsafe
+
+    if conddb.dbdata != 'COMP200' and conddb.dbmc != 'COMP200' and \
+    'HLT' not in globalflags.ConditionsTag() and not conddb.isOnline :
+        MuonDetectorManagerCond.IsData = False
+    condSequence+=MuonDetectorManagerCond

@@ -43,7 +43,7 @@ def makeEGammaDFCommon():
     isFullSim = False
     if isMC:
         simulationFlavour = af.fileinfos['metadata']['/Simulation/Parameters']['SimulationFlavour']
-        isFullSim = simulationFlavour in ('default', 'MC12G4', 'FullG4')
+        isFullSim = simulationFlavour in ('default', 'AtlasG4', 'MC12G4', 'FullG4', 'FullG4_QS')
 
     print("EGammaCommon: isMC = ", isMC)
     if isMC:
@@ -67,38 +67,43 @@ def makeEGammaDFCommon():
 
     from ElectronPhotonSelectorTools.ConfiguredAsgElectronLikelihoodTools import (
         ConfiguredAsgElectronLikelihoodTool)
+    from ElectronPhotonSelectorTools.ElectronLikelihoodToolMapping import (
+        electronLHmenu)
+
+    lhMenu = electronLHmenu.offlineMC21
+    from AtlasGeoModel.CommonGMJobProperties import CommonGeometryFlags as geoFlags
+    if geoFlags.Run() == "RUN2" :
+        lhMenu = electronLHmenu.offlineMC20
 
     # Very Loose
     ElectronLHSelectorVeryLoose = ConfiguredAsgElectronLikelihoodTool(
-        "ElectronLHSelectorVeryLoose", LikeEnum.VeryLoose)
+        "ElectronLHSelectorVeryLoose", LikeEnum.VeryLoose, lhMenu)
     ElectronLHSelectorVeryLoose.primaryVertexContainer = "PrimaryVertices"
     ToolSvc += ElectronLHSelectorVeryLoose
 
     # Loose
     ElectronLHSelectorLoose = ConfiguredAsgElectronLikelihoodTool(
-        "ElectronLHSelectorLoose", LikeEnum.Loose)
+        "ElectronLHSelectorLoose", LikeEnum.Loose, lhMenu)
     ElectronLHSelectorLoose.primaryVertexContainer = "PrimaryVertices"
     ToolSvc += ElectronLHSelectorLoose
 
+    # LooseBL
+    ElectronLHSelectorLooseBL = ConfiguredAsgElectronLikelihoodTool(
+        "ElectronLHSelectorLooseBL", LikeEnum.LooseBL, lhMenu)
+    ElectronLHSelectorLooseBL.primaryVertexContainer = "PrimaryVertices"
+    ToolSvc += ElectronLHSelectorLooseBL
+
     # Medium
     ElectronLHSelectorMedium = ConfiguredAsgElectronLikelihoodTool(
-        "ElectronLHSelectorMedium", LikeEnum.Medium)
+        "ElectronLHSelectorMedium", LikeEnum.Medium, lhMenu)
     ElectronLHSelectorMedium.primaryVertexContainer = "PrimaryVertices"
     ToolSvc += ElectronLHSelectorMedium
 
     # Tight
     ElectronLHSelectorTight = ConfiguredAsgElectronLikelihoodTool(
-        "ElectronLHSelectorTight", LikeEnum.Tight)
+        "ElectronLHSelectorTight", LikeEnum.Tight, lhMenu)
     ElectronLHSelectorTight.primaryVertexContainer = "PrimaryVertices"
     ToolSvc += ElectronLHSelectorTight
-
-    # LooseBL
-    from ElectronPhotonSelectorTools.ElectronPhotonSelectorToolsConf import (
-        AsgElectronLikelihoodTool)
-    ElectronLHSelectorLooseBL = AsgElectronLikelihoodTool(
-        "ElectronLHSelectorLooseBL", WorkingPoint="LooseBLLHElectron")
-    ElectronLHSelectorLooseBL.primaryVertexContainer = "PrimaryVertices"
-    ToolSvc += ElectronLHSelectorLooseBL
 
     # ====================================================================
     # ELECTRON DNN SELECTORS
@@ -549,15 +554,15 @@ def makeEGammaDFCommon():
         EGAugmentationTools.append(TruthEgptIsolationTool)
 
         # Compute the truth-particle-level energy density in the central eta region
-        from EventShapeTools.EventDensityConfig import (
-            configEventDensityTool, EventDensityAthAlg)
+        from EventShapeTools.EventDensityConfig import configEventDensityTool
+        from AthenaConfiguration.ComponentFactory import CompFactory
 
-        # Schedule PseudoJetTruth
         from JetRecConfig.JetRecConfig import getInputAlgs,getConstitPJGAlg,reOrderAlgs
         from JetRecConfig.StandardJetConstits import stdConstitDic as cst
         from AthenaConfiguration.ComponentAccumulator import conf2toConfigurable
         from AthenaConfiguration.AllConfigFlags import ConfigFlags
 
+        # Schedule PseudoJetTruth
         constit_algs = getInputAlgs(cst.Truth, configFlags=ConfigFlags)
         constit_algs = reOrderAlgs( [a for a in constit_algs if a is not None])
 
@@ -569,7 +574,7 @@ def makeEGammaDFCommon():
         if not hasattr(DerivationFrameworkJob,constitPJAlg.getName()):
             DerivationFrameworkJob += conf2toConfigurable(constitPJAlg)
 
-        tc = configEventDensityTool("EDTruthCentralTool", cst.Truth.label,
+        tc = configEventDensityTool("EDTruthCentralTool", cst.Truth,
                                     0.5,
                                     AbsRapidityMin=0.0,
                                     AbsRapidityMax=1.5,
@@ -579,7 +584,7 @@ def makeEGammaDFCommon():
         ToolSvc += tc
 
         # Compute the truth-particle-level energy density in the forward eta region
-        tf = configEventDensityTool("EDTruthForwardTool", cst.Truth.label,
+        tf = configEventDensityTool("EDTruthForwardTool", cst.Truth,
                                     0.5,
                                     AbsRapidityMin=1.5,
                                     AbsRapidityMax=3.0,
@@ -588,8 +593,8 @@ def makeEGammaDFCommon():
                                     )
         ToolSvc += tf
 
-        DerivationFrameworkJob += EventDensityAthAlg("EDTruthCentralAlg", EventDensityTool=tc)
-        DerivationFrameworkJob += EventDensityAthAlg("EDTruthForwardAlg", EventDensityTool=tf)
+        DerivationFrameworkJob += CompFactory.EventDensityAthAlg("EDTruthCentralAlg", EventDensityTool=tc)
+        DerivationFrameworkJob += CompFactory.EventDensityAthAlg("EDTruthForwardAlg", EventDensityTool=tf)
 
     # =======================================
     # CREATE THE DERIVATION KERNEL ALGORITHM

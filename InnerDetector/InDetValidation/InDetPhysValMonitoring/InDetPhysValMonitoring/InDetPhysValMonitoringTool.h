@@ -36,6 +36,7 @@
 #include "xAODJet/JetContainer.h"
 
 //Athena
+#include "AsgAnalysisInterfaces/IGoodRunsListSelectionTool.h"
 #include "AtlasDetDescr/AtlasDetectorID.h"
 #include "CxxUtils/checker_macros.h"
 #include "InDetIdentifier/PixelID.h"
@@ -170,6 +171,7 @@ private:
     BooleanProperty m_useVertexTruthMatchTool {this, "useVertexTruthMatchTool", false, "Use the vertex truth matching tool"}; 
     BooleanProperty m_onlyFillMatched {this, "onlyFillTruthMatched", false, "Only fill truth-to-reco (eff, reso, matched hit) plots"}; 
     BooleanProperty m_doTRTExtensionPlots {this, "doTRTExtensionPlots", true, "do TRT extension plots"};
+    BooleanProperty m_useGRL {this, "useGRL", false, "Apply GRL selection or not when running on data"};
 
     FloatProperty m_maxTrkJetDR{this,"maxTrkJetDR",0.4,"the maximum dR to jets to allow for track-in-jet plots"}; 
     StringProperty m_dirName {this, "DirName", "SquirrelPlots/", "Top level directory to write histograms into"}; 
@@ -177,13 +179,13 @@ private:
     StringProperty m_pileupSwitch {this, "PileupSwitch", "HardScatter", "Pileup truth strategy to use. May be \"All\", \"HardScatter\", or \"PileUp\""}; 
     FloatProperty m_lowProb{this,"LowProb",0.5,"Truth match prob. cutoff for efficiency (lower bound) and fake (upper bound) classification."}; 
     FloatProperty m_highProb{this,"HighProb",0.8,"Truth match prob. cutoff - currently unused"}; 
-    IntegerProperty m_detailLevel{this, "DetailLevel",10,"High-level steering flag for plot detail level. A value of 100 will activate the PhysVal set of plots, and a value of 200 the full set"}; 
 
     ToolHandle<InDet::IInDetTrackSelectionTool> m_trackSelectionTool{this, "TrackSelectionTool", "InDet::InDetTrackSelectionTool/TrackSelectionTool", "Track selection tool to use"};
     ToolHandle<IInDetVertexTruthMatchTool> m_vtxValidTool{this, "VertexTruthMatchTool", "InDetVertexTruthMatchTool/VtxTruthMatchTool", "Vertex truth matching tool to use"};
     ToolHandle<IAthSelectionTool> m_truthSelectionTool{this, "TruthSelectionTool","AthTruthSelectionTool", "Truth selection tool (for efficiencies and resolutions)"};
     ToolHandle<InDet::IInDetTrackTruthOriginTool> m_trackTruthOriginTool{this, "trackTruthOriginTool", "InDet::InDetTrackTruthOriginTool","truth track origin tool"};
     ToolHandle<InDet::IInDetHardScatterSelectionTool> m_hardScatterSelectionTool{this, "hardScatterSelectionTool", "InDet::InDetHardScatterSelectionTool","tool to select the hard scatter reco vertex"};
+    ToolHandle<IGoodRunsListSelectionTool> m_grlTool{this, "GoodRunsListSelectionTool", "GoodRunsListSelectionTool/GoodRunsListSelectionTool", "GRL selection tool"};
 
     mutable std::mutex  m_mutex;
     mutable CutFlow     m_truthCutFlow ATLAS_THREAD_SAFE; // Guarded by m_mutex

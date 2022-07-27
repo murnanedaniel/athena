@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 ## @file TriggerUnixStandardSetup.py
 ## @brief py-module to configure the Athena AppMgr for trigger
@@ -9,7 +9,7 @@ class _Conf:
     """Some configuration flags for this module with defaults"""
     useOnlineTHistSvc = True    # set in athenaHLT.py
 
-def setupCommonServices():
+def setupCommonServices(flags):
     from AthenaCommon import CfgMgr
     from AthenaCommon.Logging import logging
     from AthenaCommon.Constants import INFO
@@ -83,10 +83,9 @@ def setupCommonServices():
         svcMgr += THistSvc()
 
     # Online event loop manager
-    from AthenaConfiguration.AllConfigFlags import ConfigFlags
     from AthenaConfiguration.ComponentAccumulator import CAtoGlobalWrapper
     from TrigServices.TrigServicesConfig import TrigServicesCfg
-    CAtoGlobalWrapper(TrigServicesCfg, ConfigFlags)
+    CAtoGlobalWrapper(TrigServicesCfg, flags)
     svcMgr.HltEventLoopMgr.WhiteboardSvc = "EventDataSvc"
     svcMgr.HltEventLoopMgr.SchedulerSvc = AlgScheduler.getScheduler().getName()
 
@@ -114,7 +113,7 @@ def setupCommonServices():
 
 
 def setupCommonServicesEnd():
-    from AthenaCommon.AppMgr import ServiceMgr as svcMgr    
+    from AthenaCommon.AppMgr import ServiceMgr as svcMgr, athCondSeq
     from AthenaCommon.Logging import logging
     from AthenaCommon.AlgSequence import AlgSequence
 
@@ -152,11 +151,12 @@ def setupCommonServicesEnd():
     enableCOOLFolderUpdates()
 
     svcMgr.CoreDumpSvc.CoreDumpStream = "stdout"
-    svcMgr.CoreDumpSvc.CallOldHandler = False
-    svcMgr.CoreDumpSvc.StackTrace = True
-    svcMgr.CoreDumpSvc.FastStackTrace = True
-    svcMgr.CoreDumpSvc.FatalHandler = 0   # no extra fatal handler
-    svcMgr.CoreDumpSvc.TimeOut = 60000000000        # timeout for stack trace generation changed to 60s (ATR-17112)
+    svcMgr.CoreDumpSvc.CallOldHandler = False  # avoid calling e.g. ROOT signal handler
+    svcMgr.CoreDumpSvc.FastStackTrace = True   # first produce a fast stacktrace
+    svcMgr.CoreDumpSvc.StackTrace = True       # then produce full stacktrace using gdb
+    svcMgr.CoreDumpSvc.DumpCoreFile = True     # also produce core file (if allowed by ulimit -c)
+    svcMgr.CoreDumpSvc.FatalHandler = 0        # no extra fatal handler
+    svcMgr.CoreDumpSvc.TimeOut = 120000000000   # timeout for stack trace generation changed to 120s (ATR-17112,ATR-25404)
 
     svcMgr.IOVSvc.updateInterval = "RUN"
     svcMgr.IOVSvc.preLoadData = True
@@ -167,5 +167,8 @@ def setupCommonServicesEnd():
         svcMgr.IOVDbSvc.CacheAlign = 0  # VERY IMPORTANT to get unique queries for folder udpates (see Savannah #81092)
         svcMgr.IOVDbSvc.CacheRun = 0
         svcMgr.IOVDbSvc.CacheTime = 0
+
+    if hasattr(athCondSeq, 'AtlasFieldMapCondAlg'):
+        athCondSeq.AtlasFieldMapCondAlg.LoadMapOnStart = True
 
     return

@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
 
@@ -10,12 +10,8 @@ def TRT_LocalOccupancyCfg(flags, name="TRT_LocalOccupancy", **kwargs):
     acc.addPublicTool(CalDbTool)  # public as it is has many clients to save some memory
     kwargs.setdefault("TRTCalDbTool", CalDbTool)
 
-    from TRT_ConditionsServices.TRT_ConditionsServicesConfig import TRT_StrawStatusSummaryToolCfg
-    StrawStatusTool = acc.popToolsAndMerge(TRT_StrawStatusSummaryToolCfg(flags))
-    acc.addPublicTool(StrawStatusTool)  # public as it is has many clients to save some memory
-    kwargs.setdefault("TRTStrawStatusSummaryTool", StrawStatusTool )
-
-    from TRT_ConditionsAlgs.TRT_ConditionsAlgsConfig import TRTStrawCondAlgCfg
+    from TRT_ConditionsAlgs.TRT_ConditionsAlgsConfig import TRTStrawStatusCondAlgCfg, TRTStrawCondAlgCfg
+    acc.merge(TRTStrawStatusCondAlgCfg(flags))
     acc.merge(TRTStrawCondAlgCfg(flags))
 
     kwargs.setdefault("isTrigger", False)
@@ -75,3 +71,8 @@ def TRT_ElectronPidToolCfg(flags, name="TRT_ElectronPidTool", **kwargs):
 
     acc.setPrivateTools(CompFactory.InDet.TRT_ElectronPidToolRun2(name, **kwargs))
     return acc
+
+def GSFBuildTRT_ElectronPidToolCfg(flags, name="GSFBuildTRT_ElectronPidTool", **kwargs):
+    kwargs.setdefault("CalculateNNPid", False)
+    kwargs.setdefault("MinimumTrackPtForNNPid", 0.)
+    return TRT_ElectronPidToolCfg(flags, name, **kwargs)

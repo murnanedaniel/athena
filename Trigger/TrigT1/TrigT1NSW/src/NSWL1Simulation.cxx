@@ -2,15 +2,14 @@
   Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
+#include "CxxUtils/checker_macros.h"
+
 #include "NSWL1Simulation.h"
 
 namespace NSWL1 {
   NSWL1Simulation::NSWL1Simulation( const std::string& name, ISvcLocator* pSvcLocator )
-    : AthAlgorithm( name, pSvcLocator ),
-      //m_strip_segment("NSWL1::StripSegmentTool", this),
-      m_tree(nullptr),
-      m_current_run(-1),
-      m_current_evt(-1)
+    : AthReentrantAlgorithm( name, pSvcLocator ),
+      m_tree(nullptr)
   {}
 
 
@@ -21,31 +20,24 @@ namespace NSWL1 {
     if ( m_doNtuple ) {
       ITHistSvc* tHistSvc;
       ATH_CHECK(service("THistSvc", tHistSvc));
-      char ntuple_name[40];
-      memset(ntuple_name,'\0',40*sizeof(char));
-      sprintf(ntuple_name,"%sTree",name().c_str());
-      m_current_evt = 0, m_current_run = 0;
 
       // create Ntuple and the branches
-      m_tree = new TTree(ntuple_name, "Ntuple of NSWL1Simulation");
-      m_tree->Branch("runNumber",   &m_current_run, "runNumber/i");
-      m_tree->Branch("eventNumber", &m_current_evt, "eventNumber/i");
+      std::string ntuple_name = name()+"Tree";
+      m_tree = new TTree(ntuple_name.c_str(), "Ntuple of NSWL1Simulation");
 
-      char tdir_name[80];
-      memset(tdir_name,'\0',80*sizeof(char));
-      sprintf(tdir_name,"/%s/%s",name().c_str(),ntuple_name);
+      std::string tdir_name = "/"+name()+"/"+ntuple_name;
       ATH_CHECK(tHistSvc->regTree(tdir_name,m_tree));
     }
 
     // retrieving the private tools implementing the simulation
     if(m_dosTGC){
-      ATH_CHECK(m_pad_tds.retrieve());
-      if(m_useLookup){
-        ATH_CHECK(m_pad_trigger_lookup.retrieve());
-      }
-      else{
+      if(m_doPad || m_doStrip) ATH_CHECK(m_pad_tds.retrieve());
+      //if(m_useLookup){
+      //  ATH_CHECK(m_pad_trigger_lookup.retrieve());
+      //}
+      //else{
         ATH_CHECK(m_pad_trigger.retrieve());
-      }
+      //}
       if(m_doStrip){
         ATH_CHECK(m_strip_tds.retrieve());
         ATH_CHECK(m_strip_cluster.retrieve());
@@ -62,17 +54,7 @@ namespace NSWL1 {
   }
 
 
-  StatusCode NSWL1Simulation::start() {
-    ATH_MSG_DEBUG("start " << name() );
-    return StatusCode::SUCCESS;
-  }
-
-
-  StatusCode NSWL1Simulation::execute() {
-    auto ctx = Gaudi::Hive::currentContext();
-    m_current_evt = ctx.eventID().event_number();
-    m_current_run = ctx.eventID().run_number();
-
+  StatusCode NSWL1Simulation::execute(const EventContext& ctx) const {
     std::vector<std::shared_ptr<PadData>> pads;
     std::vector<std::unique_ptr<PadTrigger>> padTriggers;
     std::vector<std::unique_ptr<StripData>> strips;
@@ -82,40 +64,36 @@ namespace NSWL1 {
     auto MMTriggerContainer = std::make_unique<Muon::NSW_TrigRawDataContainer>();
 
     if(m_dosTGC){
-      ATH_CHECK( m_pad_tds->gather_pad_data(pads) );
-      if(m_useLookup){
-        ATH_CHECK( m_pad_trigger_lookup->lookup_pad_triggers(pads, padTriggers) );
-      }
-      else{
+      if(m_doPad || m_doStrip) ATH_CHECK( m_pad_tds->gather_pad_data(pads) );
+    //  if(m_useLookup){
+    //    ATH_CHECK( m_pad_trigger_lookup->lookup_pad_triggers(pads, padTriggers) );
+    //  }
+    //  else{
         ATH_CHECK( m_pad_trigger->compute_pad_triggers(pads, padTriggers) );
-      }
+    //  }
       if(m_doStrip){
         ATH_CHECK( m_strip_tds->gather_strip_data(strips,padTriggers) );
         ATH_CHECK( m_strip_cluster->cluster_strip_data(strips,clusters) );
         ATH_CHECK( m_strip_segment->find_segments(clusters,stripTriggerContainer) );
       }
-      ATH_CHECK(PadTriggerAdapter::fillContainer(padTriggerContainer, padTriggers, m_current_evt));
+      if(m_doPad) ATH_CHECK(PadTriggerAdapter::fillContainer(padTriggerContainer, padTriggers, ctx.eventID().event_number()));
     }
 
     //retrive the MM Strip hit data
     if(m_doMM){
-      ATH_CHECK( m_mmtrigger->runTrigger(m_doMMDiamonds) );
-      ATH_CHECK( m_mmtrigger->fillRDO(MMTriggerContainer.get(), m_doMMDiamonds) );
+      ATH_CHECK( m_mmtrigger->runTrigger(MMTriggerContainer.get(), m_doMMDiamonds) );
     }
-    if(m_doNtuple){
-      if (m_tree) m_tree->Fill();
+    if(m_doNtuple && m_tree){
+      static std::mutex mutex;
+      std::scoped_lock lock(mutex);
+      TTree* locked_tree ATLAS_THREAD_SAFE = m_tree;
+      locked_tree->Fill();
     }
 
-    SG::WriteHandle<Muon::NSW_TrigRawDataContainer> rdohandle( m_trigRdoContainer );
+    SG::WriteHandle<Muon::NSW_TrigRawDataContainer> rdohandle( m_trigRdoContainer, ctx );
     auto trgContainer=std::make_unique<Muon::NSW_TrigRawDataContainer>();
-    ATH_CHECK( m_trigProcessor->mergeRDO(padTriggerContainer.get(), MMTriggerContainer.get(), trgContainer.get()) );
+    ATH_CHECK( m_trigProcessor->mergeRDO(padTriggerContainer.get(), stripTriggerContainer.get(), MMTriggerContainer.get(), trgContainer.get()) );
     ATH_CHECK(rdohandle.record(std::move(trgContainer)));
-    return StatusCode::SUCCESS;
-  }
-
-
-  StatusCode NSWL1Simulation::finalize() {
-    ATH_MSG_DEBUG( "finalize" << name() );
     return StatusCode::SUCCESS;
   }
 }

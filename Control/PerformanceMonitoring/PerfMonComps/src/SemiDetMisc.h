@@ -16,6 +16,7 @@
 #define PERFMONCOMPS_SEMIDETMISC_H
 
 #include "PerfMonEvent/mallinfo.h"
+#include "CxxUtils/checker_macros.h"
 #include <sys/time.h>
 #include <fcntl.h>
 #include <ctime>
@@ -26,6 +27,7 @@
 #include <sstream>
 #include <string>
 #include <map>
+#include <unordered_map>
 #include <cmath>//fabs
 #include <cstdlib>//for getenv
 #include <dlfcn.h>
@@ -43,7 +45,7 @@ namespace PMonSD {
 
   //base functions for collecting data:
   void get_vmem_rss_kb(double&vmem,double&rss,bool vmemonly=false);//~4microsecs
-  double get_malloc_kb();//~0.2microsecs (stdcmalloc) or ~4microsecs (tcmalloc)
+  double get_malloc_kb ATLAS_NOT_THREAD_SAFE ();//~0.2microsecs (stdcmalloc) or ~4microsecs (tcmalloc)
   double get_vmem_kb();//~4microsecs
   double get_rss_kb();//~4microsecs
   double get_cpu_ms();//~0.3microsecs
@@ -56,7 +58,7 @@ namespace PMonSD {
     double cpu;
     double wall;
     bool hasWallTime() const { return wall>-950; }
-    void capture(bool cpufirst=true)
+    void capture ATLAS_NOT_THREAD_SAFE (bool cpufirst=true)
     {
       m_unused=false;
 
@@ -91,7 +93,7 @@ namespace PMonSD {
       m_offset_wall+=pwall;
     }
     bool unused() const { return m_unused; }
-    void captureIfUnused() { if (unused()) capture(); }
+    void captureIfUnused ATLAS_NOT_THREAD_SAFE () { if (unused()) capture(); }
     double last_cpu_raw_ms() { return cpu+m_offset_cpu; }//for internal overhead monitoring
     bool mallocDisabled() const { return m_mallocDisabled; }
     void disableMalloc() { m_mallocDisabled=true; m_offset_malloc=malloc=0; }
@@ -124,10 +126,10 @@ namespace PMonSD {
     double sortValMalloc() const { return fabs(m_sum_dmal); }
     double sortValMemory() const { return fabs(m_sum_dmal)+fabs(m_sum_dmem); }
      //
-    static const unsigned nvals=3;
-    static const unsigned ival_cpu=0;
-    static const unsigned ival_vmem=1;
-    static const unsigned ival_malloc=2;
+    static constexpr unsigned nvals=3;
+    static constexpr unsigned ival_cpu=0;
+    static constexpr unsigned ival_vmem=1;
+    static constexpr unsigned ival_malloc=2;
     float getVal(unsigned i) const
     {
       if (i==ival_cpu) return m_sum_dcpu;
@@ -176,12 +178,12 @@ namespace PMonSD {
     CompDataBasic data[4];//ini/1st/fin/cbk (not dso since compNames there are libs)
 
     //Helper method for proper classification:
-    static const int index_other=-2;
-    static const int index_evt=-1;
-    static const int index_1st=0;
-    static const int index_ini=1;
-    static const int index_fin=2;
-    static const int index_cbk=3;
+    static constexpr int index_other=-2;
+    static constexpr int index_evt=-1;
+    static constexpr int index_1st=0;
+    static constexpr int index_ini=1;
+    static constexpr int index_fin=2;
+    static constexpr int index_cbk=3;
     static int index(const std::string& stepName);//index in data array (if >=0)
   };
 
@@ -451,11 +453,11 @@ inline void PMonSD::get_vmem_rss_kb(double&vmem,double&rss,bool vmemonly) {
   //It would be a lot faster without this open call...
   int fd = open("/proc/self/statm", O_RDONLY);
   if (fd<0) return;
-  static char data[32];
+  char data[32];
   int l = read(fd, data, sizeof(data));
   close(fd);
   if (l<4) return;//Failure or suspiciously short
-  static float pg_size_in_kb = sysconf(_SC_PAGESIZE)/1024.0;
+  static const float pg_size_in_kb = sysconf(_SC_PAGESIZE)/1024.0;
   //Assume that the first field is vmem and the second is rss.
   vmem=atoi(data)*pg_size_in_kb;
   if (vmemonly)
@@ -469,7 +471,7 @@ inline void PMonSD::get_vmem_rss_kb(double&vmem,double&rss,bool vmemonly) {
 }
 inline double PMonSD::get_vmem_kb() { double v,r;get_vmem_rss_kb(v,r,true); return v; }
 inline double PMonSD::get_rss_kb() { double v,r;get_vmem_rss_kb(v,r); return r; }
-inline double PMonSD::get_malloc_kb() {
+inline double PMonSD::get_malloc_kb ATLAS_NOT_THREAD_SAFE () {
 #ifndef __linux
   return 0.0;
 #else
@@ -596,18 +598,19 @@ inline double PMonSD::CompDataExtended::maxDeltaMalloc() const { return m_max_dm
 inline unsigned PMonSD::CompDataExtended::maxDeltaMalloc_iEntry() const { return m_max_dmal_ientry; }
 inline int PMonSD::CompDataStdSteps::index(const std::string& stepName)
 {
-  static std::string last="";
-  static int lastval=index_other;
-  if (stepName==last)
-    return lastval;
-  if (stepName=="evt") lastval=index_evt;
-  else if (stepName=="ini") lastval=index_ini;
-  else if (stepName=="fin") lastval=index_fin;
-  else if (stepName=="cbk") lastval=index_cbk;
-  else if (stepName=="1st") lastval=index_1st;
-  else lastval=index_other;
-  last=stepName;
-  return lastval;
+  static const std::unordered_map<std::string, int> steps = {
+    {"evt", index_evt},
+    {"ini", index_ini},
+    {"fin", index_fin},
+    {"cbk", index_cbk},
+    {"1st", index_1st}
+  };
+
+  try {
+    return steps.at(stepName);
+  } catch (const std::out_of_range& e) {
+    return index_other;
+  }
 }
 
 inline void PMonSD::setUTCTimeString(std::string&s,double offset_ms)
@@ -618,10 +621,11 @@ inline void PMonSD::setUTCTimeString(std::string&s,double offset_ms)
   time_t t = time(NULL);//unixtime in seconds
   if (offset_ms)
     t+=static_cast<time_t>(0.5+0.001*offset_ms);
-  tm *ptm = gmtime(&t);
+  struct tm ptm;
+  gmtime_r(&t, &ptm);
   s.clear();
   s.resize(26);
-  size_t r = strftime(&(s[0]),25,"%Y-%m-%dT%H:%M:%S+0000",ptm);
+  size_t r = strftime(&(s[0]),25,"%Y-%m-%dT%H:%M:%S+0000",&ptm);
   if (r>0&&r<25) s.resize(r);
   else s="0000-00-00T00:00:00+0000";
 }
@@ -632,9 +636,9 @@ inline double PMonSD::get_wall_ms()
   //(ignore daylight savings issues...). Like clock() it returns 0.0
   //on first call in a process.
   double t=get_absolute_wall_ms();
-  static double offset = -1;
-  if (offset==-1)
-    offset=t;
+  static const double offset = [&]() {
+    return t;
+  }();
   return t-offset;
 }
 

@@ -1,9 +1,8 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include <utility>
-
 
 
 #include "InDetServMatGeoModel/InDetServMatFactoryDC2.h"
@@ -27,14 +26,13 @@
 #include "RDBAccessSvc/IRDBRecord.h"
 #include "RDBAccessSvc/IRDBRecordset.h"
 #include "RDBAccessSvc/IRDBAccessSvc.h"
-#include "GaudiKernel/Bootstrap.h"
 #include "GaudiKernel/SystemOfUnits.h"
 
 InDetServMatFactoryDC2::InDetServMatFactoryDC2(StoreGateSvc *detStore,ServiceHandle<IRDBAccessSvc> pRDBAccess) :
+  AthMessaging("InDetServMatFactoryDC2"),
   m_detStore(detStore),
   m_rdbAccess(std::move(pRDBAccess)),
-  m_manager(nullptr),
-  m_msg("InDetServMatFactoryDC2")
+  m_manager(nullptr)
 {
   
 }
@@ -51,7 +49,7 @@ InDetServMatFactoryDC2::~InDetServMatFactoryDC2()
 void InDetServMatFactoryDC2::create(GeoPhysVol *world)
 {
   if (not world){
-    msg(MSG::FATAL) << "GeoPhysVol pointer 'world' is null" << endmsg;
+    ATH_MSG_FATAL("GeoPhysVol pointer 'world' is null");
     return;
   }
   // create a new det manager
@@ -59,9 +57,9 @@ void InDetServMatFactoryDC2::create(GeoPhysVol *world)
 
   // Get the material manager:
   
-  const StoredMaterialManager* materialManager;
+  StoredMaterialManager* materialManager;
   StatusCode sc = m_detStore->retrieve(materialManager, std::string("MATERIALS"));
-  if (sc.isFailure()) msg(MSG::FATAL) << "Could not locate Material Manager" << endmsg;
+  if (sc.isFailure()) ATH_MSG_FATAL("Could not locate Material Manager");
 
 
   DecodeVersionKey atlasVersionKey("ATLAS");
@@ -70,17 +68,18 @@ void InDetServMatFactoryDC2::create(GeoPhysVol *world)
   DecodeVersionKey trtVersionKey("TRT");
 
 
-  msg(MSG::DEBUG) << "Building InDet Service Material with ATLAS Version Tag: " << atlasVersionKey.tag() << endmsg;
-  msg(MSG::DEBUG) << "                                with InDet Version Tag: " << indetVersionKey.tag() << " at Node: "
-      << indetVersionKey.node() << endmsg;
-  msg(MSG::DEBUG) << "                                with SCT   Version Tag: " << sctVersionKey.tag() << " at Node: "
-      << sctVersionKey.node() << endmsg;
-  msg(MSG::DEBUG) << "                                with TRT   Version Tag: " << trtVersionKey.tag() << " at Node: "
-      << trtVersionKey.node() << endmsg;
-  msg(MSG::DEBUG) << " InDetServices Version " << m_rdbAccess->getChildTag("InDetServices", indetVersionKey.tag(), indetVersionKey.node()) << endmsg;
-  msg(MSG::DEBUG) << " SCT           Version " << m_rdbAccess->getChildTag("SCT", sctVersionKey.tag(), sctVersionKey.node()) << endmsg;
-  msg(MSG::DEBUG) << " TRT           Version " << m_rdbAccess->getChildTag("TRT", trtVersionKey.tag(), trtVersionKey.node()) << endmsg;
-
+  if (msgLvl(MSG::DEBUG)) {
+    msg(MSG::DEBUG) << "Building InDet Service Material with ATLAS Version Tag: " << atlasVersionKey.tag() << endmsg;
+    msg(MSG::DEBUG) << "                                with InDet Version Tag: " << indetVersionKey.tag() << " at Node: "
+        << indetVersionKey.node() << endmsg;
+    msg(MSG::DEBUG) << "                                with SCT   Version Tag: " << sctVersionKey.tag() << " at Node: "
+        << sctVersionKey.node() << endmsg;
+    msg(MSG::DEBUG) << "                                with TRT   Version Tag: " << trtVersionKey.tag() << " at Node: "
+        << trtVersionKey.node() << endmsg;
+    msg(MSG::DEBUG) << " InDetServices Version " << m_rdbAccess->getChildTag("InDetServices", indetVersionKey.tag(), indetVersionKey.node()) << endmsg;
+    msg(MSG::DEBUG) << " SCT           Version " << m_rdbAccess->getChildTag("SCT", sctVersionKey.tag(), sctVersionKey.node()) << endmsg;
+    msg(MSG::DEBUG) << " TRT           Version " << m_rdbAccess->getChildTag("TRT", trtVersionKey.tag(), trtVersionKey.node()) << endmsg;
+  }
 
   IRDBRecordset_ptr atls = m_rdbAccess->getRecordsetPtr("AtlasMother",  atlasVersionKey.tag(), atlasVersionKey.node());
 

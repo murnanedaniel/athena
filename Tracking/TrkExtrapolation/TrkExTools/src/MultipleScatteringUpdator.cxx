@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////////////////////////////////////////////////////////////
@@ -15,8 +15,6 @@
 #include "CLHEP/Random/RandFlat.h"
 
 namespace{
-// static particle masses
-const Trk::ParticleMasses s_particleMasses{};
 // static doubles
 constexpr double s_main_RutherfordScott = 13.6 * Gaudi::Units::MeV;
 constexpr double s_log_RutherfordScott = 0.038;
@@ -62,8 +60,7 @@ Trk::MultipleScatteringUpdator::MultipleScatteringUpdator(const std::string &t, 
 }
 
 // destructor
-Trk::MultipleScatteringUpdator::~MultipleScatteringUpdator() {
-}
+Trk::MultipleScatteringUpdator::~MultipleScatteringUpdator() = default;
 
 // Athena standard methods
 // initialize
@@ -113,7 +110,7 @@ Trk::MultipleScatteringUpdator::sigmaSquare(const MaterialProperties &mat,
   double t = pathcorrection * mat.thicknessInX0();
 
   // kinematics (relativistic)
-  double m = s_particleMasses.mass[particle];
+  double m = Trk::ParticleMasses::mass[particle];
   double E = sqrt(p * p + m * m);
   double beta = p / E;
 

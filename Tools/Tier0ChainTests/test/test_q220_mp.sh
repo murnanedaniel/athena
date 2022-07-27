@@ -5,6 +5,7 @@
 # art-include: 21.0/Athena
 # art-include: 21.0-TrigMC/Athena
 # art-include: master/Athena
+# art-include: 22.0/Athena
 # art-include: 22.0-mc20/Athena
 # art-include: 21.3/Athena
 # art-include: 21.9/Athena
@@ -15,7 +16,7 @@ Reco_tf.py \
 --athenaopts='--nprocs=2' \
 --maxEvents=500 \
 --conditionsTag 'all:CONDBR2-BLKPA-RUN2-09' \
---outputAODFile=myAOD.pool.root --outputESDFile=myESD.pool.root --outputHISTFile=myHIST.root --imf False
+--outputAODFile=myAOD.pool.root --outputESDFile=myESD.pool.root --imf False
 
 
 rc1=$?

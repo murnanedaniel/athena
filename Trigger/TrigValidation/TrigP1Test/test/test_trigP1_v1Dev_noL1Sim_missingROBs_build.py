@@ -3,7 +3,8 @@
 
 # art-description: athenaHLT test of the Dev_pp_run3_v1 menu with detector ROBs removed
 # art-type: build                                                                  
-# art-include: master/Athena                                                       
+# art-include: master/Athena
+# art-include: 22.0/Athena                                                       
 
 from TrigValTools.TrigValSteering import Test, ExecStep, CheckSteps
 
@@ -14,7 +15,7 @@ ex = ExecStep.ExecStep()
 ex.type = 'athenaHLT'
 ex.job_options = 'TriggerJobOpts/runHLT_standalone.py'
 ex.input = 'data'
-ex.args = '-c "setMenu=\'Dev_pp_run3_v1\';forceEnableAllChains=True;"'  
+ex.args = '-c "setMenu=\'Dev_pp_run3_v1\';enableL1MuonPhase1=False;forceEnableAllChains=True;"'  
 ex.args += ' --ros2rob="{{\'ROS-TRIGP1TEST-00\': {:s}}}"'.format(l1_robs)
 ex.args += ' --dump-config-reload'
 

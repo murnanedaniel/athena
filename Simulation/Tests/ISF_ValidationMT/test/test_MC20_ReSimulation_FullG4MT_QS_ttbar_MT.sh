@@ -3,6 +3,7 @@
 # art-description: ReSimulation Workflow running with MC16 conditions/geometry
 # art-include: master/Athena
 # art-type: grid
+# art-architecture:  '#x86_64-intel'
 # art-output: log.*
 # art-output: original.HITS.pool.root
 # art-output: resim.*.HITS.pool.root
@@ -15,6 +16,7 @@ rc=-9999
 if [ -f "original.HITS.pool.root" ]
 then
     rc=0
+    echo "skipping initial-simOLD step"
 else
     Sim_tf.py \
         --conditionsTag 'default:OFLCOND-MC16-SDR-14' \
@@ -31,7 +33,7 @@ else
     echo "art-result: $rc initial-simOLD"
 fi
 status=$rc
-cp log.EVNTtoHITS log.EVNTtoHITS.initial
+mv log.EVNTtoHITS log.EVNTtoHITS.initial
 
 rc1=-9999
 if [ $rc -eq 0 ]
@@ -51,7 +53,7 @@ then
 
     rc1=$?
     status=$rc1
-    mv log.ReSim log.EVNTtoHITS.CA
+    mv log.ReSim log.ResSim.CA
 fi
 echo "art-result: $rc1 resimCA"
 

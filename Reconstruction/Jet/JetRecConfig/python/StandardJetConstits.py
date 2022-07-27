@@ -30,7 +30,7 @@ stdContitModifDic = ldict()
 # to Jet domain
 import JetRecConfig.JetInputConfig as inputcfg
 import JetRecTools.JetRecToolsConfig as jrtcfg
-
+import TrackCaloClusterRecTools.TrackCaloClusterConfig as tcccfg
 def isMC(flags):
     """A simple filter function for  testing if we're running in MC
     returns (bool, str) where the str contains an explanation of why the bool is False.
@@ -66,8 +66,7 @@ def standardReco(input):
         def f(jetdef,spec):
             from MuonConfig.MuonReconstructionConfig import MuonReconstructionCfg
             flags = jetdef._cflags
-            return MuonReconstructionCfg(flags) if flags.Jet.doUpstreamDependencies else None
-        
+            return MuonReconstructionCfg(flags) if flags.Jet.doUpstreamDependencies else None     
     elif input=="PFlow":
         def f(jetdef,spec):
             from eflowRec.PFRun3Config import PFCfg
@@ -99,6 +98,11 @@ _stdInputList = [
                      prereqs = ["input:InDetTrackParticles", "input:CaloCalTopoClusters"],
                      ),
 
+    JetInputExternal("GlobalParticleFlowObjects", xAODType.FlowElement,
+                     algoBuilder = inputcfg.buildPFlowSel,
+                     prereqs = ["input:JetETMissParticleFlowObjects", ],
+                     ),
+    
     # *****************************
     JetInputExternal("InDetTrackParticles",   xAODType.TrackParticle,
                      algoBuilder = standardReco("Tracks"),
@@ -107,7 +111,7 @@ _stdInputList = [
 
     JetInputExternal("PrimaryVertices",   xAODType.Vertex,
                      prereqs = ["input:InDetTrackParticles"],
-                     filterfn = lambda flags : (flags.Beam.Type == BeamType.Collisions, f"No vertexing with {BeamType.Collisions}"), # should be changed when a reliable "EnableVertexing" flag exists
+                     filterfn = lambda flags : (flags.Beam.Type == BeamType.Collisions, f"No vertexing with {flags.Beam.Type}"), # should be changed when a reliable "EnableVertexing" flag exists
                      ),
     # No quality criteria are applied to the tracks, used for ghosts for example
     JetInputExternal("JetSelectedTracks",     xAODType.TrackParticle,
@@ -125,7 +129,8 @@ _stdInputList = [
                      algoBuilder = inputcfg.buildJetTrackUsedInFitDeco
                      ),
     JetInputExternal("JetTrackVtxAssoc",      xAODType.TrackParticle,
-                     algoBuilder = inputcfg.buildJetTrackVertexAssoc,
+                     algoBuilder = lambda jdef,_ : jrtcfg.getJetTrackVtxAlg(jdef.context, WorkingPoint="Nonprompt_All_MaxWeight"),
+                     # previous default for ttva : WorkingPoint="Custom", d0_cut= 2.0, dzSinTheta_cut= 2.0 
                      prereqs = ["input:JetTrackUsedInFitDeco", inputsFromContext("Vertices") ]
                      ),
 
@@ -174,6 +179,18 @@ _stdInputList = [
     JetInputExternal("PV0JetSelectedTracks", xAODType.TrackParticle,
                      prereqs=["input:JetSelectedTracks_trackSelOpt", "input:JetTrackUsedInFitDeco"],
                      algoBuilder = inputcfg.buildPV0TrackSel ),
+
+
+    JetInputExternal("UFOCSSK", xAODType.FlowElement,
+                     prereqs = ['input:GPFlowCSSK'],
+                     algoBuilder = lambda jdef,_ : tcccfg.runUFOReconstruction(jdef._cflags, stdConstitDic['GPFlowCSSK'])
+                     ),
+
+    JetInputExternal("UFO", xAODType.FlowElement,
+                     prereqs = ['input:GPFlow'],
+                     algoBuilder = lambda jdef,_ : tcccfg.runUFOReconstruction(jdef._cflags, stdConstitDic['GPFlow'])
+                     ),
+    
 ]
 
 
@@ -217,6 +234,9 @@ _stdSeqList = [
     JetInputConstitSeq("EMTopo", xAODType.CaloCluster, ["EM"],
                        "CaloCalTopoClusters", "EMTopoClusters", jetinputtype="EMTopo",
                        ),
+    JetInputConstitSeq("LCTopo", xAODType.CaloCluster, ["LC"],
+                       "CaloCalTopoClusters", "LCTopoClusters", jetinputtype="LCTopo",
+                       ),
     JetInputConstitSeq("EMTopoOrigin", xAODType.CaloCluster, ["EM","Origin"],
                        "CaloCalTopoClusters", "EMOriginTopoClusters", jetinputtype="EMTopo",
                        ),
@@ -236,13 +256,28 @@ _stdSeqList = [
     # this could be incorporated into the naming scheme and config
     JetInputConstitSeq("EMPFlow", xAODType.FlowElement,["CorrectPFO", "CHS"] , 'JetETMissParticleFlowObjects', 'CHSParticleFlowObjects'),
 
+    # GPFlow are the same than EMPFlow except they have pflow linked to elec or muons filtered out.
+    JetInputConstitSeq("GPFlow", xAODType.FlowElement,["CorrectPFO", "CHS"] , 'GlobalParticleFlowObjects', 'CHSGParticleFlowObjects',
+                       label='EMPFlow'),
+    
+    
     # Particle Flow Objects with Constituent Subtraction + SoftKiller
     JetInputConstitSeq("EMPFlowCSSK", xAODType.FlowElement,["CorrectPFO",  "CS","SK", "CHS"] ,
-                  'JetETMissParticleFlowObjects', 'CSSKParticleFlowObjects', jetinputtype="EMPFlow"),
+                       'JetETMissParticleFlowObjects', 'CSSKParticleFlowObjects', jetinputtype="EMPFlow"),
 
+    JetInputConstitSeq("GPFlowCSSK", xAODType.FlowElement,["CorrectPFO",  "CS","SK", "CHS"] ,
+                       'GlobalParticleFlowObjects', 'CSSKGParticleFlowObjects', jetinputtype="EMPFlow"),
+
+
+
+    JetInputConstit("UFOCSSK", xAODType.FlowElement, "UFOCSSK" ),
+
+    JetInputConstit("UFO", xAODType.FlowElement, "UFO" ),
+    
     # *****************************
     # Tower (used only as ghosts atm)
-    JetInputConstit("Tower", xAODType.CaloCluster, "CaloCalFwdTopoTowers"),
+    JetInputConstit("Tower", xAODType.CaloCluster, "CaloCalFwdTopoTowers",
+                    filterfn = lambda flags : ("CaloCalFwdTopoTowers" in flags.Input.Collections, "Towers as ghosts disabled as CaloCalFwdTopoTowers are not in the input")),
 
     # *****************************
     # Track constituents (e.g. ghosts, no quality criteria, no TTVA)
@@ -276,6 +311,7 @@ _stdSeqList = [
 
     JetInputConstit("TruthCharged", xAODType.TruthParticle, "JetInputTruthParticlesCharged", jetinputtype="TruthCharged"),
 
+    
 ]
 
 for label in  _truthFlavours:    
@@ -323,9 +359,13 @@ _stdModList = [
     JetConstitModifier("CHS",    "ChargedHadronSubtractionTool",
                        # get the track properties from the context with wich jet will be configured with propFromContext
                        # See StandardJetContext.py for the default values.
-                       prereqs=[inputsFromContext("Vertices")],
-                       properties=dict(VertexContainerKey=propFromContext("Vertices"),
-                                       TrackVertexAssociation=propFromContext("TVA"))),
+                       # Note : Jet trigger still needs an older CHS config, hence the cheks to jetdef.context below...
+                       #        When jet trigger migrate and follow the offline settings all this can be simplified.
+                       prereqs= lambda parentjdef : [inputsFromContext("Vertices"),] + ( [inputsFromContext("TVA")] if parentjdef.context=='default' else []) ,
+                       properties=dict(VertexContainerKey=propFromContext("Vertices"),                                       
+                                       TrackVertexAssociation=propFromContext("TVA"),
+                                       UseTrackToVertexTool= lambda jdef,_: jdef.context=='default', 
+                                       )),
     
     # Pileup suppression
     JetConstitModifier("Vor",    "VoronoiWeightTool", properties=dict(doSpread=False, nSigma=0) ),

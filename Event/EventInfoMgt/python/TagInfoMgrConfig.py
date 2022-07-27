@@ -10,32 +10,27 @@ def TagInfoMgrCfg(configFlags,tagValuePairs={}):
     if not isinstance(tagValuePairs,dict):
         raise ConfigurationError("Parameter extraTagValuePairs is supposed to be a dictionary")
 
-    #Build project-version string for the TagInfoMgr 
+    #Build project-version string for the TagInfoMgr
     project = os.getenv('AtlasProject',"Unknown")
-    version = os.getenv('AtlasVersion',"Unknown")     
+    version = os.getenv('AtlasVersion',"Unknown")
     atlasRelease=project+"-"+version
 
     tagValuePairs.update({"AtlasRelease" : atlasRelease})
 
-    TagInfoMgr=CompFactory.TagInfoMgr
-    tagInfoMgr=TagInfoMgr(ExtraTagValuePairs = tagValuePairs)
-
     result=ComponentAccumulator()
-    result.addService(tagInfoMgr)
-    return result,tagInfoMgr
-    
-if __name__ == "__main__":
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior=True    
+    result.addService(CompFactory.TagInfoMgr(ExtraTagValuePairs = tagValuePairs), primary=True)
+    return result
 
+
+if __name__ == "__main__":
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
     from AthenaConfiguration.TestDefaults import defaultTestFiles
 
     ConfigFlags.Input.Files = defaultTestFiles.RDO_RUN2
     ConfigFlags.lock()
 
-    acc, tagInfoMgr = TagInfoMgrCfg( ConfigFlags, {"SomeKey": "SomeValue"} )
-    acc2,_ =  TagInfoMgrCfg( ConfigFlags, {"OtherKey":"OtherValue", "SomeKey": "SomeValue"} )
+    acc = TagInfoMgrCfg( ConfigFlags, {"SomeKey": "SomeValue"} )
+    acc2 =  TagInfoMgrCfg( ConfigFlags, {"OtherKey":"OtherValue", "SomeKey": "SomeValue"} )
     acc.merge(acc2)
 
     assert "SomeKey" in acc.getService("TagInfoMgr").ExtraTagValuePairs

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /** @file DataHeaderCnv.cxx
@@ -228,7 +228,12 @@ StatusCode DataHeaderCnv::DataObjectToPool(IOpaqueAddress* pAddr, DataObject* pO
          ATH_MSG_FATAL("Failed to write " << dhFormType.Name());
          return(StatusCode::FAILURE);
       }
-      dhForm->setToken(dhf_token->toString());
+      if (dhf_token->technology() != 0) { // Only store DHF token if technology allows it to be appended to DH
+         dhForm->setToken(dhf_token->toString());
+      } else { // Otherwise keep string empty to cause DHF reading via DH token
+         ATH_MSG_DEBUG("Technology does not support setting DHF token for: " << dh_token->toString());
+         dhForm->setToken("");
+      }
       dhf_token->release(); dhf_token = nullptr;
       // Update DH with the new Form Ref
       persObj->setDhFormToken(dhForm->getToken());
@@ -287,7 +292,6 @@ std::unique_ptr<DataHeader_p5> DataHeaderCnv::poolReadObject_p5()
          m_dhInForm5.reset( reinterpret_cast<DataHeaderForm_p5*>(voidPtr2) );
          m_dhFormMdx = header->dhFormMdx();
       }
-      header->setDhForm( m_dhInForm5.get() );
    }
    return header;
 }
@@ -320,7 +324,7 @@ std::unique_ptr<DataHeader_p6> DataHeaderCnv::poolReadObject_p6()
       // we need to read a new DHF
       void* voidPtr2 = nullptr;
       Token mapToken;
-      if( dhFormToken.empty() ) {
+      if( dhFormToken.empty() ) { // Some technologies can't set DHF token, use DH token with new CLID.
          m_i_poolToken->setData(&mapToken);
          mapToken.setClassID( Guid("7BE56CEF-C866-4BEE-9348-A5F34B5F1DAD") );
       } else {
@@ -372,7 +376,7 @@ DataHeader* DataHeaderCnv::createTransient() {
          return dh;
       } else if (this->compareClassGuid( p5_guid )) {
          std::unique_ptr<DataHeader_p5> obj_p5( poolReadObject_p5() );
-         return m_tpInConverter_p5.createTransient( obj_p5.get() );
+         return m_tpInConverter_p5.createTransient( *obj_p5, *m_dhInForm5 ).release();
       } else if (this->compareClassGuid( p4_guid )) {
          std::unique_ptr<DataHeader_p4> obj_p4(this->poolReadObject<DataHeader_p4>());
          DataHeaderCnv_p4 tPconverter_p4;

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "TgcDigitizationTool.h"
@@ -38,7 +38,6 @@ TgcDigitizationTool::TgcDigitizationTool(const std::string& type,
 //--------------------------------------------
 StatusCode TgcDigitizationTool::initialize()
 {
-
   // retrieve MuonDetctorManager from DetectorStore
   ATH_CHECK(detStore()->retrieve(m_mdManager));
   ATH_MSG_DEBUG("Retrieved MuonDetectorManager from DetectorStore.");
@@ -66,8 +65,10 @@ StatusCode TgcDigitizationTool::initialize()
   ATH_MSG_DEBUG("Input objects in container : '" << m_inputHitCollectionName << "'");
 
   // Initialize Read(Cond)HandleKey
-  ATH_CHECK(m_hitsContainerKey.initialize(!m_onlyUseContainerName));
+  ATH_CHECK(m_hitsContainerKey.initialize(true));
   ATH_CHECK(m_readCondKey_ASDpos.initialize(!m_readCondKey_ASDpos.empty()));
+  ATH_CHECK(m_readCondKey_TimeOffset.initialize(!m_readCondKey_TimeOffset.empty()));
+  ATH_CHECK(m_readCondKey_Crosstalk.initialize(!m_readCondKey_Crosstalk.empty()));
 
   //initialize the output WriteHandleKeys
   ATH_CHECK(m_outputDigitCollectionKey.initialize());
@@ -289,8 +290,25 @@ StatusCode TgcDigitizationTool::digitizeCore(const EventContext& ctx) {
   if (!m_readCondKey_ASDpos.empty()) {
     SG::ReadCondHandle<TgcDigitASDposData> readHandle_ASDpos{m_readCondKey_ASDpos, ctx};
     ASDpos = readHandle_ASDpos.cptr();
+  } else {
+    ATH_MSG_ERROR("ASD Position parameters /TGC/DIGIT/ASDPOS must be available for TGC_Digitization. Check the configuration!");
   }
-  
+  const TgcDigitTimeOffsetData *TOffset{};
+  if (!m_readCondKey_TimeOffset.empty()) {
+    SG::ReadCondHandle<TgcDigitTimeOffsetData> readHandle_TimeOffset{m_readCondKey_TimeOffset, ctx};
+    TOffset = readHandle_TimeOffset.cptr();
+  } else {
+    ATH_MSG_ERROR("Timing Offset parameters /TGC/DIGIT/TOFFSET must be available for TGC_Digitization. Check the configuration!");
+  }
+  const TgcDigitCrosstalkData *Crosstalk{};
+  if (!m_readCondKey_Crosstalk.empty()) {
+    SG::ReadCondHandle<TgcDigitCrosstalkData> readHandle_Crosstalk{m_readCondKey_Crosstalk, ctx};
+    Crosstalk = readHandle_Crosstalk.cptr();
+  } else {
+    ATH_MSG_WARNING("/TGC/DIGIT/XTALK is not provided. Probabilities of TGC channel crosstalk will be zero.");
+  }
+
+
   TimedHitCollection<TGCSimHit>::const_iterator i, e; 
   while(m_thpcTGC->nextDetectorElement(i, e)) {
     ATH_MSG_DEBUG("TgcDigitizationTool::digitizeCore next element");
@@ -301,7 +319,7 @@ StatusCode TgcDigitizationTool::digitizeCore(const EventContext& ctx) {
       const TGCSimHit& hit = *phit;
       double globalHitTime = hitTime(phit);
       double tof = phit->globalTime();
-      TgcDigitCollection* digiHits = m_digitizer->executeDigi(&hit, globalHitTime, ASDpos, rndmEngine);
+      TgcDigitCollection* digiHits = m_digitizer->executeDigi(&hit, globalHitTime, ASDpos, TOffset, Crosstalk, rndmEngine);
 
       if(!digiHits) continue;
 

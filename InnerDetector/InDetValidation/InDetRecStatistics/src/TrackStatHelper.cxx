@@ -31,8 +31,6 @@
 #include "TrkTruthData/TrackTruthCollection.h"
 #include <cstring>
 #include <iomanip>
-#include <iostream>
-#include <map>
 #include <sstream>
 #include <utility>
 #include <vector>
@@ -139,8 +137,8 @@ void InDet::TrackStatHelper::addEvent(const TrackCollection              * recTr
 				      const SCT_ID                       * sctID,
 				      const Trk::IExtendedTrackSummaryTool* trkSummaryTool,
 				      bool                               useTrackSummary,
-				      unsigned int                       * inTimeStart,
-				      unsigned int                       * inTimeEnd) const
+				      const unsigned int                       * inTimeStart,
+				      const unsigned int                       * inTimeEnd) const
 {
 
   recoToTruthMap rttMap;
@@ -318,12 +316,15 @@ void InDet::TrackStatHelper::addEvent(const TrackCollection              * recTr
       if(hit){ 
 	const Trk::MeasurementBase* mesh =hit->measurementOnTrack();
 	if (mesh) {
-	  const Trk::RIO_OnTrack* rio = dynamic_cast<const Trk::RIO_OnTrack*>(mesh);
-	  if (!rio) {
+	  const Trk::RIO_OnTrack* rio{} ;
+	  if ( mesh->type(Trk::MeasurementBaseType::RIO_OnTrack)){
+            assert(dynamic_cast<const Trk::RIO_OnTrack*>(mesh)!=nullptr);
+	    rio = static_cast<const Trk::RIO_OnTrack*>(mesh);
+	  } else  {
 	    // try CompetingROT:
-	    const Trk::CompetingRIOsOnTrack* comprot = dynamic_cast<const 
-	      Trk::CompetingRIOsOnTrack*>(mesh);
-	    if (comprot) {
+	    if (mesh->type(Trk::MeasurementBaseType::CompetingRIOsOnTrack)) {
+              assert(dynamic_cast<const Trk::CompetingRIOsOnTrack*>(mesh) !=nullptr);
+	      auto comprot = static_cast<const Trk::CompetingRIOsOnTrack*>(mesh);
 	      rio = &comprot->rioOnTrack(comprot->indexOfMaxAssignProb());
 	    }
 	  }

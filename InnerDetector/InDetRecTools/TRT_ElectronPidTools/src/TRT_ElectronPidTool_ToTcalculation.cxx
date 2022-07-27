@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////////////////////////////////////////////////////////////
@@ -32,6 +32,7 @@
 
 InDet::TRT_ElectronPidTool::ToTcalculator::ToTcalculator(AthAlgTool & parent):
   BaseTRTPIDCalculator(parent,(SIZE_OF_HEADER + SIZE_GAUS_PARS * 2 + SIZE_TOT_CONSTANTS + SIZE_PAR_VAL),"ToT"),
+  AthMessaging("ToTcalculator"),
   ToTCorrectionConstants( (float*)( Blob + OFF_TOT_CONSTANTS )),
   gausParametersElectron( (float*)( Blob + OFF_GAUS_PARS_ELE )),
   gausParametersPion( (float*)( Blob + OFF_GAUS_PARS_PIO )),

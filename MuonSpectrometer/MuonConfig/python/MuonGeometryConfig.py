@@ -1,9 +1,10 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
 from AthenaConfiguration.Enums import ProductionStep
 from AtlasGeoModel.GeoModelConfig import GeoModelCfg
+from AthenaConfiguration.Enums import LHCPeriod
 
 def MuonIdHelperSvcCfg(flags):
     acc = ComponentAccumulator()
@@ -11,7 +12,7 @@ def MuonIdHelperSvcCfg(flags):
         HasCSC=flags.Detector.GeometryCSC,
         HasSTgc=flags.Detector.GeometrysTGC,
         HasMM=flags.Detector.GeometryMM
-        ) )
+        ), primary=True )
     return acc
 
 
@@ -23,11 +24,7 @@ def MuonDetectorToolCfg(flags):
         HasMM=flags.Detector.GeometryMM
         )
     detTool.UseConditionDb = 1
-    detTool.UseIlinesFromGM = 1
-
-    # temporary way to pass MM correction for edge passivation
-    from MuonGeoModel.MMPassivationFlag import MMPassivationFlag
-    detTool.passivationWidthMM = MMPassivationFlag.correction
+    detTool.UseIlinesFromGM = False
 
     if flags.Muon.enableAlignment:
         # Condition DB is needed only if A-lines or B-lines are requested
@@ -60,12 +57,16 @@ def MuonDetectorToolCfg(flags):
         # here define if As-Built (MDT chamber alignment) are enabled
         if flags.Muon.Align.UseAsBuilt:
             if flags.IOVDb.DatabaseInstance == 'COMP200' or \
-                    'HLT' in flags.IOVDb.GlobalTag or flags.Common.isOnline :
+                    'HLT' in flags.IOVDb.GlobalTag or flags.Common.isOnline or flags.Input.isMC:
                 #logMuon.info("No MDT As-Built parameters applied.")
                 detTool.EnableMdtAsBuiltParameters = 0
+                detTool.EnableNswAsBuiltParameters = 0
             else :
                 #logMuon.info("Reading As-Built parameters from conditions database")
                 detTool.EnableMdtAsBuiltParameters = 1
+                ## disable for now, otherwise standard tests crash (ATLASRECTS-7017)
+                detTool.EnableNswAsBuiltParameters = 0
+                #detTool.EnableNswAsBuiltParameters = 1 if flags.GeoModel.Run>=LHCPeriod.Run3 else 0
                 pass
 
     else:
@@ -120,6 +121,10 @@ def MuonAlignmentCondAlgCfg(flags):
         acc.merge(addFolders( flags, ['/MUONALIGN/TGC/SIDEC'], 'MUONALIGN_OFL', className='CondAttrListCollection'))
 
     MuonAlign = MuonAlignmentCondAlg()
+    if flags.IOVDb.DatabaseInstance != 'COMP200' and \
+       'HLT' not in flags.IOVDb.GlobalTag and not flags.Common.isOnline:
+        MuonAlign.IsData = False
+
     MuonAlign.ParlineFolders = ["/MUONALIGN/MDT/BARREL",
                                 "/MUONALIGN/MDT/ENDCAP/SIDEA",
                                 "/MUONALIGN/MDT/ENDCAP/SIDEC",
@@ -127,18 +132,18 @@ def MuonAlignmentCondAlgCfg(flags):
                                 "/MUONALIGN/TGC/SIDEC"]
 
     # here define if I-lines (CSC internal alignment) are enabled
-    if flags.Muon.Align.UseILines:
+    if flags.Muon.Align.UseILines and flags.Detector.GeometryCSC:
         if 'HLT' in flags.IOVDb.GlobalTag:
             #logMuon.info("Reading CSC I-Lines from layout - special configuration for COMP200 in HLT setup.")
             MuonAlign.ILinesFromCondDB = False
-        else :
+        else:
             #logMuon.info("Reading CSC I-Lines from conditions database.")
             if (flags.Common.isOnline and not flags.Input.isMC):
                 acc.merge(addFolders( flags, ['/MUONALIGN/Onl/CSC/ILINES'], 'MUONALIGN', className='CondAttrListCollection'))
             else:
                 acc.merge(addFolders( flags, ['/MUONALIGN/CSC/ILINES'], 'MUONALIGN_OFL', className='CondAttrListCollection'))
-                MuonAlign.ParlineFolders += ["/MUONALIGN/CSC/ILINES"]
-                MuonAlign.ILinesFromCondDB = True
+            MuonAlign.ParlineFolders += ["/MUONALIGN/CSC/ILINES"]
+            MuonAlign.ILinesFromCondDB = True
 
     # here define if As-Built (MDT chamber alignment) are enabled
     if flags.Muon.Align.UseAsBuilt:
@@ -148,11 +153,16 @@ def MuonAlignmentCondAlgCfg(flags):
             pass
         else :
             #logMuon.info("Reading As-Built parameters from conditions database")
-            acc.merge(addFolders( flags, '/MUONALIGN/MDT/ASBUILTPARAMS', 'MUONALIGN_OFL', className='CondAttrListCollection'))
+            acc.merge(addFolders( flags, '/MUONALIGN/MDT/ASBUILTPARAMS' , 'MUONALIGN_OFL', className='CondAttrListCollection'))
             MuonAlign.ParlineFolders += ["/MUONALIGN/MDT/ASBUILTPARAMS"]
+            if flags.GeoModel.Run>=LHCPeriod.Run3: 
+                pass
+                ## disable for now, otherwise standard tests crash (ATLASRECTS-7017)
+                #acc.merge(addFolders( flags, '/MUONALIGN/ASBUILTPARAMS/MM'  , 'MUONALIGN_OFL', className='CondAttrListCollection'))
+                #acc.merge(addFolders( flags, '/MUONALIGN/ASBUILTPARAMS/STGC', 'MUONALIGN_OFL', className='CondAttrListCollection'))
+                #MuonAlign.ParlineFolders += ['/MUONALIGN/ASBUILTPARAMS/MM', '/MUONALIGN/ASBUILTPARAMS/STGC']
             pass
 
-    MuonAlign.DoCSCs = flags.Detector.GeometryCSC
     acc.addCondAlgo(MuonAlign)
 
     if flags.IOVDb.DatabaseInstance != 'COMP200' and \
@@ -164,10 +174,17 @@ def MuonAlignmentCondAlgCfg(flags):
 
 def MuonDetectorCondAlgCfg(flags):
     acc = MuonAlignmentCondAlgCfg(flags)
-    MuonDetectorCondAlg = CompFactory.MuonDetectorCondAlg
-    MuonDetectorManagerCond = MuonDetectorCondAlg()
+    if flags.Muon.applyMMPassivation:
+        from MuonConfig.MuonCondAlgConfig import NswPassivationDbAlgCfg
+        acc.merge(NswPassivationDbAlgCfg(flags))
+    MuonDetectorManagerCond = CompFactory.MuonDetectorCondAlg()
+    MuonDetectorManagerCond.applyMmPassivation = flags.Muon.applyMMPassivation
+    
     detTool = acc.popToolsAndMerge(MuonDetectorToolCfg(flags))
     MuonDetectorManagerCond.MuonDetectorTool = detTool
+    if flags.IOVDb.DatabaseInstance != 'COMP200' and \
+       'HLT' not in flags.IOVDb.GlobalTag and not flags.Common.isOnline:
+        MuonDetectorManagerCond.IsData = False
     acc.addCondAlgo(MuonDetectorManagerCond)
     return acc
 

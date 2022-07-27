@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef TRT_GEOMODEL_TRT_DETDESCRDB_PARAMETERINTERFACE_H
@@ -7,10 +7,8 @@
 
 
 #include "TRTParameterInterface.h"
-#include "AthenaKernel/MsgStreamMember.h"
 #include "InDetGeoModelUtils/InDetDDAthenaComps.h"
 #include "RDBAccessSvc/IRDBAccessSvc.h"
-#include "CxxUtils/checker_macros.h"
 
 class IRDBRecord;
 class TopLevelPlacements;
@@ -33,7 +31,7 @@ public:
   //
   virtual const GeoTrf::Transform3D & partTransform(const std::string & partName) const;
   virtual bool partPresent(const std::string & partName) const;
-  virtual const InDetDD::DistortedMaterialManager * distortedMatManager() const;
+  virtual InDetDD::DistortedMaterialManager * distortedMatManager();
 
   const std::string& name() const { 
     static const std::string n("TRT_GeoModel::TRT_DetDescrDB_ParameterInterface"); 
@@ -51,7 +49,7 @@ private:
 
   InDetDD::AthenaComps * m_athenaComps;
 
-  const InDetDD::DistortedMaterialManager * m_distortedMatManager;
+  InDetDD::DistortedMaterialManager * m_distortedMatManager;
   TopLevelPlacements * m_placements;
   IRDBRecordset_ptr m_scalingTable;
 };

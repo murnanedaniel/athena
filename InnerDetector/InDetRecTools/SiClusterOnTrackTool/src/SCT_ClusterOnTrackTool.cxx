@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////////////////////////////////////////////////////////////
@@ -115,12 +115,11 @@ InDet::SCT_ClusterOnTrackTool::finalize() {
 const InDet::SCT_ClusterOnTrack *
 InDet::SCT_ClusterOnTrackTool::correct
   (const Trk::PrepRawData &rio, const Trk::TrackParameters &trackPar) const {
-  const InDet::SCT_Cluster *SC = nullptr;
 
-  if (!(SC = dynamic_cast<const InDet::SCT_Cluster *> (&rio))) {
+  if (not rio.type(Trk::PrepRawDataType::SCT_Cluster)) {
     return nullptr;
   }
-
+  const InDet::SCT_Cluster * SC = static_cast<const InDet::SCT_Cluster *> (&rio);
   const InDet::SiWidth width = SC->width();
   const Amg::Vector2D &colRow = width.colRow();
 
@@ -149,10 +148,10 @@ InDet::SCT_ClusterOnTrackTool::correct
   Amg::Vector3D localstripdir(-sinAlpha, cosAlpha, 0.);
   Amg::Vector3D globalstripdir = trackPar.associatedSurface().transform().linear() * localstripdir;
   double distance = (trackPar.position() - SC->globalPosition()).mag();
-  const Trk::TrapezoidBounds *tbounds =
-    dynamic_cast<const Trk::TrapezoidBounds *>(&trackPar.associatedSurface().bounds());
-  const Trk::RectangleBounds *rbounds =
-    dynamic_cast<const Trk::RectangleBounds *>(&trackPar.associatedSurface().bounds());
+  const auto *boundsraw = &trackPar.associatedSurface().bounds();
+
+  const Trk::TrapezoidBounds *tbounds = boundsraw->type() == Trk::SurfaceBounds::Trapezoid ? static_cast<const Trk::TrapezoidBounds *>(boundsraw) : nullptr;
+  const Trk::RectangleBounds *rbounds = boundsraw->type() == Trk::SurfaceBounds::Rectangle ? static_cast<const Trk::RectangleBounds *>(boundsraw) : nullptr;
 
   if (!tbounds && !rbounds) {
     return nullptr;
@@ -219,7 +218,7 @@ InDet::SCT_ClusterOnTrackTool::correct
       mat(0, 1) = mat(1, 0);
       mat(1, 1) = (sn2 * v0 + cs2 * v1);
     }
-    oldcov = mat;
+    oldcov = std::move(mat);
   }
 
   Amg::MatrixX cov(oldcov);
@@ -273,11 +272,11 @@ InDet::SCT_ClusterOnTrackTool::correct
     locpar[Trk::locX] += correction;
   }
   bool isbroad = m_option_errorStrategy == 0;
-  return new InDet::SCT_ClusterOnTrack(SC, locpar, cov, iH, glob, isbroad);
+  return new InDet::SCT_ClusterOnTrack(SC, locpar, std::move(cov), iH, glob, isbroad);
 }
 
 double
-InDet::SCT_ClusterOnTrackTool::getCorrection(double phi, int nstrip) const {
+InDet::SCT_ClusterOnTrackTool::getCorrection(double phi, int nstrip) {
   float corr1[30] = {
     0.3, 0.8, 1.1, 1.5, 1.9, 1.9, 2.1, 2.4, 2.3, 2.6,
     2.6, 2.7, 2.8, 2.7, 2.5, 2.6, 2.8, 2.6, 2.6, 2.7,
@@ -311,7 +310,7 @@ InDet::SCT_ClusterOnTrackTool::getCorrection(double phi, int nstrip) const {
 }
 
 double
-InDet::SCT_ClusterOnTrackTool::getError(double phi, int nstrip) const {
+InDet::SCT_ClusterOnTrackTool::getError(double phi, int nstrip) {
   float sigma1[60] = {
     22.1, 21.8, 21.4, 21.0, 20.5, 20.0, 19.6, 19.1, 18.5, 18.0,
     17.4, 17.0, 16.4, 15.8, 15.4, 14.9, 14.4, 14.1, 13.3, 13.1,

@@ -1,7 +1,6 @@
 include.block ('ForwardRec/ForwardRec_jobOptions.py')
 
 from AthenaCommon.Resilience import treatException   
-from AthenaCommon.GlobalFlags  import globalflags
 from AthenaCommon.DetFlags import DetFlags
 from RecExConfig.RecFlags import rec
 
@@ -41,29 +40,7 @@ if rec.doAlfa() and rec.doESD():
     include("ALFA_CLinkAlg/ALFA_CLinkAlg_joboption.py")        
 
 if rec.doAFP() and rec.doESD():
-  
-  # Real-data reconstruction:
-  if DetFlags.readRDOBS.AFP_on():
-    from AFP_ByteStream2RawCnv.AFP_ByteStream2RawCnvConf import AFP_RawDataProvider
-    topSequence+=AFP_RawDataProvider()
-
-    from AFP_Raw2Digi.AFP_Raw2DigiConf import AFP_Raw2Digi
-    topSequence+=AFP_Raw2Digi()
-  
-  #cluster reconstruction
-  from AFP_SiClusterTools.AFP_SiClusterTools_joboption import AFP_SiClusterTools_Cfg
-  topSequence+=AFP_SiClusterTools_Cfg()
-  
-  # tracks reconstruction
-  from AFP_LocReco.AFP_LocReco_joboption import AFP_LocReco_SiD_Cfg, AFP_LocReco_TD_Cfg
-  topSequence+=AFP_LocReco_SiD_Cfg()
-  topSequence+=AFP_LocReco_TD_Cfg()
-   
-  # protons reconstruction
-  from AFP_GlobReco.AFP_GlobReco_joboption import AFP_GlobReco_Cfg
-  topSequence+=AFP_GlobReco_Cfg()
-  
-  # vertex reconstruction
-  from AFP_VertexReco.AFP_VertexReco_joboption import AFP_VertexReco_Cfg
-  topSequence+=AFP_VertexReco_Cfg()
-  
+  from AthenaConfiguration.ComponentAccumulator import CAtoGlobalWrapper
+  from AthenaConfiguration.AllConfigFlags import ConfigFlags
+  from ForwardRec.AFPRecConfig import AFPRecCfg
+  CAtoGlobalWrapper(AFPRecCfg, ConfigFlags)

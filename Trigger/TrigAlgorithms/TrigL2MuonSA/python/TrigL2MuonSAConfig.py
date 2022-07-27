@@ -1,10 +1,11 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 import TrigL2MuonSA.TrigL2MuonSAConf as MuonSA
 from TrigL2MuonSA.TrigL2MuonSAMonitoring import TrigL2MuonSAMonitoring
 from AthenaCommon.AppMgr import ServiceMgr,ToolSvc
 from TrigMuonBackExtrapolator.TrigMuonBackExtrapolatorConfig import MuonBackExtrapolatorForAlignedDet, MuonBackExtrapolatorForMisalignedDet,  MuonBackExtrapolatorForData
 from AthenaConfiguration.AllConfigFlags import ConfigFlags
+from MuonRecExample.MuonRecFlags import muonRecFlags
 
 from AthenaCommon.Logging import logging
 log = logging.getLogger('TrigL2MuonSAConfig')
@@ -52,6 +53,11 @@ if MuonGeometryFlags.hasSTGC():
 if MuonGeometryFlags.hasMM():
     from RegionSelector.RegSelToolConfig import makeRegSelTool_MM
     theDataPreparator.MMDataPreparator.RegSel_MM = makeRegSelTool_MM()
+
+theCalStreamerTool = MuonSA.TrigL2MuonSA__MuCalStreamerTool()
+theCalStreamerTool.RegSel_MDT = makeRegSelTool_MDT()
+from RegionSelector.RegSelToolConfig import makeRegSelTool_TGC
+theCalStreamerTool.RegSel_TGC = makeRegSelTool_TGC()
 
 ToolSvc += MuonBackExtrapolatorForAlignedDet()
 ToolSvc += MuonBackExtrapolatorForMisalignedDet()
@@ -125,6 +131,7 @@ class TrigL2MuonSAConfig(MuonSA.MuFastSteering):
         self.StationFitter     = theStationFitter
         self.TrackFitter       = MuonSA.TrigL2MuonSA__MuFastTrackFitter()
         self.TrackExtrapolator = MuonSA.TrigL2MuonSA__MuFastTrackExtrapolator()
+        self.CalibrationStreamer = theCalStreamerTool
 
         self.R_WIDTH_TGC_FAILED = 200
         self.R_WIDTH_RPC_FAILED = 400
@@ -138,6 +145,16 @@ class TrigL2MuonSAConfig(MuonSA.MuFastSteering):
         self.USE_ROIBASEDACCESS_STGC = False
         self.USE_ROIBASEDACCESS_MM = False
         #################################
+
+        
+        # set the flag whether to use NSW or not
+        # if running without NSW, commissioning not use them
+        if muonRecFlags.runCommissioningChain():
+           self.USE_STGC = False
+           self.USE_MM = False
+        else: 
+           self.USE_STGC = True
+           self.USE_MM = True
 
         self.RpcErrToDebugStream = True
 
@@ -167,8 +184,6 @@ class TrigL2MuonSAConfig(MuonSA.MuFastSteering):
             self.DoCalibrationStream = True
             self.MuonCalDataScouting = True
             self.MuonCalBufferSize   = 1024*1024
-
-        self.Timing = False
 
         # Default backextrapolator is for MC Misaligned Detector
         self.BackExtrapolator = MuonBackExtrapolatorForMisalignedDet()

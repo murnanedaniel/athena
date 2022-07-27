@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // STL include files
@@ -19,6 +19,10 @@
 #include "MuonNSWCommonDecode/VMMChannel.h"
 #include "MuonNSWCommonDecode/NSWResourceId.h"
 
+// Number of sectors - Module ID, to be checked to avoid confusion with NSW TP
+
+static const uint16_t sectors = 16;
+
 // Local issue definition
 
 ERS_DECLARE_ISSUE_BASE (eformat, InconsistentChannelNumber, eformat::Issue, 
@@ -27,21 +31,20 @@ ERS_DECLARE_ISSUE_BASE (eformat, InconsistentChannelNumber, eformat::Issue,
 
 // Error parameters
 
-#define ERR_NOERR      0
-#define ERR_ARGS      -1
-#define ERR_GENERIC   -2
+static const int ERR_NOERR   =  0;
+static const int ERR_ARGS    = -1;
+static const int ERR_GENERIC = -2;
 
 // Global parameters
 
-bool g_printout = false;
-bool g_tree_view = true;
-bool g_flat_view = true;
-unsigned int g_printout_level = 0;
-std::vector <std::string> g_file_names;
-
-// Global variables
-
-DataReader *reader;
+struct Params
+{
+  bool printout {false};
+  bool tree_view {true};
+  bool flat_view {true};
+  unsigned int printout_level {0};
+  std::vector <std::string> file_names;
+};
 
 void test_nsw_common_decoder_help (char *progname)
 {
@@ -51,7 +54,7 @@ void test_nsw_common_decoder_help (char *progname)
   std::cout << "\t\t[-f] only shows hits taken from flat view of decoded data" << std::endl;
 }
 
-int test_nsw_common_decoder_opt (int argc, char **argv)
+int test_nsw_common_decoder_opt (int argc, char **argv, Params& params)
 {
   int errcode = ERR_NOERR;
   int i;
@@ -62,30 +65,30 @@ int test_nsw_common_decoder_opt (int argc, char **argv)
       switch (argv[i][1])
       {
         case 'v':
-	  g_printout = true;
-          ++g_printout_level;
+	  params.printout = true;
+          ++params.printout_level;
 	  break;
         case 't':
-          g_flat_view = false;
+          params.flat_view = false;
           break;
         case 'f':
-          g_tree_view = false;
+          params.tree_view = false;
           break;
         case 'h':
 	  test_nsw_common_decoder_help (argv[0]);
-	  exit (ERR_NOERR);
+	  return ERR_NOERR;
         default:
 	  test_nsw_common_decoder_help (argv[0]);
-	  exit (ERR_ARGS);
+	  return ERR_ARGS;
       }
     else
     {
       std::string data_file_name (argv[i]);
-      g_file_names.push_back (data_file_name);
+      params.file_names.push_back (data_file_name);
     }
   }
 
-  if (g_file_names.size () == 0)
+  if (params.file_names.size () == 0)
   {
     test_nsw_common_decoder_help (argv[0]);
     return (ERR_ARGS);
@@ -106,12 +109,12 @@ int test_nsw_common_decoder_end ()
   return errcode;
 }
 
-int test_nsw_common_decoder_event (eformat::read::FullEventFragment &f)
+int test_nsw_common_decoder_event (eformat::read::FullEventFragment &f, const Params& params)
 {
   int errcode = ERR_NOERR;
   std::vector <eformat::read::ROBFragment> robs;
 
-  if (g_printout_level > 2)
+  if (params.printout_level > 2)
     std::cout << "Entering fragment analysis" << std::endl;
 
   f.robs (robs);
@@ -135,6 +138,7 @@ int test_nsw_common_decoder_event (eformat::read::FullEventFragment &f)
     uint32_t sid = r->rob_source_id ();
     eformat::helper::SourceIdentifier source_id (sid);
     eformat::SubDetector s = source_id.subdetector_id ();
+    uint16_t m = source_id.module_id ();
 
     if (s == 0)    // NSW data written before end of March 2021 have wrong source Id
       s = static_cast <eformat::SubDetector> ((sid >> 24) & 0xff);
@@ -144,9 +148,9 @@ int test_nsw_common_decoder_event (eformat::read::FullEventFragment &f)
     else if (s == eformat::MUON_STGC_ENDCAP_A_SIDE  || s == eformat::MUON_STGC_ENDCAP_C_SIDE)
       is_nsw = is_stg = true;
 
-    if (is_nsw)
+    if (is_nsw && m < sectors)
     {
-      if (g_printout_level > 2)
+      if (params.printout_level > 2)
         std::cout << "NSW fragment found: detector ID = 0x" << std::hex << s << std::dec << " length " << r->rod_ndata () << std::endl;
 
       // Decode the ROB fragment (including sanity check)
@@ -165,9 +169,12 @@ int test_nsw_common_decoder_event (eformat::read::FullEventFragment &f)
       if (nchan != nsw_decoder.get_channels ().size ())
         ers::error (eformat::InconsistentChannelNumber (ERS_HERE, nchan, nsw_decoder.get_channels ().size ()));
 
+      if (params.printout_level > 2)
+	std::cout << "Hit number = " << nchan << std::endl;
+
       // How to access information about detector elements and channels using the tree view
 
-      if (g_tree_view)
+      if (params.tree_view)
       {
         for (auto i = links.begin (); i != links.end (); ++i)
         {
@@ -211,9 +218,9 @@ int test_nsw_common_decoder_event (eformat::read::FullEventFragment &f)
               uint8_t  channel_type   = (*j)->channel_type ();
               uint16_t channel_number = (*j)->channel_number ();
 
-              if (g_printout)
+              if (params.printout)
               {
-                if (g_printout_level > 1)
+                if (params.printout_level > 1)
                 {
                   std::cout << "ROD header:" << std::endl;
                   std::cout << "\t\tROD fragment size (words)  " << r->rod_fragment_size_word () << std::endl;
@@ -252,12 +259,12 @@ int test_nsw_common_decoder_event (eformat::read::FullEventFragment &f)
 
       // The same information can be accessed through the list of all the channels for that ROB as follows
 
-      if (g_flat_view)
+      if (params.flat_view)
       {
         const std::vector <Muon::nsw::VMMChannel *>& channels = nsw_decoder.get_channels ();
         for (auto j = channels.begin (); j != channels.end (); ++j)
         {
-          Muon::nsw::NSWElink *link = const_cast <Muon::nsw::NSWElink *> ((*j)->elink ());
+          const Muon::nsw::NSWElink *link = (*j)->elink ();
 
           uint16_t l1Id  = link->l1Id ();
           uint16_t bcId  = link->bcId ();
@@ -290,9 +297,9 @@ int test_nsw_common_decoder_event (eformat::read::FullEventFragment &f)
           uint8_t  channel_type   = (*j)->channel_type ();
           uint16_t channel_number = (*j)->channel_number ();
 
-          if (g_printout)
+          if (params.printout)
           {
-            if (g_printout_level > 1)
+            if (params.printout_level > 1)
             {
               std::cout << "ROD header:" << std::endl;
               std::cout << "\t\tROD fragment size (words)  " << r->rod_fragment_size_word () << std::endl;
@@ -330,20 +337,20 @@ int test_nsw_common_decoder_event (eformat::read::FullEventFragment &f)
   return errcode;
 }
 
-int test_nsw_common_decoder_loop ()
+int test_nsw_common_decoder_loop (const Params& params)
 {
   int errcode = ERR_NOERR;
   unsigned int tot_nev = 0;
 
-  for (auto file_iter = g_file_names.begin (); file_iter != g_file_names.end (); ++file_iter)
+  for (const std::string& filename : params.file_names)
   {
     char *buf = nullptr;
     unsigned int size = 0;
 
-    std::string data_file_name (*file_iter);
+    std::string data_file_name (filename);
 
     std::cout << "Reading file " << data_file_name << std::endl;
-    reader = pickDataReader (data_file_name);
+    std::unique_ptr<DataReader> reader(pickDataReader(data_file_name));
 
     if (!reader || !reader->good ())
     {
@@ -368,7 +375,7 @@ int test_nsw_common_decoder_loop ()
         eformat::read::FullEventFragment f ((unsigned int *) buf);
         f.check ();
 
-	if ((errcode = test_nsw_common_decoder_event (f)) != ERR_NOERR)
+        if ((errcode = test_nsw_common_decoder_event (f, params)) != ERR_NOERR)
         {
           ers::error (ers::File (ERS_HERE, data_file_name.c_str ()));
           if (buf) delete buf;
@@ -387,9 +394,6 @@ int test_nsw_common_decoder_loop ()
 
       if (buf) delete buf;
     }
-
-    if (reader)
-      delete reader;
   }
 
   std::cout << "Total event number: " << tot_nev << std::endl;
@@ -400,14 +404,15 @@ int test_nsw_common_decoder_loop ()
 int main (int argc, char **argv)
 {
   int err = ERR_NOERR;
+  Params params;
 
-  if ((err = test_nsw_common_decoder_opt (argc, argv)) != ERR_NOERR)
+  if ((err = test_nsw_common_decoder_opt (argc, argv, params)) != ERR_NOERR)
     return err;
 
   if ((err = test_nsw_common_decoder_init ()) != ERR_NOERR)
     return err;
 
-  if ((err = test_nsw_common_decoder_loop ()) != ERR_NOERR)
+  if ((err = test_nsw_common_decoder_loop (params)) != ERR_NOERR)
     return err;
 
   if ((err = test_nsw_common_decoder_end ()) != ERR_NOERR)

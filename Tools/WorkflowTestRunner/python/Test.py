@@ -17,7 +17,7 @@ class TestSetup:
         self.logger = logger
         self.pwd = get_pwd()
         self.reference_run_path = Path("/tmp")
-        self.diff_rules_path = Path()
+        self.diff_rules_path = None
         self.unique_ID = str(uuid4())
         self.disable_release_setup = False
         self.validation_only = False
@@ -36,6 +36,10 @@ class TestSetup:
             self.logger.info(f"WARNING: You have specified a dedicated release as reference {reference} and as validation {validation} release.")
             self.logger.info("Your local setup area will not be considered!!!")
             self.logger.info("this option is mainly designed for comparing release versions!!")
+        elif reference:
+            self.release_reference = reference
+            self.release_validation = ''
+            self.logger.info(f"You have specified a dedicated release as reference {reference}.")
         else:
             self.release_reference = get_release_setup(self.logger, self.disable_release_setup)
             self.release_validation = self.release_reference
@@ -63,6 +67,7 @@ class WorkflowType(Enum):
     MCPileUpReco = "MCPileUpReco"
     DataReco = "DataReco"
     PileUpPresampling = "PileUpPresampling"
+    Derivation = "Derivation"
 
     def __str__(self):
         return self.name
@@ -130,7 +135,7 @@ class WorkflowTest:
         self.validation_path.mkdir(parents=True, exist_ok=True)
 
         cmd = f"cd {self.setup.pwd};"
-        if self.setup.disable_release_setup:
+        if self.setup.disable_release_setup or not self.setup.release_validation:
             pass
         elif "WorkDir_DIR" in environ:
             cmake_build_dir = environ["WorkDir_DIR"]

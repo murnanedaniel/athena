@@ -5,7 +5,7 @@ from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
 from AthenaConfiguration.Enums import BeamType, LHCPeriod
 from CaloG4Sim.CaloG4SimConfigNew import CalibrationDefaultProcessingToolCfg
-from G4AtlasApps.SimEnums import CalibrationRun, CavernBackground, SimulationFlavour
+from SimulationConfig.SimEnums import CalibrationRun, CavernBackground, SimulationFlavour
 from G4CosmicFilter.G4CosmicFilterConfigNew import CosmicFilterToolCfg
 from G4UserActions.G4UserActionsConfigNew import (
     AthenaStackingActionToolCfg, AthenaTrackingActionToolCfg,
@@ -56,7 +56,7 @@ def FullG4TrackProcessorUserActionToolCfg(flags, name="FullG4TrackProcessorUserA
     kwargs.setdefault("GeoIDSvc", result.getPrimaryAndMerge(GeoIDSvcCfg(flags)).name)
     if flags.Detector.GeometryCavern:
         kwargs.setdefault("TruthVolumeLevel", 2)
-    kwargs.setdefault("IsITkGeometry", flags.GeoModel.Run not in [LHCPeriod.Run1, LHCPeriod.Run2, LHCPeriod.Run3])
+    kwargs.setdefault("IsITkGeometry", flags.GeoModel.Run >= LHCPeriod.Run4)
     result.setPrivateTools(CompFactory.G4UA.iGeant4.TrackProcessorUserActionFullG4Tool(name, **kwargs))
     return result
 

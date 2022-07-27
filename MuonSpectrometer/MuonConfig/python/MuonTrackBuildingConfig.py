@@ -2,178 +2,140 @@
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
-from MuonConfig.MuonRecToolsConfig import MCTBFitterCfg, MuonTrackCleanerCfg, MuonSegmentMomentumFromFieldCfg, MuonSeededSegmentFinderCfg, MuonEDMPrinterToolCfg
+from TrkConfig.TrkGlobalChi2FitterConfig import MCTBFitterCfg, MCTBSLFitterCfg
+from MuonConfig.MuonRecToolsConfig import MuonTrackCleanerCfg, MuonSegmentMomentumFromFieldCfg, MuonSeededSegmentFinderCfg, MuonEDMPrinterToolCfg
 from AthenaConfiguration.Enums import BeamType
-from TrkConfig.AtlasExtrapolatorToolsConfig import MuonSTEP_PropagatorCfg
 from MuonConfig.MuonSegmentFindingConfig import MuonSegmentFittingToolCfg 
 
-def MooTrackFitterCfg(flags, name = 'MooTrackFitter', **kwargs):
+def MooTrackFitterCfg(flags, name = 'MooTrackFitter', prefix='', **kwargs):
     # Based on https://gitlab.cern.ch/atlas/athena/blob/release/22.0.3/MuonSpectrometer/MuonReconstruction/MuonRecExample/python/MooreTools.py#L179
     # (Tons of explicit configuration missing from there though)
     Muon__MooTrackFitter=CompFactory.Muon.MooTrackFitter
     MuonSegmentMomentum=CompFactory.MuonSegmentMomentum
-    from MuonConfig.MuonRecToolsConfig import MuonPhiHitSelector, MuonTrackToSegmentToolCfg, MuonTrackSummaryHelperToolCfg, MuPatHitToolCfg
-    from MuonConfig.MuonRIO_OnTrackCreatorConfig import MdtDriftCircleOnTrackCreatorCfg
+    from MuonConfig.MuonRecToolsConfig import MuonPhiHitSelectorCfg, MuonTrackToSegmentToolCfg, MuonTrackSummaryHelperToolCfg, MuPatHitToolCfg
+    from MuonConfig.MuonRIO_OnTrackCreatorToolConfig import MdtDriftCircleOnTrackCreatorCfg
     
-    result = MCTBFitterCfg(flags)
-    mctb_fitter = result.getPrimary()
-    result.addPublicTool(mctb_fitter)
-    kwargs.setdefault("Fitter",          mctb_fitter)
+    result = ComponentAccumulator()
+    mctb_fitter = result.getPrimaryAndMerge(MCTBFitterCfg(flags, name = prefix+'MCTBFitter'))
+    kwargs.setdefault("Fitter", mctb_fitter)
         
-    acc = MuPatHitToolCfg(flags)
-    mu_pat_hit_tool = acc.getPrimary()
+    mu_pat_hit_tool = result.popToolsAndMerge(MuPatHitToolCfg(flags))
     result.addPublicTool(mu_pat_hit_tool)
-    result.merge(acc)
-    kwargs.setdefault("HitTool",          mu_pat_hit_tool)
+    kwargs.setdefault("HitTool", mu_pat_hit_tool)
     
-    acc = MuonSTEP_PropagatorCfg(flags)
-    muon_prop = acc.getPrimary()
-    result.addPublicTool(muon_prop)
-    result.merge(acc)
+    from TrkConfig.TrkExSTEP_PropagatorConfig import AtlasSTEP_PropagatorCfg
+    muon_prop =  result.popToolsAndMerge(AtlasSTEP_PropagatorCfg(flags, name='MuonPropagator'))
     
     kwargs.setdefault("Propagator",      muon_prop)
-    # kwargs.setdefault("SLFit" ,          ) # Was "not jobproperties.BField.allToroidOn()" but do not have access to Field here.
+    kwargs.setdefault("SLFit" ,   not (flags.BField.barrelToroidOn and flags.BField.endcapToroidOn) )
     if flags.Muon.MuonTrigger:
         kwargs.setdefault("SLFit", False)
     kwargs.setdefault("ReducedChi2Cut",  flags.Muon.Chi2NDofCut)
     
     momentum_estimator=""
     if flags.Beam.Type is BeamType.Cosmics:
-        momentum_estimator = MuonSegmentMomentum(DoCosmics = True)
+        momentum_estimator = result.popToolsAndMerge(MuonSegmentMomentum(DoCosmics = True))
     else:
-        acc = MuonSegmentMomentumFromFieldCfg(flags)
-        momentum_estimator=acc.getPrimary()
-        result.merge(acc)
+        momentum_estimator=result.popToolsAndMerge(MuonSegmentMomentumFromFieldCfg(flags))
         
     result.addPublicTool(momentum_estimator)
     kwargs.setdefault("SegmentMomentum", momentum_estimator )
     
-    kwargs.setdefault("MuonPrinterTool", result.getPrimaryAndMerge(MuonEDMPrinterToolCfg(flags) ))
+    kwargs.setdefault("MuonPrinterTool", result.popToolsAndMerge(MuonEDMPrinterToolCfg(flags) ))
 
-    acc = MuonTrackToSegmentToolCfg(flags)
-    track_to_segment_tool =  acc.getPrimary()
+    track_to_segment_tool =  result.popToolsAndMerge(MuonTrackToSegmentToolCfg(flags))
     kwargs.setdefault("TrackToSegmentTool", track_to_segment_tool)    
-    result.merge(acc)
     
-    acc = MdtDriftCircleOnTrackCreatorCfg(flags)
-    mdt_dcot_creator = acc.getPrimary()
+    mdt_dcot_creator = result.popToolsAndMerge(MdtDriftCircleOnTrackCreatorCfg(flags))
     kwargs.setdefault("MdtRotCreator", mdt_dcot_creator)
-    result.merge(acc)
     
-    kwargs.setdefault("PhiHitSelector",  MuonPhiHitSelector(flags))
-    
-    
-    acc = MuonTrackCleanerCfg(flags)
-    track_cleaner = acc.getPrimary()
-    result.merge(acc)
-    result.addPublicTool(track_cleaner)
-    kwargs.setdefault("TrackCleaner",  track_cleaner)
+    kwargs.setdefault("PhiHitSelector",  result.popToolsAndMerge(MuonPhiHitSelectorCfg(flags)))
+    kwargs.setdefault("TrackCleaner",  result.popToolsAndMerge(MuonTrackCleanerCfg(flags)))
+    kwargs.setdefault("SegmentInOverlapTool",  result.popToolsAndMerge(MuonSegmentInOverlapResolvingToolCfg(flags)))
+
     # Leaving "SegmentInOverlapTool" as default, which is what happens in the current configuration.
     
-    acc = MuonTrackSummaryHelperToolCfg(flags)
-    track_summary_helper = acc.getPrimary()
-    result.merge(acc)
+    track_summary_helper = result.popToolsAndMerge(MuonTrackSummaryHelperToolCfg(flags)) 
     kwargs.setdefault("TrackSummaryTool",  track_summary_helper)
-    
     
     kwargs.setdefault("CleanPhiHits",              True)
     kwargs.setdefault("UsePreciseHits",            True)
     kwargs.setdefault("UsePrefit",                 False)
     kwargs.setdefault("SeedAtStartOfTrack",        False)
     
-    fitter = Muon__MooTrackFitter(name, **kwargs)
+    fitter = Muon__MooTrackFitter(prefix + name, **kwargs)
     result.setPrivateTools(fitter)
     return result
 
-def MooTrackBuilderCfg(flags, name="MooTrackBuilderTemplate", **kwargs):
+def MooTrackBuilderCfg(flags, name="MooTrackBuilderTemplate", prefix="", **kwargs):
     Muon__MooTrackBuilder=CompFactory.Muon.MooTrackBuilder
-    Trk__STEP_Propagator=CompFactory.Trk.STEP_Propagator
-    from MuonConfig.MuonRIO_OnTrackCreatorConfig import MdtDriftCircleOnTrackCreatorCfg, TriggerChamberClusterOnTrackCreatorCfg
+    from MuonConfig.MuonRIO_OnTrackCreatorToolConfig import MdtDriftCircleOnTrackCreatorCfg, TriggerChamberClusterOnTrackCreatorCfg
     from MuonConfig.MuonRecToolsConfig import MuonTrackToSegmentToolCfg, MuonTrackExtrapolationToolCfg
     from MagFieldServices.MagFieldServicesConfig import MagneticFieldSvcCfg
     
     # Based on this: https://gitlab.cern.ch/atlas/athena/blob/release/22.0.3/MuonSpectrometer/MuonReconstruction/MuonRecExample/python/MooreTools.py#L221
     # ignoring all the name_prefix stuff for the moment, since I'm not sure it's necessary any more.
-    result=MooTrackFitterCfg(flags)
-    moo_track_fitter = result.getPrimary()
+    result = ComponentAccumulator() 
+    moo_track_fitter = result.popToolsAndMerge(MooTrackFitterCfg(flags, name='MooTrackFitter', prefix=prefix))
     kwargs.setdefault("Fitter", moo_track_fitter)
     
     # Now setup SL fitter (MooSLTrackFitter as defined here:
     # https://gitlab.cern.ch/atlas/athena/blob/release/22.0.3/MuonSpectrometer/MuonReconstruction/MuonRecExample/python/MuonRecExampleConfigDb.py#L203)
-    acc = MCTBFitterCfg(flags, name='MCTBSLFitter', StraightLine=True)
-    mctbslfitter = acc.getPrimary()
-    result.merge(acc)
+    mctbslfitter = result.popToolsAndMerge(MCTBSLFitterCfg(flags, name=prefix+'MCTBSLFitter'))
     
     # Just take the default configuration, as per https://gitlab.cern.ch/atlas/athena/blob/release/22.0.3/MuonSpectrometer/MuonReconstruction/MuonRecExample/python/MuonRecExampleConfigDb.py#L56
-    # FIXME - this should be updated once there is a proper CA implementation for the STEP_Propagator
-    prop = Trk__STEP_Propagator(name = 'MuonStraightLinePropagator')
-    result.addPublicTool(prop)
+    from TrkConfig.TrkExSTEP_PropagatorConfig import AtlasSTEP_PropagatorCfg
+    prop = result.popToolsAndMerge(AtlasSTEP_PropagatorCfg(flags))
     
-    acc = MooTrackFitterCfg( flags, name="MooSLTrackFitter", Fitter = mctbslfitter, Propagator=prop, ReducedChi2Cut=10.0,  SLFit=True)
-    moo_sl_track_fitter = acc.getPrimary()
-    result.merge(acc)
+    moo_sl_track_fitter = result.popToolsAndMerge(MooTrackFitterCfg( flags, name="MooSLTrackFitter", prefix=prefix, Fitter = mctbslfitter, Propagator=prop, ReducedChi2Cut=10.0,  SLFit=True))
     
     kwargs.setdefault("SLFitter", moo_sl_track_fitter)
     kwargs.setdefault("RecalibrateMDTHitsOnTrack", ( (not flags.Muon.doSegmentT0Fit) and flags.Beam.Type is BeamType.Collisions) )
     
-    acc = MuonSeededSegmentFinderCfg(flags)
-    muon_seeded_segment_finder = acc.getPrimary()
-    result.merge(acc)
+    muon_seeded_segment_finder = result.popToolsAndMerge(MuonSeededSegmentFinderCfg(flags))
     kwargs.setdefault("SeededSegmentFinder", muon_seeded_segment_finder)
 
-    acc = MdtDriftCircleOnTrackCreatorCfg(flags)
-    mdt_dcot_creator = acc.getPrimary()
+    mdt_dcot_creator = result.popToolsAndMerge(MdtDriftCircleOnTrackCreatorCfg(flags))
     kwargs.setdefault("MdtRotCreator", mdt_dcot_creator)
-    result.merge(acc)
     
-    acc = TriggerChamberClusterOnTrackCreatorCfg(flags)
-    muon_comp_cluster_creator =  acc.getPrimary()
+    muon_comp_cluster_creator =  result.popToolsAndMerge(TriggerChamberClusterOnTrackCreatorCfg(flags))
     kwargs.setdefault("CompetingClustersCreator", muon_comp_cluster_creator)    
-    result.merge(acc)
     
-    acc = MuonSTEP_PropagatorCfg(flags)
-    muon_prop = acc.getPrimary()
-    kwargs.setdefault("Propagator", muon_prop)    
-    result.merge(acc)
-    
-    acc = MuonChamberHoleRecoveryToolCfg(flags)
-    hole_recovery_tool =  acc.getPrimary()
-    result.merge(acc)
-    kwargs.setdefault("ChamberHoleRecoveryTool", hole_recovery_tool) 
+    from TrkConfig.TrkExSTEP_PropagatorConfig import AtlasSTEP_PropagatorCfg
+    muon_prop = result.popToolsAndMerge(AtlasSTEP_PropagatorCfg(flags, name = 'MuonStraightLinePropagator'))
+    kwargs.setdefault("Propagator", muon_prop) 
+    kwargs.setdefault("ChamberHoleRecoveryTool",  
+                     result.popToolsAndMerge(MuonChamberHoleRecoveryToolCfg(flags))) 
 
-    acc  = MagneticFieldSvcCfg(flags) 
-    result.merge(acc)
+    result.merge(MagneticFieldSvcCfg(flags) )
     
-    acc = MuonTrackToSegmentToolCfg(flags)
-    track_to_segment_tool =  acc.getPrimary()
-    kwargs.setdefault("TrackToSegmentTool", track_to_segment_tool)    
-    result.merge(acc)
-    
-    kwargs.setdefault("Printer", result.getPrimaryAndMerge(MuonEDMPrinterToolCfg(flags)))
-
+    kwargs.setdefault("TrackToSegmentTool",  result.popToolsAndMerge(MuonTrackToSegmentToolCfg(flags)))        
+    kwargs.setdefault("Printer", result.popToolsAndMerge(MuonEDMPrinterToolCfg(flags)))
     kwargs.setdefault('Extrapolator', result.popToolsAndMerge( MuonTrackExtrapolationToolCfg(flags) ) )
 
     # FIXME - remove ErrorOptimisationTool from cxx?
     # declareProperty("ErrorOptimisationTool","" );Extrapolator
+    kwargs.setdefault("CandidateTool",       result.popToolsAndMerge(MuPatCandidateToolCfg(flags)))
 
-    acc=MuPatCandidateToolCfg(flags)
-    cand_tool = acc.getPrimary()
-    result.merge(acc)
-    kwargs.setdefault("CandidateTool",       cand_tool)
+    kwargs.setdefault("CandidateMatchingTool", 
+                      result.popToolsAndMerge(MooCandidateMatchingToolCfg(flags, name = 'MooCandidateMatchingTool', prefix=prefix)))
 
-    acc = MooCandidateMatchingToolCfg(flags)
-    track_segment_matching_tool=acc.getPrimary()
-    result.merge(acc)
-    kwargs.setdefault("CandidateMatchingTool", track_segment_matching_tool)
-
-    from MuonConfig.MuonRecToolsConfig import MuonTrackSummaryToolCfg
-    acc = MuonTrackSummaryToolCfg(flags)
-    track_summary = acc.getPrimary()
-    result.merge(acc)
-    kwargs.setdefault("TrackSummaryTool",  track_summary)
+    from TrkConfig.TrkTrackSummaryToolConfig import MuonTrackSummaryToolCfg
+    kwargs.setdefault("TrackSummaryTool", result.popToolsAndMerge(MuonTrackSummaryToolCfg(flags)))
    
-    builder = Muon__MooTrackBuilder(name, **kwargs)
-    result.setPrivateTools(builder)
+    result.setPrivateTools(Muon__MooTrackBuilder(name, **kwargs))
+    return result
+
+def MuonSegmentInOverlapResolvingToolCfg(flags, name="MuonSegmentInOverlapResolvingTool", **kwargs):
+    from MuonConfig.MuonRecToolsConfig import MuonEDMHelperSvcCfg
+    from TrkConfig.TrkExRungeKuttaPropagatorConfig import RungeKuttaPropagatorCfg
+
+    result = MuonEDMHelperSvcCfg(flags)
+    kwargs.setdefault("edmHelper", result.getPrimary() )
+    kwargs.setdefault("Printer", result.popToolsAndMerge(MuonEDMPrinterToolCfg(flags)) )
+    kwargs.setdefault("AtlasRungeKuttaPropagator", result.popToolsAndMerge(
+        RungeKuttaPropagatorCfg(flags)))
+    result.setPrivateTools(CompFactory.Muon.MuonSegmentInOverlapResolvingTool(name, **kwargs))
     return result
 
 # Taken from https://gitlab.cern.ch/atlas/athena/blob/release/22.0.3/MuonSpectrometer/MuonReconstruction/MuonRecExample/python/MooreTools.py#L268
@@ -189,31 +151,36 @@ def MuonSegmentMatchingToolCfg(flags, name="MuonSegmentMatchingTool", **kwargs):
 
     # There are two tools which this depends on which aren't properties and which weren't defined in old configuration
     # Ignore for now, but FIXME one day
-    # m_overlapResolvingTool("Muon::MuonSegmentInOverlapResolvingTool/MuonSegmentInOverlapResolvingTool"),
+
     # m_pairMatchingTool("Muon::MuonSegmentPairMatchingTool/MuonSegmentPairMatchingTool"),
     # Also, residual pull calculator not yet configured. #FIXME
     
-    result = ComponentAccumulator()
+    result = MuonEDMPrinterToolCfg(flags)
+    kwargs.setdefault("Printer", result.getPrimary() )
+    kwargs.setdefault("MuonSegmentInOverlapResolvingTool", result.popToolsAndMerge(
+        MuonSegmentInOverlapResolvingToolCfg(flags)))
+    kwargs.setdefault("MuonSegmentPairMatchingTool", CompFactory.Muon.MuonSegmentPairMatchingTool('MuonSegmentPairMatchingTool'))
+
     matching = Muon__MuonSegmentMatchingTool(name, **kwargs)
     result.setPrivateTools(matching)
     return result
     
-def MooCandidateMatchingToolCfg(flags, name="MooCandidateMatchingTool", doSegmentPhiMatching=False, **kwargs):
+def MooCandidateMatchingToolCfg(flags, name="MooCandidateMatchingTool", doSegmentPhiMatching=False, prefix="", **kwargs):
     Muon__MooCandidateMatchingTool=CompFactory.Muon.MooCandidateMatchingTool
     from TrkConfig.AtlasExtrapolatorConfig import AtlasExtrapolatorCfg
     
     result = ComponentAccumulator()
 
     # Won't explicitly configure MuonEDMHelperSvc
-    kwargs.setdefault("MuonPrinterTool", result.getPrimaryAndMerge(MuonEDMPrinterToolCfg(flags) ))
+    kwargs.setdefault("MuonPrinterTool", result.popToolsAndMerge(MuonEDMPrinterToolCfg(flags) ))
     kwargs.setdefault("Extrapolator", result.popToolsAndMerge(AtlasExtrapolatorCfg(flags)))
 
-    acc = MuonSegmentMatchingToolCfg(flags, doPhiMatching = doSegmentPhiMatching)
+    acc = MuonSegmentMatchingToolCfg(flags, name=prefix+"MuonSegmentMatchingTool", doPhiMatching = doSegmentPhiMatching)
     muon_seg_matching = acc.getPrimary()
     result.merge(acc)
     kwargs.setdefault("SegmentMatchingTool",      muon_seg_matching)
 
-    acc = MuonSegmentMatchingToolCfg(flags, name = "MuonSegmentMatchingToolTight", TightSegmentMatching=True, doPhiMatching = doSegmentPhiMatching)
+    acc = MuonSegmentMatchingToolCfg(flags, name = prefix+"MuonSegmentMatchingToolTight", TightSegmentMatching=True, doPhiMatching = doSegmentPhiMatching)
     muon_seg_matching_tight = acc.getPrimary()
     result.merge(acc)
     kwargs.setdefault("SegmentMatchingToolTight", muon_seg_matching_tight)
@@ -232,51 +199,44 @@ def MooCandidateMatchingToolCfg(flags, name="MooCandidateMatchingTool", doSegmen
         kwargs.setdefault("AlignmentErrorAngleX", 0.004)
         kwargs.setdefault("AlignmentErrorAngleY", 0.002)
 
-    acc=MuPatCandidateToolCfg(flags)
-    cand_tool = acc.getPrimary()
-    result.merge(acc)
-    kwargs.setdefault("MuPatCandidateTool",       cand_tool) 
+    kwargs.setdefault("MuPatCandidateTool",  result.popToolsAndMerge(MuPatCandidateToolCfg(flags))) 
     
-    moo_cand_matching_tool = Muon__MooCandidateMatchingTool(name,**kwargs)
+    moo_cand_matching_tool = Muon__MooCandidateMatchingTool(prefix+name,**kwargs)
     result.setPrivateTools(moo_cand_matching_tool)
     return result
 
 def MuonSegmentRegionRecoveryToolCfg(flags, name="MuonSegmentRegionRecoveryTool", **kwargs):
     Muon__MuonSegmentRegionRecoveryTool=CompFactory.Muon.MuonSegmentRegionRecoveryTool
     from TrkConfig.AtlasExtrapolatorConfig import MuonExtrapolatorCfg
-    from MuonConfig.MuonRecToolsConfig import MuonStationIntersectSvcCfg, MuonTrackSummaryToolCfg
+    from TrkConfig.TrkTrackSummaryToolConfig import MuonTrackSummaryToolCfg
+    from MuonConfig.MuonCondAlgConfig import MuonStationIntersectCondAlgCfg
+    from MuonCombinedConfig.MuonCombinedRecToolsConfig import CombinedMuonTrackBuilderFitCfg
+    from MuonConfig.MuonRecToolsConfig import MuonHitSummaryToolCfg
+
     # Based on https://gitlab.cern.ch/atlas/athena/blob/release/22.0.3/MuonSpectrometer/MuonReconstruction/MuonRecExample/python/MooreTools.py#L426
     
-    result = MuonSeededSegmentFinderCfg(flags)
-    muon_seeded_segment_finder = result.getPrimary()
-    kwargs.setdefault("SeededSegmentFinder", muon_seeded_segment_finder)
+    result = ComponentAccumulator()
+    kwargs.setdefault("SeededSegmentFinder", 
+                       result.popToolsAndMerge(MuonSeededSegmentFinderCfg(flags)))
     
-    acc = MooCandidateMatchingToolCfg(flags)
-    track_segment_matching_tool=acc.getPrimary()
-    result.merge(acc)
-    kwargs.setdefault("TrackSegmentMatchingTool", track_segment_matching_tool)
+    kwargs.setdefault("TrackSegmentMatchingTool", 
+                      result.popToolsAndMerge(MooCandidateMatchingToolCfg(flags)))
     
-    acc = MuonChamberHoleRecoveryToolCfg(flags)
-    hole_recovery_tool =  acc.getPrimary()
-    result.merge(acc)
-    kwargs.setdefault("ChamberHoleRecoveryTool", hole_recovery_tool)
+    kwargs.setdefault("ChamberHoleRecoveryTool", 
+                      result.popToolsAndMerge(MuonChamberHoleRecoveryToolCfg(flags)))
     
-    acc = MuonExtrapolatorCfg(flags)
-    extrap = acc.getPrimary()
-    result.merge(acc)
-    kwargs.setdefault("Extrapolator", extrap)
+    kwargs.setdefault("Extrapolator", 
+                      result.popToolsAndMerge(MuonExtrapolatorCfg(flags)))
+    kwargs.setdefault("Builder",  result.popToolsAndMerge(
+        CombinedMuonTrackBuilderFitCfg(flags, MuonHoleRecovery="")))
+    kwargs.setdefault("Fitter", 
+                      result.popToolsAndMerge(MCTBSLFitterCfg(flags, name='MCTBSLFitter')))
+    kwargs.setdefault("HitSummaryTool",  result.popToolsAndMerge( MuonHitSummaryToolCfg(flags)))
+    kwargs.setdefault("EDMPrinter", result.getPrimaryAndMerge(
+        MuonEDMPrinterToolCfg(flags)))
+    result.merge( MuonStationIntersectCondAlgCfg(flags))
     
-    acc = MCTBFitterCfg(flags, name='MCTBSLFitter', StraightLine=True)
-    mctbslfitter = acc.getPrimary()
-    result.merge(acc)
-    kwargs.setdefault("Fitter", mctbslfitter)
-    
-    acc = MuonStationIntersectSvcCfg(flags)
-    msis = acc.getPrimary()
-    result.merge(acc)
-    kwargs.setdefault("MuonStationIntersectSvc",msis)
-
-    # Not bothering to handle IDHelper or EDMHelper or HitSummaryTool. Default is okay.
+    # Not bothering to handle IDHelper or EDMHelper. Default is okay.
     
     from RegionSelector.RegSelToolConfig import regSelTool_MDT_Cfg, regSelTool_RPC_Cfg, regSelTool_TGC_Cfg
     acc = regSelTool_MDT_Cfg(flags)
@@ -315,13 +275,9 @@ def MuonSegmentRegionRecoveryToolCfg(flags, name="MuonSegmentRegionRecoveryTool"
     else:
         kwargs.setdefault("MMRegionSelector", "")
 
+    if "TrackSummaryTool" not in kwargs:
+        kwargs.setdefault("TrackSummaryTool", result.popToolsAndMerge(MuonTrackSummaryToolCfg(flags)))
 
-    acc = MuonTrackSummaryToolCfg(flags)
-    kwargs.setdefault("TrackSummaryTool", acc.getPrimary())
-    result.merge(acc)
-    if flags.Common.isOnline:
-        kwargs.setdefault("MdtCondKey", "")
-        
     segment_region_recovery_tool = Muon__MuonSegmentRegionRecoveryTool(name, **kwargs)
     result.setPrivateTools(segment_region_recovery_tool)
     return result
@@ -329,21 +285,24 @@ def MuonSegmentRegionRecoveryToolCfg(flags, name="MuonSegmentRegionRecoveryTool"
 def MuPatCandidateToolCfg(flags, name="MuPatCandidateTool", **kwargs):
     # https://gitlab.cern.ch/atlas/athena/blob/release/22.0.3/MuonSpectrometer/MuonReconstruction/MuonRecExample/python/MuPatTools.py#L32
     
-    from MuonConfig.MuonRIO_OnTrackCreatorConfig import MdtDriftCircleOnTrackCreatorCfg
+    from MuonConfig.MuonRIO_OnTrackCreatorToolConfig import MdtDriftCircleOnTrackCreatorCfg, TriggerChamberClusterOnTrackCreatorCfg
+    from MuonCombinedConfig.MuonCombinedRecToolsConfig import MuonSegmentSelectionToolCfg
     result = MdtDriftCircleOnTrackCreatorCfg(flags)
-    mdt_dcot_creator = result.getPrimary()
-    kwargs.setdefault("MdtRotCreator", mdt_dcot_creator)
+    kwargs.setdefault("MdtRotCreator", result.getPrimary())
 
     if flags.Detector.GeometryCSC:
-        from MuonConfig.MuonRIO_OnTrackCreatorConfig import CscClusterOnTrackCreatorCfg
+        from MuonConfig.MuonRIO_OnTrackCreatorToolConfig import CscClusterOnTrackCreatorCfg
         kwargs.setdefault("CscRotCreator", result.popToolsAndMerge(CscClusterOnTrackCreatorCfg(flags)))
     else:
         kwargs.setdefault("CscRotCreator", "")
 
-    kwargs.setdefault("MuonPrinterTool", result.getPrimaryAndMerge(MuonEDMPrinterToolCfg(flags) ))
+    kwargs.setdefault("CompetingClustersCreator", result.popToolsAndMerge(TriggerChamberClusterOnTrackCreatorCfg(flags)))
+
+    kwargs.setdefault("MuonPrinterTool", result.popToolsAndMerge(MuonEDMPrinterToolCfg(flags) ))
 
     from MuonConfig.MuonRecToolsConfig import MuPatHitToolCfg
     kwargs.setdefault("HitTool", result.getPrimaryAndMerge(MuPatHitToolCfg(flags)))
+    kwargs.setdefault("SegmentSelector", result.popToolsAndMerge(MuonSegmentSelectionToolCfg(flags)))
 
     result.setPrivateTools(CompFactory.Muon.MuPatCandidateTool(name, **kwargs))
     return result
@@ -356,7 +315,7 @@ def MuonChamberHoleRecoveryToolCfg(flags, name="MuonChamberHoleRecoveryTool", **
     acc = MuonExtrapolatorCfg(flags)
     kwargs.setdefault("Extrapolator", result.popToolsAndMerge(acc))
 
-    from MuonConfig.MuonRIO_OnTrackCreatorConfig import MdtDriftCircleOnTrackCreatorCfg
+    from MuonConfig.MuonRIO_OnTrackCreatorToolConfig import MdtDriftCircleOnTrackCreatorCfg, MuonClusterOnTrackCreatorCfg
     acc = MdtDriftCircleOnTrackCreatorCfg(flags)
     mdt_dcot_creator = acc.getPrimary()
     kwargs.setdefault("MdtRotCreator", mdt_dcot_creator)
@@ -367,11 +326,16 @@ def MuonChamberHoleRecoveryToolCfg(flags, name="MuonChamberHoleRecoveryTool", **
         extrakwargs={}
         if flags.Muon.enableErrorTuning or not flags.Input.isMC:
             extrakwargs["ErrorScalerBeta"] = 0.200
-        from MuonConfig.MuonRIO_OnTrackCreatorConfig import CscClusterOnTrackCreatorCfg
+        from MuonConfig.MuonRIO_OnTrackCreatorToolConfig import CscClusterOnTrackCreatorCfg
         kwargs.setdefault("CscRotCreator", result.popToolsAndMerge(CscClusterOnTrackCreatorCfg(flags, **extrakwargs)))
     else:
         kwargs["CscRotCreator"] = None
         kwargs.setdefault("CscPrepDataContainer","")
+    
+    kwargs.setdefault("ClusterRotCreator", result.popToolsAndMerge(MuonClusterOnTrackCreatorCfg(flags)))
+    if flags.Detector.GeometryMM:
+        from MuonConfig.MuonRIO_OnTrackCreatorToolConfig import MMClusterOnTrackCreatorCfg
+        kwargs.setdefault("MmClusterRotCreator", result.popToolsAndMerge(MMClusterOnTrackCreatorCfg(flags)))
     
     if not flags.Detector.GeometrysTGC:
         kwargs.setdefault("sTgcPrepDataContainer","")
@@ -379,14 +343,17 @@ def MuonChamberHoleRecoveryToolCfg(flags, name="MuonChamberHoleRecoveryTool", **
     if not flags.Detector.GeometryMM:
         kwargs.setdefault("MMPrepDataContainer","")
     
+    if flags.Detector.GeometrysTGC or flags.Detector.GeometryMM:
+        from MuonConfig.MuonRIO_OnTrackCreatorToolConfig import MMClusterOnTrackCreatorCfg
+        kwargs.setdefault("MmClusterRotCreator", result.popToolsAndMerge(MMClusterOnTrackCreatorCfg(flags)))
+
     kwargs.setdefault('TgcPrepDataContainer', 'TGC_MeasurementsAllBCs' if not flags.Muon.useTGCPriorNextBC else 'TGC_Measurements')    
-    if flags.Common.isOnline:
-        kwargs.setdefault("MdtCondKey","")
+    kwargs.setdefault("EDMPrinter", result.popToolsAndMerge(MuonEDMPrinterToolCfg(flags) ))
 
     result.setPrivateTools(CompFactory.Muon.MuonChamberHoleRecoveryTool(name, **kwargs))
     return result
 
-def MuonChamberHoleRecoveryTool_EMEO_Cfg(flags, name = "MuonChamberRecovery_EMEO"):   
+def EMEO_MuonChamberHoleRecoveryToolCfg(flags, name = "MuonChamberRecovery_EMEO"):   
     return MuonChamberHoleRecoveryToolCfg(flags,
                                          name=name,
                                          sTgcPrepDataContainer="",
@@ -408,7 +375,7 @@ def MuonTrackSteeringCfg(flags, name="MuonTrackSteering", **kwargs):
     # Set properties which were set in MuonStandalone.py, and which aren't default (fix this later, because we don't want to break existing configuration)
     # extraFlags are ignored (don't believe they're necessary)
     
-    result = MCTBFitterCfg(flags, name='MCTBSLFitter', StraightLine=True)
+    result = MCTBSLFitterCfg(flags)
     mctbslfitter = result.getPrimary()
     
     acc = MuonSegmentRegionRecoveryToolCfg(flags, name='MuonEORecoveryTool', OnlyEO = True, Fitter=mctbslfitter, UseFitterOutlierLogic=False)
@@ -418,28 +385,20 @@ def MuonTrackSteeringCfg(flags, name="MuonTrackSteering", **kwargs):
     kwargs.setdefault("HoleRecoveryTool",       muon_eo_recovery_tool)
     kwargs.setdefault("SegSeedQCut", 2)
     kwargs.setdefault("Seg2ndQCut", 1)
-    
-    kwargs.setdefault("OutputSingleStationTracks", True) # default is False
-
+   
     if "TrackBuilderTool" not in kwargs:
-        #Old config had: kwargs["TrackBuilderTool"] = getPublicToolClone("MooMuonTrackBuilder", "MooTrackBuilderTemplate",
+        # Old config had: kwargs["TrackBuilderTool"] = getPublicToolClone("MooMuonTrackBuilder", "MooTrackBuilderTemplate",
         #                                                extraFlags=extraFlags)
         # For some strange reason, MooTrackBuilderTemplate was just a MooTrackBuilder i.e. they had:
-        # addTool( "MuonRecExample.MooreTools.MooTrackBuilder", "MooTrackBuilderTemplate")
+        # addTool( "MuonRecExample.MooreTools.MooTrackBuilder", "MooTrackBuilderTemplate") but passing in extraFlags
         # I have simplified this. Also, in the old configuration there was the possiblity to set optimiseMomentumResolutionUsingChi2 to true in extraflags (which were passed to TrackBuilderTool but not TrackRefinementTool) - however I don't think this was used, and have removed it.
         # However some other things were set in extraFlags here: https://gitlab.cern.ch/atlas/athena/blob/release/22.0.3/MuonSpectrometer/MuonReconstruction/MuonRecExample/python/MuonStandalone.py#L39
         # So I might well have made a mistake. TODO check
-        acc = MooTrackBuilderCfg(flags, name='TrackBuilderTemplate')
-        builder = acc.getPrimary()
-        kwargs["TrackBuilderTool"] = builder
-        result.merge(acc)
+        kwargs["TrackBuilderTool"] = result.popToolsAndMerge( MooTrackBuilderCfg(flags, name='MooMuonTrackBuilder', prefix="MuSt_"))
         
-        if "TrackRefinementTool" not in kwargs:
-            kwargs["TrackRefinementTool"] = builder
-            # FIXME. Need to see if TrackRefinementTool is actually used & possibly remove.
-    else: builder = kwargs["TrackBuilderTool"]
-    # --- Now let's setup tools which were ignored in the old configuration. Just want to get this working for the moment. Will clean it up later.
-
+    if "TrackRefinementTool" not in kwargs:
+        kwargs["TrackRefinementTool"] = result.popToolsAndMerge( MooTrackBuilderCfg(flags, name='MooTrackBuilderTemplate'))
+    
     acc=MuPatCandidateToolCfg(flags)
     cand_tool = acc.getPrimary()
     result.merge(acc)
@@ -451,37 +410,30 @@ def MuonTrackSteeringCfg(flags, name="MuonTrackSteering", **kwargs):
     result.merge(acc)
     kwargs.setdefault("AmbiguityTool",       ambi) 
     
-    kwargs.setdefault("MooBuilderTool",       builder) 
-    kwargs.setdefault("TrackRefinementTool",       builder) 
+    kwargs.setdefault("MooBuilderTool",       result.popToolsAndMerge( MooTrackBuilderCfg(flags, name='MooMuonTrackBuilder', prefix="MuSt_"))) 
     
-    acc = MooCandidateMatchingToolCfg(flags, doSegmentPhiMatching=True)
-    cand_matching_tool = acc.getPrimary()
-    kwargs["CandidateMatchingTool"] = cand_matching_tool
-    result.merge(acc)
+    kwargs.setdefault("CandidateMatchingTool", 
+        result.popToolsAndMerge(MooCandidateMatchingToolCfg(flags, doSegmentPhiMatching=True)))
     
-    acc = MuonSegmentFittingToolCfg(flags)
-    seg_fitting_tool =  acc.getPrimary()
-    result.merge(acc)
+    kwargs.setdefault("MuonSegmentFittingTool",       
+                       result.popToolsAndMerge(MuonSegmentFittingToolCfg(flags))) 
+    kwargs.setdefault("MuonTrackSelector", 
+                       result.popToolsAndMerge(MuonTrackSelectorCfg(flags)))
+   
+    kwargs.setdefault("HoleRecoveryTool",       
+                      result.popToolsAndMerge(MuonChamberHoleRecoveryToolCfg(flags))) 
     
-    kwargs.setdefault("MuonSegmentFittingTool",       seg_fitting_tool) 
-    kwargs.setdefault("MuonTrackSelector",       MuonTrackSelector(flags)) 
-
-    acc = MuonChamberHoleRecoveryToolCfg(flags)
-    hole_recovery_tool =  acc.getPrimary()
-    result.merge(acc)
-    
-    kwargs.setdefault("HoleRecoveryTool",       hole_recovery_tool) 
-    
-    from MuonConfig.MuonRecToolsConfig import MuonTrackSummaryToolCfg
-    acc = MuonTrackSummaryToolCfg(flags)
-    kwargs.setdefault("TrackSummaryTool",  acc.getPrimary())
-    result.merge(acc)
+    from TrkConfig.TrkTrackSummaryToolConfig import MuonTrackSummaryToolCfg
+    kwargs.setdefault("TrackSummaryTool",  result.popToolsAndMerge(MuonTrackSummaryToolCfg(flags)))
 
     track_maker_steering = Muon__MuonTrackSteering(name,**kwargs)
     result.setPrivateTools(track_maker_steering)
     return result
 
-def MuonTrackSelector(flags, name = "MuonTrackSelectorTool", **kwargs):
+def MuonTrackSelectorCfg(flags, name = "MuonTrackSelectorTool", **kwargs):
+    from MuonConfig.MuonRecToolsConfig import MuonTrackSummaryHelperToolCfg
+
+    result = ComponentAccumulator()
     if flags.Beam.Type in [BeamType.Cosmics, BeamType.SingleBeam] or not flags.Input.isMC:
         kwargs.setdefault("UseRPCHoles", False) 
         kwargs.setdefault("UseTGCHoles", False) 
@@ -493,21 +445,26 @@ def MuonTrackSelector(flags, name = "MuonTrackSelectorTool", **kwargs):
         kwargs.setdefault("MaxMdtHolesOnTwoStationTrack", 4) 
         kwargs.setdefault("MaxMdtHolesOnTrack", 5) 
         kwargs.setdefault("CountMDTOutlierAsHoles", True)
-    
-    return CompFactory.Muon.MuonTrackSelectorTool(name, **kwargs)
+        
+    kwargs.setdefault("TrackSummaryHelperTool",  result.popToolsAndMerge(MuonTrackSummaryHelperToolCfg(flags)))
+
+    theTool = CompFactory.Muon.MuonTrackSelectorTool(name, **kwargs)
+    result.setPrivateTools(theTool)
+    return result
 
 def MuonStandaloneTrackParticleCnvAlgCfg(flags, name = "MuonStandaloneTrackParticleCnvAlg", **kwargs):
-    from InDetConfig.TrackRecoConfig import TrackCollectionCnvToolCfg, TrackParticleCnvAlgCfg, TrackParticleCreatorToolCfg
-    from MuonConfig.MuonRecToolsConfig import MuonTrackSummaryToolCfg
+    from InDetConfig.TrackRecoConfig import TrackCollectionCnvToolCfg, TrackParticleCnvAlgCfg, RecTrackParticleContainerCnvToolCfg
+    from TrkConfig.TrkParticleCreatorConfig import MuonParticleCreatorToolCfg
 
-    result = MuonTrackSummaryToolCfg(flags)
-    muon_particle_creator_tool = result.getPrimaryAndMerge( TrackParticleCreatorToolCfg(flags, name="MuonParticleCreatorTool", 
-                                                                    TrackSummaryTool=result.getPrimary(), KeepAllPerigee=True,
-                                                                    MuonSummaryTool= CompFactory.Muon.MuonHitSummaryTool("MuonHitSummaryTool"),
-                                                                    PerigeeExpression="Origin"  ) )
-    track_collection_cnv_tool = result.popToolsAndMerge(TrackCollectionCnvToolCfg(flags, name = "MuonTrackCollectionCnvTool", TrackParticleCreator = muon_particle_creator_tool))
+    result = ComponentAccumulator()
+
+    muon_particle_creator_tool = result.popToolsAndMerge(MuonParticleCreatorToolCfg(flags))
+    result.addPublicTool(muon_particle_creator_tool)
+    track_collection_cnv_tool = result.getPrimaryAndMerge(TrackCollectionCnvToolCfg(flags, name = "MuonTrackCollectionCnvTool", TrackParticleCreator = muon_particle_creator_tool))
     kwargs.setdefault("TrackParticleCreator",  muon_particle_creator_tool)
-    kwargs.setdefault("RecTrackParticleContainerCnvTool", CompFactory.xAODMaker.RecTrackParticleContainerCnvTool(name = "MuonRecTrackParticleContainerCnvTool", TrackParticleCreator = muon_particle_creator_tool))
+    kwargs.setdefault("RecTrackParticleContainerCnvTool", result.getPrimaryAndMerge(RecTrackParticleContainerCnvToolCfg(flags,
+                                                                                                                        name = "MuonRecTrackParticleContainerCnvTool", 
+                                                                                                                        TrackParticleCreator = muon_particle_creator_tool)))
     kwargs.setdefault("TrackCollectionCnvTool", track_collection_cnv_tool)
     kwargs.setdefault("TrackContainerName", "MuonSpectrometerTracks")
     kwargs.setdefault("xAODTrackParticlesFromTracksContainerName", "MuonSpectrometerTrackParticles")
@@ -524,16 +481,12 @@ def MuonStandaloneTrackParticleCnvAlgCfg(flags, name = "MuonStandaloneTrackParti
 def EMEO_MuPatTrackBuilderCfg(flags):
     result = ComponentAccumulator()
 
-    acc = MuonChamberHoleRecoveryTool_EMEO_Cfg(flags)
-    recovery_tool = acc.getPrimary()
-    result.merge(acc)
-
+    recovery_tool = result.getPrimaryAndMerge(EMEO_MuonChamberHoleRecoveryToolCfg(flags))
     acc = MooTrackBuilderCfg(flags, 
                              name = "MooMuonTrackBuilder_EMEO",
                              ChamberHoleRecoveryTool = recovery_tool)
     
-    track_builder= acc.getPrimary()
-    result.merge(acc)
+    track_builder= result.getPrimaryAndMerge(acc)
 
     acc = MuonTrackSteeringCfg(flags,
                                name = "MuonTrackSteering_EMEO",
@@ -567,20 +520,16 @@ def MuonTrackBuildingCfg(flags, name = "MuPatTrackBuilder", **kwargs):
     #Arguably this should be somewhere deeper - not quite sure where yet though. FIXME
     from MuonConfig.MuonGeometryConfig import MuonGeoModelCfg 
     result.merge( MuonGeoModelCfg(flags) )
+    from MuonConfig.MuonRecToolsConfig import MuonEDMHelperSvcCfg
+    result.merge(MuonEDMHelperSvcCfg(flags))
     
-    Muon__MuonEDMHelperSvc=CompFactory.Muon.MuonEDMHelperSvc
-    muon_edm_helper_svc = Muon__MuonEDMHelperSvc("MuonEDMHelperSvc")
-    result.addService( muon_edm_helper_svc )
-    
-    
-
     # release 21 ESDs contain a Trk::SegmentCollection named 'MuonSegments' instead of 'TrackMuonSegments', the following 2 lines account for that
     from MuonConfig.MuonSegmentNameFixConfig import MuonSegmentNameFixCfg
     result.merge(MuonSegmentNameFixCfg(flags))    
     result.merge(MuPatTrackBuilderCfg(flags))
     
     if flags.Muon.runCommissioningChain:
-        result.merge(EMEO_MuPatTrackBuilderCfg(flags))
+        result.merge(EMEO_MuPatTrackBuilderCfg(flags))      
     return result
     
 

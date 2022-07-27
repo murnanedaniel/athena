@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // LArDetectorConstructionH62003
@@ -103,7 +103,7 @@ GeoVPhysVol* LArGeo::LArDetectorConstructionH62003::GetEnvelope()
   if (svcLocator->service("DetectorStore", detStore, false )==StatusCode::FAILURE) {
     throw std::runtime_error("Error in LArDetectorConstructionH62003, cannot access DetectorStore");
   }
-  const StoredMaterialManager* materialManager = nullptr;
+  StoredMaterialManager* materialManager = nullptr;
   if (StatusCode::SUCCESS != detStore->retrieve(materialManager, std::string("MATERIALS"))) return 0;
 
   StatusCode sc;
@@ -379,7 +379,7 @@ GeoVPhysVol* LArGeo::LArDetectorConstructionH62003::GetEnvelope()
 
       // FCAL:
       // See notes in LArGeoFcal
-      static FCALConstruction fcalConstruction;
+      FCALConstruction fcalConstruction;
       fcalConstruction.setFCALVisLimit(m_fcalVisLimit);
       // Only need one FCal    
       bool isPositive(false); // C side for TB 2003; C side is negative

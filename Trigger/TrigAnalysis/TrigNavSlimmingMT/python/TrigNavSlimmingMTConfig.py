@@ -5,13 +5,20 @@
 from AthenaConfiguration.ComponentFactory import CompFactory
 from AthenaCommon.Logging import logging
 
+
+#
+# Search ConfigFlags.Input.Collections, allow sub-string matches (e.g. handle extra classname mangling in ESD files) 
+#
+def isCollectionInInputPOOLFile(ConfigFlags, checkString):
+  return any(checkString in entry for entry in ConfigFlags.Input.Collections)
+
 #
 # Return an instance of the TrigNavSlimmingMTAlg to be used in an online environment, either at P1,
 # during standalone execution of the trigger on data, or during the RDOtoRDOTrigger step for MC.
 #
 # Returns a single alg with no dependencies, no need to make this function return a ComponentAccumulator.
 #
-def getTrigNavSlimmingMTOnlineConfig():
+def getTrigNavSlimmingMTOnlineConfig(ConfigFlags):
   onlineSlim = CompFactory.TrigNavSlimmingMTAlg('TrigNavSlimmingMTAlg_Online')
   onlineSlim.TrigDecisionTool = "" # We do NOT filter on chains online, no additional tools/services required.
   onlineSlim.OutputCollection = "HLTNav_Summary_OnlineSlimmed"
@@ -21,10 +28,13 @@ def getTrigNavSlimmingMTOnlineConfig():
   onlineSlim.EdgesToDrop = []
   onlineSlim.NodesToDrop = []
   onlineSlim.ChainsFilter = []
+  onlineSlim.RuntimeValidation = ConfigFlags.Trigger.doRuntimeNaviVal
   return onlineSlim
 
 #
 # Return an instance of the TrigNavSlimmingMTAlg to be used during AOD->DAOD
+#
+# Any additional DAOD->DAOD will not change the slimmed navigation collection.
 #
 # The navigation graph is reduced to only refer to the final-feature and initial-ROI,
 # all nodes from intermediate steps between these two are dropped.
@@ -43,6 +53,11 @@ def getTrigNavSlimmingMTOnlineConfig():
 def TrigNavSlimmingMTDerivationCfg(ConfigFlags, chainsFilter = []):
 
   log = logging.getLogger("TrigNavSlimmingMTDerivationCfg.py")
+
+  if isCollectionInInputPOOLFile(ConfigFlags, "HLTNav_Summary_DAODSlimmed"):
+    log.info("Will not create a new DAOD Slimmed Trigger Navigation Collection in this job (already present in input file)")
+    from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
+    return ComponentAccumulator()
 
   from TrigDecisionTool.TrigDecisionToolConfig import TrigDecisionToolCfg, getRun3NavigationContainerFromInput, possible_keys
   ca = TrigDecisionToolCfg(ConfigFlags)
@@ -66,6 +81,8 @@ def TrigNavSlimmingMTDerivationCfg(ConfigFlags, chainsFilter = []):
   daodSlim.NodesToDrop = ["F"]
   daodSlim.ChainsFilter = chainsFilter
   ca.addEventAlgo(daodSlim)
+
+  log.info("Producing DAOD Slimmed Trigger Navigation Collection. Reading {} and writing {}".format(daodSlim.PrimaryInputCollection, daodSlim.OutputCollection))
 
   if daodSlim.OutputCollection not in possible_keys:
     log.error("Producing a collection {} which is not listed in 'possible_keys'! Add this here too.".format(daodSlim.OutputCollection))
@@ -92,9 +109,24 @@ def AddRun3TrigNavSlimmingCollectionsToEDM(stream):
   #
   stream.AddItem("TrigRoiDescriptorCollection#HLTNav_RepackedROIs")
 
+# Same as the above but adds the branches to the slimming helper. 
+# This is the component accumulator version
+def AddRun3TrigNavSlimmingCollectionsToSlimmingHelper(slimmingHelper):
+  slimmingHelper.AppendToDictionary = {'HLTNav_Summary_DAODSlimmed':'xAOD::TrigCompositeContainer','HLTNav_Summary_DAODSlimmedAux':'xAOD::TrigCompositeAuxContainer',
+                                       'HLTNav_RepackedFeatures_Particle':'xAOD::ParticleContainer','HLTNav_RepackedFeatures_ParticleAux':'xAOD::ParticleAuxContainer',
+                                       'HLTNav_RepackedFeatures_MET':'xAOD::TrigMissingETContainer','HLTNav_RepackedFeatures_METAux':'xAOD::TrigMissingETAuxContainer',
+                                       'HLTNav_RepackedROIs':'TrigRoiDescriptorCollection'}
+
+  slimmingHelper.AllVariables += ['HLTNav_Summary_DAODSlimmed',
+                                  'HLTNav_RepackedFeatures_Particle',
+                                  'HLTNav_RepackedFeatures_MET',
+                                  'HLTNav_RepackedROIs']
+
 #
 # Return an ComponentAccumulator which configures trigger navigation slimming during 
 # RAW->ALL, RAW->ESD or ESD->AOD (and MC equivalents)
+#
+# The collections should only be created once, if already present in an input POOL file then we do not re-create.
 #
 # The ESD level data contains a minimal slimming on top of the Online slimming. 
 # Some graph nodes and edges which were only of use online are removed.
@@ -115,20 +147,23 @@ def AddRun3TrigNavSlimmingCollectionsToEDM(stream):
 def TrigNavSlimmingMTCfg(ConfigFlags):
 
   log = logging.getLogger("TrigNavSlimmingMTCfg.py")
-
+  
   from TrigDecisionTool.TrigDecisionToolConfig import TrigDecisionToolCfg, getRun3NavigationContainerFromInput, possible_keys
-  ca = TrigDecisionToolCfg(ConfigFlags)
-  tdt = ca.getPrimary()
+  from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
+  
+  ca = ComponentAccumulator()
 
   # TODO remove when deprecated
   from RecExConfig.RecFlags  import rec
 
-  # NOTE: This setup does not yet support derivations
+  # NOTE: Derivations currently have a different configuration hook, see TrigNavSlimmingMTDerivationCfg above.
 
   inputCollection = getRun3NavigationContainerFromInput(ConfigFlags)
+  doESDSlim = not isCollectionInInputPOOLFile(ConfigFlags, "HLTNav_Summary_ESDSlimmed")
+  doAODSlim = not isCollectionInInputPOOLFile(ConfigFlags, "HLTNav_Summary_AODSlimmed")
 
-
-  if ConfigFlags.Output.doWriteESD or rec.doWriteESD() or rec.doESD():
+  if (ConfigFlags.Output.doWriteESD or rec.doWriteESD() or rec.doESD()) and doESDSlim:
+    tdt = ca.getPrimaryAndMerge(TrigDecisionToolCfg(ConfigFlags))
     esdSlim = CompFactory.TrigNavSlimmingMTAlg('TrigNavSlimmingMTAlg_ESD')
     esdSlim.TrigDecisionTool = tdt
     esdSlim.OutputCollection = "HLTNav_Summary_ESDSlimmed"
@@ -148,7 +183,8 @@ def TrigNavSlimmingMTCfg(ConfigFlags):
   else:
     log.info("Will not create ESD Slimmed Trigger Navigation Collection in this job")
 
-  if ConfigFlags.Output.doWriteAOD or rec.doWriteAOD() or rec.doAOD():
+  if (ConfigFlags.Output.doWriteAOD or rec.doWriteAOD() or rec.doAOD()) and doAODSlim:
+    tdt = ca.getPrimaryAndMerge(TrigDecisionToolCfg(ConfigFlags))
     aodSlim = CompFactory.TrigNavSlimmingMTAlg('TrigNavSlimmingMTAlg_AOD')
     aodSlim.TrigDecisionTool = tdt
     aodSlim.OutputCollection = "HLTNav_Summary_AODSlimmed"

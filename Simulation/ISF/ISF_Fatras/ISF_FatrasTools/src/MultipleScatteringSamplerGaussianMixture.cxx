@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////////////////////////////////////////////////////////////
@@ -12,9 +12,9 @@
 #include "MultipleScatteringSamplerGaussianMixture.h"
 
 #include "CLHEP/Random/RandGaussZiggurat.h"
+#include "TrkEventPrimitives/ParticleHypothesis.h"
 
-// static particle masses
-Trk::ParticleMasses iFatras::MultipleScatteringSamplerGaussianMixture::s_particleMasses;
+
 // static doubles
 double iFatras::MultipleScatteringSamplerGaussianMixture::s_main_RutherfordScott = 13.6*Gaudi::Units::MeV;
 double iFatras::MultipleScatteringSamplerGaussianMixture::s_log_RutherfordScott  =  0.038;
@@ -56,7 +56,7 @@ iFatras::MultipleScatteringSamplerGaussianMixture::MultipleScatteringSamplerGaus
 
 // destructor
 iFatras::MultipleScatteringSamplerGaussianMixture::~MultipleScatteringSamplerGaussianMixture()
-{}
+= default;
 
 // Athena standard methods
 // initialize
@@ -106,7 +106,7 @@ double iFatras::MultipleScatteringSamplerGaussianMixture::simTheta(const Trk::Ma
   double t = pathcorrection * mat.thicknessInX0();
 
   // kinematics (relativistic)
-  double m    = s_particleMasses.mass[particle];
+  double m    = Trk::ParticleMasses::mass[particle];
   double E    = sqrt(p*p + m*m);
   double beta = p/E;
   

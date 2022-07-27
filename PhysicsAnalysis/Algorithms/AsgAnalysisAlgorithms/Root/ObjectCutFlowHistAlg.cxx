@@ -37,8 +37,8 @@ namespace CP
   initialize ()
   {
     ANA_CHECK (m_inputHandle.initialize (m_systematicsList));
+    ANA_CHECK (m_preselection.initialize (m_systematicsList, m_inputHandle, SG::AllowEmpty));
     ANA_CHECK (m_systematicsList.initialize());
-    ANA_CHECK (m_preselection.initialize());
 
     if (m_selectionNCuts.size() != m_selection.size())
     {
@@ -62,8 +62,8 @@ namespace CP
         ANA_MSG_ERROR ("entries in selectionNCuts need to be less or equal to " << (8 * sizeof (SelectionType)));
         return StatusCode::FAILURE;
       }
-      std::unique_ptr<ISelectionAccessor> accessor;
-      ANA_CHECK (makeSelectionAccessor (m_selection[iter], accessor));
+      std::unique_ptr<ISelectionReadAccessor> accessor;
+      ANA_CHECK (makeSelectionReadAccessor (m_selection[iter], accessor));
       m_accessors.push_back (std::make_pair (std::move (accessor), ncuts));
       for (unsigned i = 1; i <= ncuts; i++)
       {
@@ -105,7 +105,7 @@ namespace CP
 
       for (const xAOD::IParticle *particle : *input)
       {
-        if (m_preselection.getBool (*particle))
+        if (m_preselection.getBool (*particle, sys))
         {
           bool keep = true;
           unsigned cutIndex = 1;

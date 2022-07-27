@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #
 # @author Nils Krumnack
 
@@ -11,7 +11,7 @@ atlas_add_library( EgammaAnalysisAlgorithmsLib
    PUBLIC_HEADERS EgammaAnalysisAlgorithms
    LINK_LIBRARIES xAODEgamma SelectionHelpersLib SystematicsHandlesLib
    IsolationSelectionLib AnaAlgorithmLib IsolationCorrectionsLib
-   EgammaAnalysisInterfacesLib )
+   EgammaAnalysisInterfacesLib CxxUtils )
 
 atlas_add_dictionary( EgammaAnalysisAlgorithmsDict
    EgammaAnalysisAlgorithms/EgammaAnalysisAlgorithmsDict.h
@@ -41,18 +41,19 @@ if( XAOD_STANDALONE )
       SCRIPT EgammaAnalysisAlgorithmsTest_eljob.py --data-type afii --unit-test
       POST_EXEC_SCRIPT nopost.sh
       PROPERTIES TIMEOUT 600 )
-    atlas_add_test( testJobDataDNN
-       SCRIPT EgammaAnalysisAlgorithmsTest_eljob.py --data-type data --dnn --unit-test
-       POST_EXEC_SCRIPT nopost.sh
-       PROPERTIES TIMEOUT 600 )
-    atlas_add_test( testJobFullSimDNN
-       SCRIPT EgammaAnalysisAlgorithmsTest_eljob.py --data-type mc --dnn --unit-test
-       POST_EXEC_SCRIPT nopost.sh
-       PROPERTIES TIMEOUT 600 )
-    atlas_add_test( testJobFastSimDNN
-       SCRIPT EgammaAnalysisAlgorithmsTest_eljob.py --data-type afii --dnn --unit-test
-       POST_EXEC_SCRIPT nopost.sh
-       PROPERTIES TIMEOUT 600 )
+    # DNN not currently supported on DAOD_PHYS
+    # atlas_add_test( testJobDataDNN
+    #    SCRIPT EgammaAnalysisAlgorithmsTest_eljob.py --data-type data --dnn --unit-test
+    #    POST_EXEC_SCRIPT nopost.sh
+    #    PROPERTIES TIMEOUT 600 )
+    # atlas_add_test( testJobFullSimDNN
+    #    SCRIPT EgammaAnalysisAlgorithmsTest_eljob.py --data-type mc --dnn --unit-test
+    #    POST_EXEC_SCRIPT nopost.sh
+    #    PROPERTIES TIMEOUT 600 )
+    # atlas_add_test( testJobFastSimDNN
+    #    SCRIPT EgammaAnalysisAlgorithmsTest_eljob.py --data-type afii --dnn --unit-test
+    #    POST_EXEC_SCRIPT nopost.sh
+    #    PROPERTIES TIMEOUT 600 )
 else()
    atlas_add_test( testJobData
       SCRIPT athena.py
@@ -69,19 +70,19 @@ else()
       EgammaAnalysisAlgorithms/EgammaAnalysisAlgorithmsTest_jobOptions.py - --data-type afii
       POST_EXEC_SCRIPT nopost.sh
       PROPERTIES TIMEOUT 600 )
-    atlas_add_test( testJobDataDNN
-       SCRIPT athena.py
-       EgammaAnalysisAlgorithms/EgammaAnalysisAlgorithmsTest_jobOptions.py - --data-type data --dnn
-       POST_EXEC_SCRIPT nopost.sh
-       PROPERTIES TIMEOUT 600 )
-    atlas_add_test( testJobFullSimDNN
-       SCRIPT athena.py
-       EgammaAnalysisAlgorithms/EgammaAnalysisAlgorithmsTest_jobOptions.py - --data-type mc --dnn
-       POST_EXEC_SCRIPT nopost.sh
-       PROPERTIES TIMEOUT 600 )
-    atlas_add_test( testJobFastSimDNN
-       SCRIPT athena.py
-       EgammaAnalysisAlgorithms/EgammaAnalysisAlgorithmsTest_jobOptions.py - --data-type afii --dnn
-       POST_EXEC_SCRIPT nopost.sh
-       PROPERTIES TIMEOUT 600 )
+    # atlas_add_test( testJobDataDNN
+    #    SCRIPT athena.py
+    #    EgammaAnalysisAlgorithms/EgammaAnalysisAlgorithmsTest_jobOptions.py - --data-type data --dnn
+    #    POST_EXEC_SCRIPT nopost.sh
+    #    PROPERTIES TIMEOUT 600 )
+    # atlas_add_test( testJobFullSimDNN
+    #    SCRIPT athena.py
+    #    EgammaAnalysisAlgorithms/EgammaAnalysisAlgorithmsTest_jobOptions.py - --data-type mc --dnn
+    #    POST_EXEC_SCRIPT nopost.sh
+    #    PROPERTIES TIMEOUT 600 )
+    # atlas_add_test( testJobFastSimDNN
+    #    SCRIPT athena.py
+    #    EgammaAnalysisAlgorithms/EgammaAnalysisAlgorithmsTest_jobOptions.py - --data-type afii --dnn
+    #    POST_EXEC_SCRIPT nopost.sh
+    #    PROPERTIES TIMEOUT 600 )
 endif()

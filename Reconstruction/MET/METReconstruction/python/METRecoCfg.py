@@ -1,6 +1,9 @@
-# Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 from AthenaConfiguration.ComponentFactory import CompFactory
+
+from AthenaCommon import Logging
+metlog = Logging.logging.getLogger('METConfig')
 
 #################################################################################
 # Define some default values
@@ -52,9 +55,13 @@ def getBuilder(config,suffix,doTracks,doCells,doTriggerMET,doOriginCorrClus):
     if config.objType == 'SoftTrk':
         tool = CompFactory.getComp("met::METSoftTermsTool")('MET_SoftTrkTool_'+suffix)
         tool.InputComposition = 'Tracks'
+        tool.TrackKey = defaultInputKey[config.objType]
+        config.inputKey = defaultInputKey[config.objType]
     if config.objType.endswith('SoftClus'):
         tool = CompFactory.getComp("met::METSoftTermsTool")('MET_SoftClusTool_'+suffix)
         tool.InputComposition = 'Clusters'
+        tool.CaloClusterKey = defaultInputKey[config.objType]
+        config.inputKey = defaultInputKey[config.objType]
     if config.objType == 'SoftPFlow':
         tool = CompFactory.getComp("met::METSoftTermsTool")('MET_SoftPFlowTool_'+suffix)
         tool.InputComposition = 'PFlow'
@@ -63,19 +70,20 @@ def getBuilder(config,suffix,doTracks,doCells,doTriggerMET,doOriginCorrClus):
     if suffix == 'Truth':
         tool = CompFactory.getComp("met::METTruthTool")('MET_TruthTool_'+config.objType)
         tool.InputComposition = config.objType
+        tool.InputCollection = defaultInputKey['Truth']
         config.inputKey = defaultInputKey['Truth']
         config.outputKey = config.objType
     if suffix == 'Calo':
-        from CaloTools.CaloNoiseCondAlg import CaloNoiseCondAlg
-        CaloNoiseCondAlg ('totalNoise')
         tool = CompFactory.getComp("met::METCaloRegionsTool")('MET_CaloRegionsTool')
         if doCells:
             tool.UseCells     = True
             tool.DoTriggerMET = doTriggerMET
-            config.inputKey   = defaultInputKey['Calo'] 
+            tool.CaloCellKey  = defaultInputKey['Calo']
+            config.inputKey   = defaultInputKey['Calo']
         else:
             tool.UseCells     = False                   
             tool.DoTriggerMET = False
+            tool.CaloClusterKey = defaultInputKey['SoftClus']
             config.inputKey   = defaultInputKey['SoftClus']
         config.outputKey = config.objType
 
@@ -83,7 +91,7 @@ def getBuilder(config,suffix,doTracks,doCells,doTriggerMET,doOriginCorrClus):
     if config.inputKey == '':
         tool.InputCollection = defaultInputKey[config.objType]
         config.inputKey = tool.InputCollection
-    else:
+    elif hasattr(tool, 'InputCollection'):
         tool.InputCollection = config.inputKey
     if not suffix=='Calo':
         if config.outputKey == '':
@@ -101,7 +109,7 @@ class RefConfig:
         self.type = myType
         self.outputKey = outputKey
 
-def getRefiner(config,suffix,trkseltool=None,trkvxtool=None,trkisotool=None,caloisotool=None):
+def getRefiner(flags,config,suffix,trkseltool=None,trkvxtool=None,trkisotool=None,caloisotool=None):
     tool = None
 
     if config.type == 'TrackFilter':
@@ -113,9 +121,9 @@ def getRefiner(config,suffix,trkseltool=None,trkvxtool=None,trkisotool=None,calo
         tool.UseIsolationTools = False #True
         tool.TrackIsolationTool = trkisotool
         tool.CaloIsolationTool = caloisotool
-        from METReconstruction.METRecoFlags import metFlags
-        tool.DoPVSel = metFlags.UseTracks()
-        tool.DoVxSep = metFlags.UseTracks()
+        #
+        tool.DoPVSel = flags.MET.UseTracks
+        tool.DoVxSep = flags.MET.UseTracks
     tool.MissingETKey = config.outputKey
     return tool
 
@@ -143,50 +151,50 @@ class METConfig:
         return 'METMap_'+self.suffix
     #
     def setupBuilders(self,buildconfigs):
-        print("{} Setting up builders for MET config {}".format(prefix,self.suffix))
+        metlog.info("{} Setting up builders for MET config {}".format(prefix,self.suffix))
         for config in buildconfigs:
             if config.objType in self.builders:
-                print("{} Config {} already contains a builder of type {}".format(prefix,self.suffix,config.objType))
+                metlog.error("{} Config {} already contains a builder of type {}".format(prefix,self.suffix,config.objType))
                 raise LookupError
             else:
                 builder = getBuilder(config,self.suffix,self.doTracks,self.doCells,
                                      self.doTriggerMET,self.doOriginCorrClus)
                 self.builders[config.objType] = builder
                 self.buildlist.append(builder)
-                print("{} Added {} tool named {}".format(prefix,config.objType,builder.name))
+                metlog.info("{} Added {} tool named {}".format(prefix,config.objType,builder.name))
     #
-    def setupRefiners(self,refconfigs):
-        print("{} Setting up refiners for MET config {}".format(prefix,self.suffix))
+    def setupRefiners(self,flags,refconfigs):
+        metlog.info("{} Setting up refiners for MET config {}".format(prefix,self.suffix))
         for config in refconfigs:
             # need to enforce this?
             if config.type in self.refiners:
-                print("Config {} already contains a refiner of type {}".format(self.suffix,config.type))
+                metlog.error("Config {} already contains a refiner of type {}".format(self.suffix,config.type))
                 raise LookupError
             else:
-                refiner = getRefiner(config=config,suffix=self.suffix,
+                refiner = getRefiner(flags, config=config,suffix=self.suffix,
                                      trkseltool=self.trkseltool,trkvxtool=self.trkvxtool,
                                      trkisotool=self.trkisotool,caloisotool=self.caloisotool)
                 self.refiners[config.type] = refiner
                 self.reflist.append(refiner)
-                print("{} Added {} tool named {}".format(prefix,config.type,refiner.name))
+                metlog.info("{} Added {} tool named {}".format(prefix,config.type,refiner.name))
     #
     def setupRegions(self,buildconfigs):
-        print("{} Setting up regions for MET config {}".format(prefix,self.suffix))
+        metlog.info("{} Setting up regions for MET config {}".format(prefix,self.suffix))
         for config in buildconfigs:
             if config.objType in self.regions:
-                print("{} Config {} already contains a region tool of type {}".format(prefix,self.suffix,config.objType))
+                metlog.error("{} Config {} already contains a region tool of type {}".format(prefix,self.suffix,config.objType))
                 raise LookupError
             else:
                 regions = getRegions(config,self.suffix)
                 self.regions[config.objType] = regions
                 self.reglist.append(regions)
-                print("{} Added {} region tool named {}".format(prefix,config.objType,regions.name))
+                metlog.info("{} Added {} region tool named {}".format(prefix,config.objType,regions.name))
     #
     def __init__(self,suffix,inputFlags,buildconfigs=[],refconfigs=[],
                  doTracks=False,doSum=False,doRegions=False,
                  doCells=False,doTriggerMET=True,duplicateWarning=True,
                  doOriginCorrClus=False):
-        print("{} Creating MET config {}".format(prefix,suffix))
+        metlog.info("{} Creating MET config {}".format(prefix,suffix))
         self.suffix = suffix
         self.doSum = doSum
         self.doTracks = doTracks
@@ -207,29 +215,34 @@ class METConfig:
         if doRegions:
             self.setupRegions(buildconfigs)
         #
-        from AthenaConfiguration.ComponentFactory import CompFactory
-        self.trkseltool=CompFactory.getComp("InDet::InDetTrackSelectionTool")("IDTrkSel_MET",
-                                                              CutLevel="TightPrimary",
-                                                              maxZ0SinTheta=3,
-                                                              maxD0=2,
-                                                              minPt=500)
-        #
-        self.trkvxtool=CompFactory.getComp("CP::TrackVertexAssociationTool")("TrackVertexAssociationTool_MET", WorkingPoint="Nominal")
-        #
-        self.trkisotool = CompFactory.getComp("xAOD::TrackIsolationTool")("TrackIsolationTool_MET")
-        self.trkisotool.TrackSelectionTool = self.trkseltool # As configured above
-        ###
-        from TrkConfig.AtlasExtrapolatorConfig import AtlasExtrapolatorCfg
-        extrapCfg = AtlasExtrapolatorCfg(inputFlags)
-        CaloExtensionTool= CompFactory.getComp("Trk::ParticleCaloExtensionTool")(Extrapolator = extrapCfg.popPrivateTools())
-        CaloCellAssocTool = CompFactory.getComp("Rec::ParticleCaloCellAssociationTool")(ParticleCaloExtensionTool = CaloExtensionTool)
-        self.caloisotool = CompFactory.getComp("xAOD::CaloIsolationTool")("CaloIsolationTool_MET",
-                                                          saveOnlyRequestedCorrections=True,
-                                                          ParticleCaloExtensionTool = CaloExtensionTool,
-                                                          ParticleCaloCellAssociationTool = CaloCellAssocTool)
+        if self.suffix != 'Truth':
+            # TODO: These Z0 and D0 cuts are left over from R21. The track vertex association can now use looser ones.
+            #       To be investigated and possibly updated by the MET group.
+            self.trkseltool=CompFactory.getComp("InDet::InDetTrackSelectionTool")("IDTrkSel_MET",
+                                                                  CutLevel="TightPrimary",
+                                                                  maxZ0SinTheta=3,
+                                                                  maxD0=2,
+                                                                  minPt=500)
+            #
+            from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
+            components = ComponentAccumulator()
+            from TrackVertexAssociationTool.TTVAToolConfig import TTVAToolCfg
+            self.trkvxtool=components.popToolsAndMerge(TTVAToolCfg(inputFlags, "TrackVertexAssociationTool_MET",addDecoAlg=True, WorkingPoint="Nonprompt_All_MaxWeight"))
+            #
+            self.trkisotool = CompFactory.getComp("xAOD::TrackIsolationTool")("TrackIsolationTool_MET")
+            self.trkisotool.TrackSelectionTool = self.trkseltool # As configured above
+            ###
+            from TrkConfig.AtlasExtrapolatorConfig import AtlasExtrapolatorCfg
+            extrapCfg = AtlasExtrapolatorCfg(inputFlags)
+            CaloExtensionTool= CompFactory.getComp("Trk::ParticleCaloExtensionTool")(Extrapolator = extrapCfg.popPrivateTools())
+            CaloCellAssocTool = CompFactory.getComp("Rec::ParticleCaloCellAssociationTool")(ParticleCaloExtensionTool = CaloExtensionTool)
+            self.caloisotool = CompFactory.getComp("xAOD::CaloIsolationTool")("CaloIsolationTool_MET",
+                                                              saveOnlyRequestedCorrections=True,
+                                                              ParticleCaloExtensionTool = CaloExtensionTool,
+                                                              ParticleCaloCellAssociationTool = CaloCellAssocTool)
 
         self.setupBuilders(buildconfigs)
-        self.setupRefiners(refconfigs)
+        self.setupRefiners(inputFlags,refconfigs)
 
 # Set up a top-level tool with mostly defaults
 def getMETRecoTool(topconfig):
@@ -259,13 +272,13 @@ def getRegionRecoTool(topconfig):
 def getMETRecoAlg(algName='METReconstruction',configs={}):
     recoTools = []
     for key,conf in configs.items():
-        print("{} Generate METRecoTool for MET_{}".format(prefix,key))
+        metlog.info("{} Generate METRecoTool for MET_{}".format(prefix,key))
         recotool = getMETRecoTool(conf)
         recoTools.append(recotool)
         if conf.doRegions:
             regiontool = getRegionRecoTool(conf)
             recoTools.append(regiontool)
     for tool in recoTools:
-        print("{} Added METRecoTool {} to alg {}".format(prefix,tool.name,algName))
+        metlog.info("{} Added METRecoTool {} to alg {}".format(prefix,tool.name,algName))
     recoAlg = CompFactory.getComp("met::METRecoAlg")(name=algName,RecoTools=recoTools)
     return recoAlg

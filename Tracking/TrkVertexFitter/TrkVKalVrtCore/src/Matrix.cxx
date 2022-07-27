@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "TrkVKalVrtCore/TrkVKalUtils.h"
@@ -11,11 +11,11 @@
 
 namespace Trk {
 
-void vkGetEigVal(double ci[], double d[], int n);
+void vkGetEigVal(const double ci[], double d[], int n);
 void dsinv(long int , double *, long int, long int *) noexcept;
-int vkcholInv(double ci[], double co[], long int DIM);
-int vkSInvSVD(double *ci,long int DIM, double *co, double Chk);
-double checkMatrixInversion(double mtx[], double invmtx[], int DIM);
+int vkcholInv(const double ci[], double co[], long int DIM);
+int vkSInvSVD(const double *ci,long int DIM, double *co, double Chk);
+double checkMatrixInversion(const double mtx[], const double invmtx[], int DIM);
 
 double cfSmallEigenvalue(double *cov,long int n )
 {
@@ -189,11 +189,11 @@ L399:
 /*-----------------------------------------------------*/
 void scaleg(double g[], double scale[], long int N, long int mfirst) noexcept
 {
+   if (N == 1) scale[0]=1.;
    if (N <= 1) return;
-   int g_dim1=mfirst;
-#define g_ref(a_1,a_2) g[(a_2)*(g_dim1) + (a_1)]
+#define g_ref(a_1,a_2) g[(a_2)*(mfirst) + (a_1)]
    for(int i=0; i<N; i++){
-     if( g_ref(i,i)==0. )continue;
+     if( g_ref(i,i)==0. ){scale[i]=1.; continue;}
      scale[i] = 1./std::sqrt(std::abs(g_ref(i,i)));
      g_ref(i, i) = d_sign( 1., g_ref(i, i));
    }
@@ -266,7 +266,7 @@ int vkLUdcmp(double *a, long int n, int *indx)
 	return 0;
 }
 
-void vkLUbksb(double *a, long int n, int *indx, double *b)
+void vkLUbksb(const double *a, long int n, const int *indx, double *b)
 {
         int i,ii=0,ip,j;
         double sum;
@@ -514,20 +514,21 @@ void vkSVDCmp(double **a, int m, int n, double w[], double **v)
 
 //Invert square matrix using SVD + solve linear equation if needed
 //
-int vkInvSVD(double *ci,long int DIM, double *co, double Chk, double *bvect=nullptr)
+int vkInvSVD(const double *ci,long int DIM, double *co, double Chk, double *bvect=nullptr)
 {
 int i,j,k;
-double **a   = new double*[DIM+1]; std::unique_ptr<double[]> ab(new double[(DIM+1)*(DIM+1)]);
-double **v   = new double*[DIM+1]; std::unique_ptr<double[]> vb(new double[(DIM+1)*(DIM+1)]);
-std::unique_ptr<double[]> w(new double[DIM+1]);
-if( !a || !v || !ab || !vb || !w){ delete[] a; delete[] v; return -1; }
-for(i=0; i<DIM+1; i++){   a[i] = &ab[i*(DIM+1)];
-                          v[i] = &vb[i*(DIM+1)];}
+noinit_vector<double*> a (DIM+1);
+noinit_vector<double> ab ((DIM+1)*(DIM+1));
+noinit_vector<double*> v (DIM+1);
+noinit_vector<double> vb ((DIM+1)*(DIM+1));
+noinit_vector<double> w (DIM+1);
+for(i=0; i<DIM+1; i++){   a[i] = ab.data() + i*(DIM+1);
+                          v[i] = vb.data() + i*(DIM+1);}
 std::vector<std::vector<double>> res;  res.resize(DIM+1,std::vector<double>(DIM+1,0.));
 
 for( i=1; i<=DIM; i++) for( j=i; j<=DIM; j++)  a[i][j]=ci[(j-1)*DIM+i-1];
 
-  vkSVDCmp ( a, DIM, DIM, w.get(), v);
+  vkSVDCmp ( a.data(), DIM, DIM, w.data(), v.data());
 
 // Singular value limitation
 double svMax=0.; for(k=1; k<=DIM; k++) if( svMax < w[k] ) svMax=w[k];
@@ -557,24 +558,22 @@ if(bvect){
   }
 }
 
-//Cleaning
-delete[] a; delete[] v;
-
 return 0;
 }
 
 
 //Invert packed symmetric matrix using SVD
 //
-int vkSInvSVD(double *ci,long int DIM, double *co, double Chk)
+int vkSInvSVD(const double *ci,long int DIM, double *co, double Chk)
 {
 int i,j,k;
-double **a   = new double*[DIM+1];  std::unique_ptr<double[]> ab(new double[(DIM+1)*(DIM+1)]);
-double **v   = new double*[DIM+1];  std::unique_ptr<double[]> vb(new double[(DIM+1)*(DIM+1)]);
-std::unique_ptr<double[]> w(new double[DIM+1]);
-if( !a || !v || !ab || !vb || !w){ delete[] a; delete[] v; return -1; }
-for(i=0; i<DIM+1; i++){   a[i] = &ab[i*(DIM+1)];
-                          v[i] = &vb[i*(DIM+1)];}
+noinit_vector<double*> a (DIM+1);
+noinit_vector<double> ab ((DIM+1)*(DIM+1));
+noinit_vector<double*> v (DIM+1);
+noinit_vector<double> vb ((DIM+1)*(DIM+1));
+noinit_vector<double> w (DIM+1);
+for(i=0; i<DIM+1; i++){   a[i] = ab.data() + i*(DIM+1);
+                          v[i] = vb.data() + i*(DIM+1);}
 std::vector<std::vector<double>> res;  res.resize(DIM+1,std::vector<double>(DIM+1,0.));
 
 
@@ -582,7 +581,7 @@ for( i=1; i<=DIM; i++) {
    for( j=i; j<=DIM; j++) { k=(j-1)*j/2 + i; a[i][j]=a[j][i]=ci[k-1];}
 }
 
-  vkSVDCmp ( a, DIM, DIM, w.get(), v);
+  vkSVDCmp ( a.data(), DIM, DIM, w.data(), v.data());
 
 // Singular value limitation
 double svMax=0.; for(k=1; k<=DIM; k++) if( svMax < w[k] ) svMax=w[k];
@@ -600,8 +599,6 @@ for(i=1; i<=DIM; i++){
 //
 // Get output matrix in symmetric way
 k=0; for( i=1; i<=DIM; i++)  for( j=1; j<=i; j++) { co[k]= res[j][i]; k++; }
-//Cleaning
-delete[] a; delete[] v;
 
 return 0;
 }
@@ -691,41 +688,40 @@ int vkjacobi(double **a, int n, double d[], double **v)
 //-------------------------------------------
 // ci - symmetric matrix in compact form
 //-------------------------------------------
-void vkGetEigVal(double ci[], double d[], int n)
+void vkGetEigVal(const double ci[], double d[], int n)
 {
   int i,j,k; d--;
-  double **a = new double*[n+1]; std::unique_ptr<double[]> ab(new double[(n+1)*(n+1)]);
-  if( !a || !ab) { delete[] a; return;}
-  for(i=0; i<n+1; i++) a[i] =&ab[i*(n+1)];
+  noinit_vector<double*> a (n+1);
+  noinit_vector<double> ab ((n+1)*(n+1));
+  for(i=0; i<n+1; i++) a[i] = ab.data() + i*(n+1);
 
   for( i=1; i<=n; i++) {
     for( j=i; j<=n; j++) { k=(j-1)*j/2 + i; a[i][j]=a[j][i]=ci[k-1];}
   }
 
-  vkjacobi(a,n,d,nullptr);
+  vkjacobi(a.data(),n,d,nullptr);
 
   for (i=1;i<n;i++) {
      double p=d[k=i]; for (j=i+1;j<=n;j++) if (d[j] < p) p=d[k=j];
      if (k != i) { d[k]=d[i]; d[i]=p; }
   }
-
-  delete[] a;
 }
 
-void vkGetEigVect(double ci[], double d[], double vect[], int n)
+void vkGetEigVect(const double ci[], double d[], double vect[], int n)
 {
   int i,j,k; d--;
-  double **a = new double*[n+1]; std::unique_ptr<double[]> ab(new double[(n+1)*(n+1)]);
-  double **v = new double*[n+1]; std::unique_ptr<double[]> vb(new double[(n+1)*(n+1)]);
-  if( !a || !ab || !v || !vb) { delete[] a; delete[] v; return;}
-  for(i=0; i<n+1; i++) a[i] =&ab[i*(n+1)];
-  for(i=0; i<n+1; i++) v[i] =&vb[i*(n+1)];
+  noinit_vector<double*> a (n+1);
+  noinit_vector<double> ab ((n+1)*(n+1));
+  noinit_vector<double*> v (n+1);
+  noinit_vector<double> vb ((n+1)*(n+1));
+  for(i=0; i<n+1; i++) a[i] = ab.data() + i*(n+1);
+  for(i=0; i<n+1; i++) v[i] = vb.data() + i*(n+1);
 
   for( i=1; i<=n; i++) {
     for( j=i; j<=n; j++) { k=(j-1)*j/2 + i; a[i][j]=a[j][i]=ci[k-1];}
   }
 
-  vkjacobi(a,n,d,v);
+  vkjacobi(a.data(),n,d,v.data());
 
   for (i=1;i<n;i++) {
      double p=d[k=i]; for (j=i+1;j<=n;j++) if (d[j] < p) p=d[k=j];
@@ -735,11 +731,9 @@ void vkGetEigVect(double ci[], double d[], double vect[], int n)
   }
 
   k=0; for (i=1;i<=n;i++) for(j=1;j<=n;j++) vect[k++]=v[j][i];
-
-  delete[] a; delete[] v;
 }
 
-int vkcholInv(double ci[], double co[], long int DIM)
+int vkcholInv(const double ci[], double co[], long int DIM)
 {
   int i,j,k;
   std::vector<double> p(DIM,0);
@@ -781,7 +775,7 @@ int vkcholInv(double ci[], double co[], long int DIM)
   return 0;
 }
 
-double checkMatrixInversion(double mtx[], double invmtx[], int DIM)
+double checkMatrixInversion(const double mtx[], const double invmtx[], int DIM)
 {
   //std::vector<std::vector<double>> r; r.resize(DIM,std::vector<double>(DIM,0.));
 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef ITKPIXELOFFLINECALIBCONDALG
@@ -13,7 +13,6 @@
 #include "StoreGate/WriteCondHandleKey.h"
 #include "PixelConditionsData/ITkPixelOfflineCalibData.h"
 
-#include "GaudiKernel/ICondSvc.h"
 #include "Gaudi/Property.h"
 
 #include "StoreGate/StoreGateSvc.h"
@@ -28,9 +27,9 @@ class PixelOfflineCalibCondAlg : public AthReentrantAlgorithm
     PixelOfflineCalibCondAlg(const std::string& name, ISvcLocator* pSvcLocator);
     virtual ~PixelOfflineCalibCondAlg() = default;
 
-    virtual StatusCode initialize() override;
-    virtual StatusCode execute(const EventContext& ctx) const override;
-
+    virtual StatusCode initialize() override final;
+    virtual StatusCode execute(const EventContext& ctx) const override final;
+    virtual bool isReEntrant() const override final { return false; }
   private:
     Gaudi::Property<int> m_inputSource
     {this, "InputSource",2,"Source of data: 0 (none), 1 (text file), 2 (database)"};
@@ -46,8 +45,6 @@ class PixelOfflineCalibCondAlg : public AthReentrantAlgorithm
 
     SG::WriteCondHandleKey<ITk::PixelOfflineCalibData> m_writeKey
     {this, "WriteKey", "ITkPixelOfflineCalibData", "Output key of pixel module data"};
-
-    ServiceHandle<ICondSvc> m_condSvc{this, "CondSvc", "CondSvc"};
 
     StoreGateSvc* m_detStore{nullptr};
     const PixelID* m_pixelid{nullptr};

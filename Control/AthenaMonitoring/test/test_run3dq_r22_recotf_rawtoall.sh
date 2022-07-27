@@ -3,11 +3,12 @@
 # art-type: grid
 # art-memory: 6144
 # art-include: master/Athena
-# art-include: 22.0-mc20/Athena
+# art-include: 22.0/Athena
 # art-output: myHIST.root
 # art-output: log*
+# art-athena-mt: 3
 
-Reco_tf.py --athenaopts='--threads=1' --AMI=q431 --steering doRAWtoALL --imf False > log.HIST_Creation 2>&1
+Reco_tf.py --athenaopts='--threads=1' --AMI=q442 --steering doRAWtoALL --imf False > log.HIST_Creation 2>&1
 
 echo "art-result: $? HIST_Creation"
 rm -rf ref-*

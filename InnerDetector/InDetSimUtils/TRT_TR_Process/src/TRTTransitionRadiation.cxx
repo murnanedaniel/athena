@@ -13,18 +13,17 @@
 
 // Athena includes
 #include "CLHEP/Random/RandGaussZiggurat.h"
-#include "AthenaBaseComps/AthMsgStreamMacros.h"
-#include "GeoModelInterfaces/StoredMaterialManager.h"//Material Manager
+#include "GeoModelInterfaces/StoredMaterialManager.h" //Material Manager
 #include "GeoMaterial2G4/Geo2G4MaterialFactory.h" //Converting GeoMaterial -> G4Material
 #include "PathResolver/PathResolver.h"
 #include "StoreGate/DataHandle.h"
-#include "StoreGate/StoreGateSvc.h"//Detector Store
+#include "StoreGate/StoreGateSvc.h" //Detector Store
 
 // Geant4 includes
 #include "G4DynamicParticle.hh"
 #include "G4Gamma.hh"
 #include "G4Material.hh"
-#include "G4EmProcessSubType.hh"// for fTransitionRadiation
+#include "G4EmProcessSubType.hh" // for fTransitionRadiation
 #include "G4ProcessType.hh" // for fElectromagnetic
 
 #include "Randomize.hh"
@@ -41,11 +40,12 @@
 // Constructor, destructor
 
 TRTTransitionRadiation::TRTTransitionRadiation( const G4String& processName, const std::string & xmlfilename) :
-  G4VDiscreteProcess(processName,fElectromagnetic),m_XMLhandler(nullptr),m_xmlfilename(xmlfilename),
+  G4VDiscreteProcess(processName,fElectromagnetic),
+  AthMessaging("TRTTransitionRadiation"),
+  m_XMLhandler(nullptr),m_xmlfilename(xmlfilename),
   m_MinEnergyTR(0.0),m_MaxEnergyTR(0.0),m_NumBins(0),m_WplasmaGas(0.0),
   m_WplasmaFoil(0.0),m_GammaMin(0.0),m_EkinMin(0.0),m_Ey(nullptr),m_Sr(nullptr),
-  m_om(nullptr),m_Omg(nullptr),m_sigmaGas(nullptr),m_sigmaFoil(nullptr),
-  m_msg("TRTTransitionRadiation")
+  m_om(nullptr),m_Omg(nullptr),m_sigmaGas(nullptr),m_sigmaFoil(nullptr)
 {
   m_radiators.clear();
   m_XMLhandler = new TRRegionXMLHandler( this );
@@ -111,7 +111,7 @@ void TRTTransitionRadiation::Initialize() {
     ATH_MSG_FATAL ( "Can not access Detector Store " );
     return;
   };
-  const StoredMaterialManager* materialManager = nullptr;
+  StoredMaterialManager* materialManager = nullptr;
   if (StatusCode::SUCCESS != detStore->retrieve(materialManager, std::string("MATERIALS"))) {
     ATH_MSG_FATAL ( "Could not retrieve material manager from Detector Store" );
     return;

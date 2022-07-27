@@ -1,19 +1,14 @@
 #!/usr/bin/env python
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 """
-
 Run geantino processing for material step creation
-
 """
 
 from argparse import ArgumentParser
-from AthenaCommon.Configurable import Configurable
 from AthenaCommon.Logging import log
 from AthenaConfiguration.AllConfigFlags import ConfigFlags
 from AthenaConfiguration.MainServicesConfig import MainServicesCfg
 from AthenaConfiguration.ComponentFactory import CompFactory
-
-# Set up logging and new style config
-Configurable.configurableRun3Behavior = True
 
 # Argument parsing
 parser = ArgumentParser("RunGeantinoStepRecordingITk.py")
@@ -33,7 +28,7 @@ parser.add_argument("--maxEvents",default=10, type=int,
                     help="The number of events to run. 0 skips execution")
 parser.add_argument("--skipEvents",default=0, type=int,
                     help="The number of events to skip")
-parser.add_argument("--geometrytag",default="ATLAS-P2-ITK-24-00-00", type=str,
+parser.add_argument("--geometrytag",default="ATLAS-P2-RUN4-01-00-00", type=str,
                     help="The geometry tag to use")
 parser.add_argument("--inputevntfile",
                     default="/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/PhaseIIUpgrade/EVNT/mc15_14TeV.singlegeantino_E10GeV_etaFlatnp0_6.5M.evgen.EVNT.pool.root",
@@ -58,7 +53,7 @@ print()
 
 # Configure
 if args.localgeo:
-    ConfigFlags.GeoModel.useLocalGeometry = True
+    ConfigFlags.ITk.Geometry.AllLocal = True
 
 ConfigFlags.Input.Files = [args.inputevntfile]
 ConfigFlags.Output.HITSFileName = args.outputhitsfile
@@ -120,7 +115,11 @@ kwargs.update(UserActionSvc=svcName)
 if args.simulate:
   from G4AtlasAlg.G4AtlasAlgConfigNew import G4AtlasAlgCfg
   acc.merge(G4AtlasAlgCfg(ConfigFlags, "ITkG4AtlasAlg", **kwargs))
-  
+  from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+  from SimuJobTransforms.SimOutputConfig import getStreamHITS_ItemList
+  acc.merge( OutputStreamCfg(ConfigFlags,"HITS", ItemList=getStreamHITS_ItemList(ConfigFlags), disableEventTag=True, AcceptAlgs=['ITkG4AtlasAlg']) )
+
+
 AthenaOutputStream=CompFactory.AthenaOutputStream
 AthenaOutputStreamTool=CompFactory.AthenaOutputStreamTool
 writingTool = AthenaOutputStreamTool( "MaterialStepCollectionStreamTool" )

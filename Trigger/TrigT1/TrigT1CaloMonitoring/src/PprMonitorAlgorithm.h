@@ -18,9 +18,8 @@ public:PprMonitorAlgorithm( const std::string& name, ISvcLocator* pSvcLocator );
   struct MonitorTT { 
     const xAOD::TriggerTower_v2* tower;
     double phiScaled; /// phi for 2d maps with integer bins (taking into account granularity in eta)
-    double phi1d;     /// phi for 1d phi distributions (taking into account granularity in eta) 
-    int jepET;
     double maxADC;    /// max ADC timeslice
+    int jepET;
   };
 
 
@@ -46,16 +45,14 @@ private:
 
   /// Helper functions
   
- StatusCode fillPPMTowerEtaPhi( const xAOD::TriggerTower_v2* tt, 
-                               std::vector<MonitorTT> &vecMonTT_EM, 
-                               std::vector<MonitorTT> &vecMonTT_HAD,  
+ StatusCode makePPMTower( const xAOD::TriggerTower_v2* tt, 
                                std::vector<MonitorTT> &vecMonTT) const;
 
   double recTime(const std::vector<short unsigned int> &vFADC, int cut) const;
 
   std::string getPartition(int layer, double eta) const;
 
-  StatusCode fillPPMEtaVsPhi( MonitorTT &monTT, 
+  StatusCode fillPPMEtaPhi( MonitorTT &monTT, 
                               const std::string& groupName, 
                               const std::string& weightName,
                               double weight=1.) const;

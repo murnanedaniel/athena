@@ -1,11 +1,9 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "CSCHitsTestTool.h"
 
-#include "EventInfo/EventInfo.h"
-#include "EventInfo/EventID.h"
 #include "GeneratorObjects/McEventCollection.h"
 #include "CLHEP/Vector/LorentzVector.h"
 
@@ -22,7 +20,7 @@
 
 
 Identifier CSCHitsTestTool::getIdentifier(HitID cschit) {
-  CscHitIdHelper* cschelper = CscHitIdHelper::GetHelper();
+  const CscHitIdHelper* cschelper = CscHitIdHelper::GetHelper();
   
   const std::string & csc_stname = cschelper->GetStationName(cschit);
   int csc_steta  = cschelper->GetZSector(cschit);
@@ -88,25 +86,25 @@ StatusCode CSCHitsTestTool::processEvent() {
   //   Eta, Theta, Phi, z residual (...), phi residual (...) of hits in CSCs
 
   if (m_DoCSCTest) {
-
     // -- loop over CSC hit collection --
     const DataHandle<CSCSimHitCollection> p_collection;
-    CHECK(evtStore()->retrieve(p_collection,"CSC_Hits"));
-    for (CSCSimHitCollection::const_iterator i_hit = p_collection->begin(); i_hit != p_collection->end(); ++i_hit) {
+    if (evtStore()->retrieve(p_collection,"CSC_Hits") == StatusCode::SUCCESS) {
+      for (CSCSimHitCollection::const_iterator i_hit = p_collection->begin(); i_hit != p_collection->end(); ++i_hit) {
 
-      // Check the Hits identifiers, access the functions that give:
-      // Station name, station eta, station phi, chamber layer, wire layer.
-      HitID cschit= (*i_hit).CSCid();
-      Identifier offid= getIdentifier(cschit);
-      CHECK(checkIdentifier(offid));
+        // Check the Hits identifiers, access the functions that give:
+        // Station name, station eta, station phi, chamber layer, wire layer.
+        HitID cschit= (*i_hit).CSCid();
+        Identifier offid= getIdentifier(cschit);
+        CHECK(checkIdentifier(offid));
 
-      // Check Hits. For every hit within the event, get the global position
-      // Amg::Vector3D u and then retrieve all releveant info either from the
-      // Amg::Vector3D or from the MC vector (direction)
-      GeoCSCHit ghit(*i_hit);
-      if (!ghit) continue;
-      Amg::Vector3D u = ghit.getGlobalPosition();
-      CHECK(executeFillHistos(u));
+        // Check Hits. For every hit within the event, get the global position
+        // Amg::Vector3D u and then retrieve all releveant info either from the
+        // Amg::Vector3D or from the MC vector (direction)
+        GeoCSCHit ghit(*i_hit);
+        if (!ghit) continue;
+        Amg::Vector3D u = ghit.getGlobalPosition();
+        CHECK(executeFillHistos(u));
+      }
     }
   }
 

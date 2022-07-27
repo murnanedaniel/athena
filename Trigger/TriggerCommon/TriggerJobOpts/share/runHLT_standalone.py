@@ -25,6 +25,7 @@ class opt:
     setGlobalTag     = None           # force global conditions tag
     useCONDBR2       = True           # if False, use run-1 conditions DB
     condOverride     = {}             # overwrite conditions folder tags e.g. '{"Folder1":"Tag1", "Folder2":"Tag2"}'
+    autoConfigCond   = False          # auto configure conditions based on input file
     doHLT            = True           # run HLT?
     doID             = True           # ConfigFlags.Trigger.doID
     doCalo           = True           # ConfigFlags.Trigger.doCalo
@@ -39,16 +40,17 @@ class opt:
     endJobAfterGenerate = False       # Finish job after menu generation
     strictDependencies = True         # Sets SGInputLoader.FailIfNoProxy=True and AlgScheduler.DataLoaderAlg=""
     forceEnableAllChains = False      # if True, all HLT chains will run even if the L1 item is false
-    enableL1MuonPhase1   = False          # Enable Run-3 LVL1 muon simulation and/or decoding
-    enableL1CaloPhase1   = False          # Enable Run-3 LVL1 calo simulation and/or decoding
+    enableL1MuonPhase1   = None       # option to overwrite flags.Trigger.enableL1MuonPhase1
+    enableL1CaloPhase1   = False      # Enable Run-3 LVL1 calo simulation and/or decoding
     enableL1CaloLegacy = True         # Enable Run-2 L1Calo simulation and/or decoding (possible even if enablePhase1 is True)
     enableL1TopoDump = False          # Enable L1Topo simulation to write inputs to txt
+    enableL1TopoBWSimulation = False  # Enable bitwise L1Topo simulation
     enableL1NSWEmulation = False      # Enable TGC-NSW coincidence emulator : ConfigFlags.Trigger.L1MuonSim.EmulateNSW
-    enableL1NSWVetoMode = False       # Enable TGC-NSW coincidence veto mode: ConfigFlags.Trigger.L1MuonSim.NSWVetoMode
-    enableL1NSWMMTrigger = False      # Enable MM trigger for TGC-NSW coincidence : ConfigFlags.Trigger.L1MuonSim.doMMTrigger
-    enableL1NSWPadTrigger = False     # Enable sTGC Pad trigger for TGC-NSW coincidence : ConfigFlags.Trigger.L1MuonSim.doPadTrigger
+    enableL1NSWVetoMode = True        # Enable TGC-NSW coincidence veto mode: ConfigFlags.Trigger.L1MuonSim.NSWVetoMode
+    enableL1NSWMMTrigger = True       # Enable MM trigger for TGC-NSW coincidence : ConfigFlags.Trigger.L1MuonSim.doMMTrigger
+    enableL1NSWPadTrigger = True      # Enable sTGC Pad trigger for TGC-NSW coincidence : ConfigFlags.Trigger.L1MuonSim.doPadTrigger
     enableL1NSWStripTrigger = False   # Enable sTGC Strip trigger for TGC-NSW coincidence : ConfigFlags.Trigger.L1MuonSim.doStripTrigger
-    enableL1RPCBIS78    = False       # Enable TGC-RPC BIS78 coincidence : ConfigFlags.Trigger.L1MuonSim.doBIS78
+    enableL1RPCBIS78    = True        # Enable TGC-RPC BIS78 coincidence : ConfigFlags.Trigger.L1MuonSim.doBIS78
 #Individual slice flags
     doCalibSlice        = True
     doTestSlice         = True
@@ -143,14 +145,11 @@ if len(athenaCommonFlags.FilesInput())>0:
     if globalflags.DataSource() != 'data' and 'isOnline' not in globals():
         log.info("Setting isOnline = False for MC input")
         opt.isOnline = False
-    # Set geometry and conditions tags
+    # Set geometry
     if opt.setDetDescr is None:
         opt.setDetDescr = af.fileinfos.get('geometry',None)
-    if opt.setGlobalTag is None:
-        if globalflags.DataSource=='data':
-            opt.setGlobalTag = ConfigFlags.Trigger.OnlineCondTag if opt.isOnline else 'CONDBR2-BLKPA-2018-13'
-        else:
-            opt.setGlobalTag = 'OFLCOND-MC16-SDR-RUN2-08-02'
+    if opt.autoConfigCond and opt.setGlobalTag is None:
+        opt.setGlobalTag = af.fileinfos.get('conditions_tag',None)
     TriggerJobOpts.Modifiers._run_number = ConfigFlags.Input.RunNumber[0]
     TriggerJobOpts.Modifiers._lb_number = ConfigFlags.Input.LumiBlockNumber[0]
 
@@ -166,7 +165,7 @@ else:   # athenaHLT
     if '_lb_number' in globals():
         del _lb_number  # noqa, set by athenaHLT
 
-from AthenaConfiguration.Enums import BeamType, Format
+from AthenaConfiguration.Enums import BeamType, Format, LHCPeriod
 ConfigFlags.Input.Format = Format.BS if globalflags.InputFormat == 'bytestream' else Format.POOL
 
 # Load input collection list from POOL metadata
@@ -178,9 +177,27 @@ if ConfigFlags.Input.Format is Format.POOL:
 # Run-3 Trigger produces Run-3 EDM
 ConfigFlags.Trigger.EDMVersion = 3
 
+# Some legacy b-tagging configuration is trigger specific
+ConfigFlags.BTagging.databaseScheme = 'Trig'
+ConfigFlags.BTagging.forcedCalibrationChannel = 'AntiKt4EMTopo'
+# track association for trigger b-tagging might be inconsistent with
+# offline, override the default for now
+ConfigFlags.BTagging.minimumJetPtForTrackAssociation = 5e3
+
 # Set final Cond/Geo tag based on input file, command line or default
 globalflags.DetDescrVersion = opt.setDetDescr or ConfigFlags.Trigger.OnlineGeoTag
 ConfigFlags.GeoModel.AtlasVersion = globalflags.DetDescrVersion()
+#set conditions tag
+if opt.setGlobalTag is None:
+    if globalflags.DataSource=='data':
+        opt.setGlobalTag = ConfigFlags.Trigger.OnlineCondTag if opt.isOnline else 'CONDBR2-BLKPA-2018-13'
+    else:
+        if ConfigFlags.GeoModel.Run == LHCPeriod.Run3:
+            # temporarily roll back to v5 for Run3 MC due to incompatibility between MC21 RDO and v6 MDT conditions
+            opt.setGlobalTag = 'OFLCOND-MC21-SDR-RUN3-05'
+        else:
+            opt.setGlobalTag = 'OFLCOND-MC16-SDR-RUN2-08-02'
+
 globalflags.ConditionsTag = opt.setGlobalTag or ConfigFlags.Trigger.OnlineCondTag
 ConfigFlags.IOVDb.GlobalTag = globalflags.ConditionsTag()
 
@@ -214,20 +231,17 @@ if 'enableL1CaloPhase1' not in globals():
                  'are%s available in the input file',
                  opt.enableL1CaloPhase1, ConfigFlags.Input.Format, ('' if scell_available else ' not'))
 
-# Set default enableL1MuonPhase1 option to True if running L1Sim (ATR-23973)
-if 'enableL1MuonPhase1' not in globals():
-    opt.enableL1MuonPhase1 = opt.doL1Sim
-    log.info('Setting default enableL1MuonPhase1=%s because doL1Sim=%s', opt.enableL1MuonPhase1, opt.doL1Sim)
-
 if ConfigFlags.Input.Format is Format.BS or opt.doL1Sim:
     ConfigFlags.Trigger.HLTSeeding.forceEnableAllChains = opt.forceEnableAllChains
 
 # Translate a few other flags
 ConfigFlags.Trigger.doLVL1 = opt.doL1Sim
-ConfigFlags.Trigger.enableL1MuonPhase1 = opt.enableL1MuonPhase1
+if opt.enableL1MuonPhase1 is not None:
+    ConfigFlags.Trigger.enableL1MuonPhase1 = opt.enableL1MuonPhase1
 ConfigFlags.Trigger.enableL1CaloPhase1 = opt.enableL1CaloPhase1
 ConfigFlags.Trigger.enableL1CaloLegacy = opt.enableL1CaloLegacy
 ConfigFlags.Trigger.enableL1TopoDump = opt.enableL1TopoDump
+ConfigFlags.Trigger.enableL1TopoBWSimulation = opt.enableL1TopoBWSimulation
 
 ConfigFlags.Trigger.L1MuonSim.EmulateNSW  = opt.enableL1NSWEmulation
 ConfigFlags.Trigger.L1MuonSim.NSWVetoMode = opt.enableL1NSWVetoMode
@@ -266,7 +280,6 @@ else:           # More data modifiers
                      #Set muComb/muIso Backextrapolator tuned for real data
                      #Monitoring for L1 muon group
                      #Monitoring L1Topo at ROB level
-                     'forceTileRODMap',
                      'enableSchedulerMon'
     ]
 
@@ -321,6 +334,12 @@ from AthenaCommon.AlgSequence import AlgSequence
 topSequence = AlgSequence()
 from AthenaCommon.CFElements import seqOR,parOR
 hltTop = seqOR("HLTTop")
+
+# HLTPreSeq only used for CostMon so far, skip if CostMon disabled
+if ConfigFlags.Trigger.CostMonitoring.doCostMonitoring:
+    hltPreSeq = parOR("HLTPreSeq")
+    hltTop += hltPreSeq
+
 hltBeginSeq = parOR("HLTBeginSeq")
 hltTop += hltBeginSeq
 topSequence += hltTop
@@ -414,6 +433,13 @@ if ConfigFlags.Trigger.doID:
     include("InDetRecExample/InDetRecConditionsAccess.py")
 
 #-------------------------------------------------------------
+# Switch off CPS mechanism if we only run selected
+# signatures or chains, to avoid single-chain sets
+#-------------------------------------------------------------
+if len(opt.enabledSignatures)==1 or opt.selectChains:
+    ConfigFlags.Trigger.disableCPS=True
+
+#-------------------------------------------------------------
 # Lock flags !
 #
 # This is the earliest we can lock since InDetJobProperties.py
@@ -426,6 +452,14 @@ from AthenaConfiguration.ComponentAccumulator import CAtoGlobalWrapper
 
 from IOVDbSvc.IOVDbSvcConfig import IOVDbSvcCfg
 CAtoGlobalWrapper(IOVDbSvcCfg, ConfigFlags)
+
+
+#-------------------------------------------------------------
+# Cost Monitoring
+#-------------------------------------------------------------
+from TrigCostMonitor.TrigCostMonitorConfig import TrigCostMonitorCfg
+CAtoGlobalWrapper(TrigCostMonitorCfg, ConfigFlags, seqName="HLTPreSeq")
+
 
 if ConfigFlags.Trigger.doCalo:
     from TrigT2CaloCommon.TrigCaloDataAccessConfig import trigCaloDataAccessSvcCfg
@@ -444,6 +478,14 @@ if ConfigFlags.Trigger.doMuon:
 
 # restore logger after above includes
 log = logging.getLogger('runHLT_standalone.py')
+
+# ---------------------------------------------------------------
+# Track Overlay
+# ---------------------------------------------------------------
+from OverlayCommonAlgs.OverlayFlags import overlayFlags
+if overlayFlags.doTrackOverlay():
+    from TrkEventCnvTools.TrkEventCnvToolsConfigCA import TrkEventCnvSuperToolCfg
+    CAtoGlobalWrapper(TrkEventCnvSuperToolCfg, ConfigFlags)
 
 # ----------------------------------------------------------------
 # Pool input
@@ -547,8 +589,7 @@ if not opt.createHLTMenuExternally:
     if opt.endJobAfterGenerate:
         from AthenaCommon.AlgSequence import dumpSequence
         dumpSequence( topSequence )
-        import sys
-        sys.exit(0)
+        theApp.exit()
 
 
 
@@ -569,6 +610,9 @@ if hasattr(topSequence,"SGInputLoader"):
 if not hasattr(svcMgr, 'THistSvc'):
     from GaudiSvc.GaudiSvcConf import THistSvc
     svcMgr += THistSvc()
+    if ConfigFlags.Trigger.L1MuonSim.WriteNSWDebugNtuple:
+        svcMgr.THistSvc.Output += [ "NSWL1Simulation DATAFILE='NSWL1Simulation.root'  OPT='RECREATE'" ]
+
 if hasattr(svcMgr.THistSvc, "Output"):
     from TriggerJobOpts.TriggerHistSvcConfig import setTHistSvcOutput
     setTHistSvcOutput(svcMgr.THistSvc.Output)
@@ -603,8 +647,8 @@ if opt.doWriteBS or opt.doWriteRDOTrigger:
     filters = collectFilters(findSubSequence(topSequence, "HLTAllSteps"))
 
     nfilters = sum(len(v) for v in filters.values())
-    nhypos = sum(len(v) for v in hypos.values())    
-    log.info( "Algorithms counting: Number of Filter algorithms: %d  -  Number of Hypo algoirthms: %d", nfilters , nhypos) 
+    nhypos = sum(len(v) for v in hypos.values())
+    log.info( "Algorithms counting: Number of Filter algorithms: %d  -  Number of Hypo algoirthms: %d", nfilters , nhypos)
 
     summaryMakerAlg = findAlgorithm(topSequence, "DecisionSummaryMakerAlg")
     hltSeeding = findAlgorithm(topSequence, "HLTSeeding")
@@ -627,15 +671,6 @@ if opt.doWriteBS or opt.doWriteRDOTrigger:
     CAtoGlobalWrapper(triggerOutputCfg, ConfigFlags, hypos=hypos)
 
 #-------------------------------------------------------------
-# Cost Monitoring
-#-------------------------------------------------------------
-
-from TrigCostMonitor.TrigCostMonitorConfig import TrigCostMonitorCfg, TrigCostMonitorPostSetup
-CAtoGlobalWrapper(TrigCostMonitorCfg, ConfigFlags)
-# TODO - how can TrigCostMonitorPostSetup be component-accumulator-ised?
-TrigCostMonitorPostSetup()
-
-#-------------------------------------------------------------
 # Debugging for view cross-dependencies
 #-------------------------------------------------------------
 if opt.reverseViews or opt.filterViews:
@@ -648,6 +683,12 @@ if opt.reverseViews or opt.filterViews:
     for alg in viewMakers:
         alg.ReverseViewsDebug = opt.reverseViews
         alg.FallThroughFilter = theFilter
+
+#-------------------------------------------------------------
+# Cost Monitoring Post Setup
+#-------------------------------------------------------------
+from TrigCostMonitor.TrigCostMonitorConfig import  TrigCostMonitorPostSetup
+TrigCostMonitorPostSetup()
 
 #-------------------------------------------------------------
 # Disable overly verbose and problematic ChronoStatSvc print-out

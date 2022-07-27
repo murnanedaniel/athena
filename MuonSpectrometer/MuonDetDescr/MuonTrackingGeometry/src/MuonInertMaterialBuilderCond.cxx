@@ -100,16 +100,18 @@ StatusCode Muon::MuonInertMaterialBuilderCond::initialize() {
     return StatusCode::SUCCESS;
 }
 
-std::tuple<EventIDRange, std::unique_ptr<const std::vector<std::unique_ptr<const Trk::DetachedTrackingVolume>>>,
-           std::unique_ptr<std::vector<std::vector<std::pair<std::unique_ptr<const Trk::Volume>, float>>>>>
-Muon::MuonInertMaterialBuilderCond::buildDetachedTrackingVolumes(const EventContext& ctx, bool blend) const {
+std::pair<std::unique_ptr<const std::vector<std::unique_ptr<const Trk::DetachedTrackingVolume>>>,
+          std::unique_ptr<std::vector<std::vector<std::pair<std::unique_ptr<const Trk::Volume>, float>>>>>
+Muon::MuonInertMaterialBuilderCond::buildDetachedTrackingVolumes(const EventContext& ctx,
+                                                                 SG::WriteCondHandle<Trk::TrackingGeometry>& whandle,
+                                                                 bool blend) const {
     // split output into objects to be kept and objects which may be released from memory (blended)
     std::pair<std::vector<std::unique_ptr<const Trk::DetachedTrackingVolume>>,
               std::vector<std::unique_ptr<const Trk::DetachedTrackingVolume>>>
         mInert;
 
     // retrieve muon station prototypes from GeoModel
-    auto [range, msTypes, constituentsVector] = buildDetachedTrackingVolumeTypes(ctx, blend);
+    auto [msTypes, constituentsVector] = buildDetachedTrackingVolumeTypes(ctx, whandle, blend);
     ATH_MSG_INFO(name() << " obtained " << msTypes->size() << " prototypes");
 
     std::vector<std::pair<const Trk::DetachedTrackingVolume*, std::vector<Amg::Transform3D>>>::const_iterator msTypeIter = msTypes->begin();
@@ -154,12 +156,14 @@ Muon::MuonInertMaterialBuilderCond::buildDetachedTrackingVolumes(const EventCont
 
     ATH_MSG_INFO(name() << " returns  " << (*muonObjects).size() << " objects (detached volumes)");
 
-    return {range, std::move(muonObjects), std::move(constituentsVector)};
+    return {std::move(muonObjects), std::move(constituentsVector)};
 }
 
-std::tuple<EventIDRange, const std::vector<std::pair<const Trk::DetachedTrackingVolume*, std::vector<Amg::Transform3D>>>*,
-           std::unique_ptr<std::vector<std::vector<std::pair<std::unique_ptr<const Trk::Volume>, float>>>>>
-Muon::MuonInertMaterialBuilderCond::buildDetachedTrackingVolumeTypes(const EventContext& ctx, bool blend) const {
+std::pair<const std::vector<std::pair<const Trk::DetachedTrackingVolume*, std::vector<Amg::Transform3D>>>*,
+          std::unique_ptr<std::vector<std::vector<std::pair<std::unique_ptr<const Trk::Volume>, float>>>>>
+Muon::MuonInertMaterialBuilderCond::buildDetachedTrackingVolumeTypes(const EventContext& ctx,
+                                                                     SG::WriteCondHandle<Trk::TrackingGeometry>& whandle,
+                                                                     bool blend) const {
     ATH_MSG_INFO(name() << " building muon object types");
     std::vector<std::pair<const Trk::DetachedTrackingVolume*, std::vector<Amg::Transform3D>>> objs;
 
@@ -171,6 +175,8 @@ Muon::MuonInertMaterialBuilderCond::buildDetachedTrackingVolumeTypes(const Event
                       << " is not available. Could not get MuonDetectorManager, no layers for muons will be built.");
         return {};
     }
+    whandle.addDependency (readHandle);
+
     const MuonGM::MuonDetectorManager* muonMgr = *readHandle;
     /// We need to retrieve the detector manager from the detector store as this is the only
     /// which has passive material assigned
@@ -289,8 +295,8 @@ Muon::MuonInertMaterialBuilderCond::buildDetachedTrackingVolumeTypes(const Event
 
                 if (trObject) {
                     Trk::Material mat = m_materialConverter->convert(vols[ish].first->getMaterial());
-                    const Trk::TrackingVolume* newType = new Trk::TrackingVolume(*trObject, mat, nullptr, nullptr, protoName);
-                    const Trk::TrackingVolume* simType = simplifyShape(newType, blend, constituentsVector.get());
+                    Trk::TrackingVolume* newType = new Trk::TrackingVolume(*trObject, mat, nullptr, nullptr, protoName);
+                    Trk::TrackingVolume* simType = simplifyShape(newType, blend, constituentsVector.get());
                     Trk::DetachedTrackingVolume* typeStat = new Trk::DetachedTrackingVolume(protoName, simType);
                     if (blend) typeStat->saveConstituents(&(constituentsVector->back()));
                     objs.emplace_back(typeStat, vols[ish].second);
@@ -314,12 +320,12 @@ Muon::MuonInertMaterialBuilderCond::buildDetachedTrackingVolumeTypes(const Event
         Trk::TrackingVolumeArray* dummyVolumes = nullptr;
         Trk::VolumeBounds* extraBounds1 = new Trk::CylinderVolumeBounds(850., 13000., 5.);
         Trk::TrackingVolume* mextra1 = new Trk::TrackingVolume(nullptr, extraBounds1, mat1, dummyLayers, dummyVolumes, "extraMat1");
-        const Trk::TrackingVolume* simType1 = simplifyShape(mextra1, blend, constituentsVector.get());
+        Trk::TrackingVolume* simType1 = simplifyShape(mextra1, blend, constituentsVector.get());
         Trk::DetachedTrackingVolume* eVol1 = new Trk::DetachedTrackingVolume("extraTGCmat1", simType1);
         if (blend) eVol1->saveConstituents(&(constituentsVector->back()));
         Trk::VolumeBounds* extraBounds2 = new Trk::CylinderVolumeBounds(850., 13000., 5.);
         Trk::TrackingVolume* mextra2 = new Trk::TrackingVolume(nullptr, extraBounds2, mat2, dummyLayers, dummyVolumes, "extraMat2");
-        const Trk::TrackingVolume* simType2 = simplifyShape(mextra2, blend, constituentsVector.get());
+        Trk::TrackingVolume* simType2 = simplifyShape(mextra2, blend, constituentsVector.get());
         Trk::DetachedTrackingVolume* eVol2 = new Trk::DetachedTrackingVolume("extraTGCmat2", simType2);
         if (blend) eVol2->saveConstituents(&(constituentsVector->back()));
         std::vector<Amg::Transform3D> pos1;
@@ -341,9 +347,7 @@ Muon::MuonInertMaterialBuilderCond::buildDetachedTrackingVolumeTypes(const Event
 
     ATH_MSG_INFO(name() << " returns " << mObjects->size() << " prototypes, to be cloned into " << count << " objects");
 
-    EventIDRange range = readHandle.getRange();
-
-    return std::make_tuple(range, mObjects, std::move(constituentsVector));
+    return std::make_pair(mObjects, std::move(constituentsVector));
 }
 
 // finalize
@@ -386,8 +390,8 @@ void Muon::MuonInertMaterialBuilderCond::printChildren(const GeoVPhysVol* pv) co
     }
 }
 
-const Trk::TrackingVolume* Muon::MuonInertMaterialBuilderCond::simplifyShape(
-    const Trk::TrackingVolume* trVol, bool blend,
+Trk::TrackingVolume* Muon::MuonInertMaterialBuilderCond::simplifyShape(
+    Trk::TrackingVolume* trVol, bool blend,
     std::vector<std::vector<std::pair<std::unique_ptr<const Trk::Volume>, float>>>* constituentsVector) const {
     // envelope
     const Trk::Volume* envelope = nullptr;
@@ -413,7 +417,7 @@ const Trk::TrackingVolume* Muon::MuonInertMaterialBuilderCond::simplifyShape(
 
     // simplification
 
-    const Trk::TrackingVolume* newVol = nullptr;
+    Trk::TrackingVolume* newVol = nullptr;
     auto confinedVols = std::make_unique< std::vector<const Trk::TrackingVolume*> >();
 
     std::string envName = trVol->volumeName();
@@ -650,7 +654,7 @@ const Trk::Volume* Muon::MuonInertMaterialBuilderCond::createEnvelope(
             ATH_MSG_VERBOSE(" bounds not recognized ");
             return nullptr;
         }
-        sIter++;
+        ++sIter;
     }
 
     double xMin = 13000.;
@@ -855,7 +859,7 @@ std::vector<std::pair<const Trk::Volume*, std::pair<float, float>>> Muon::MuonIn
             }
             sIter = constituents.begin();
         } else {
-            sIter++;
+            ++sIter;
         }
     }
 

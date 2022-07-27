@@ -1,7 +1,7 @@
 
 //Dear emacs this is -*-c++-*-
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef TRT_STRAWSTATUSSUMMARYTOOL_H
@@ -20,9 +20,7 @@
 #include "AthenaBaseComps/AthAlgTool.h"
 //TRT
 #include "TRT_ConditionsServices/ITRT_StrawStatusSummaryTool.h" 
-//#include "TRT_ConditionsServices/ITRT_ConditionsSvc.h"
 #include "InDetIdentifier/TRT_ID.h"
-//#include "TRT_ReadoutGeometry/TRT_BaseElement.h"
 
 #include "TRT_ConditionsData/StrawStatusMultChanContainer.h"
 
@@ -79,7 +77,6 @@ class ATLAS_NOT_THREAD_SAFE TRT_StrawStatusSummaryTool: // This class uses threa
 
 
  private:
-
   const TRT_ID* m_trtId=nullptr;
 
   ServiceHandle<ICondSvc> m_condSvc;

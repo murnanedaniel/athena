@@ -50,8 +50,6 @@
 #include "AtlasHepMC/GenVertex.h"
 #include "AtlasHepMC/GenParticle.h"
 
-#include "EventInfo/EventInfo.h"
-#include "EventInfo/EventID.h"
 #include "xAODEventInfo/EventInfo.h"
 
 
@@ -101,20 +99,17 @@ public:
   // - xxxChainName: the name of the chain to be used as test/reference/selection; must be "StoreGate" in case of direct access to SG containers
   // - xxxType: the type of tracks to be retrieved from the test/reference/selection chain or container
   // - xxxKey:  the key for tracks to be retrieved from the test/reference/selection chain or container
-  // - roiInfo: in case the test chain is a real chain, this is used to specify RoI widths; in case the test chain is a fake chain, this is used for RoI position too
   // - all standard operations are performed in loops over 0=test 1=reference 2=selection
   T_AnalysisConfigMT_Tier0(const std::string& analysisInstanceName,
 			 const std::string& testChainName,      const std::string& testType,      const std::string& testKey,
 			 const std::string& referenceChainName, const std::string& referenceType, const std::string& referenceKey,
-			 TIDARoiDescriptor* roiInfo,
 			 TrackFilter*     testFilter,  TrackFilter*     referenceFilter, 
 			 TrackAssociator* associator,
 			 TrackAnalysis*   analysis,
-			 TagNProbe*       TnP_tool = 0) :
+			 TagNProbe*      TnP_tool = 0) :
     T_AnalysisConfig<T>( analysisInstanceName,
 			 testChainName,      testType,      testKey,
 			 referenceChainName, referenceType, referenceKey,
-			 roiInfo,
 			 testFilter, referenceFilter,
 			 associator,
 			 analysis),
@@ -240,15 +235,7 @@ protected:
 
 	if ( chainName.head() == "" ) { 
 	  
-	  std::string selectChain;
-	  
-	  if ( chainName.tail()!="" )    selectChain += ":key="+chainName.tail();
-	  if ( chainName.extra()!="" )   selectChain += ":extra="+chainName.extra();
-	  if ( chainName.element()!="" ) continue;
-	  if ( chainName.roi()!="" )     continue;
-	  if ( chainName.vtx()!="" )     selectChain += ":vtx="+chainName.vtx();
-	  if ( !chainName.passed() )     continue;
-	  if ( chainName.postcount() )   selectChain += ":post:"+chainName.post();
+	  std::string selectChain = chainName.raw(); 
 
 	  chains.push_back( ChainString(selectChain) );
 	    
@@ -259,14 +246,8 @@ protected:
 	  std::vector<std::string> selectChains  = (*(m_tdt))->getListOfTriggers( chainName.head() );
 	  	  
 	  for ( unsigned iselected=0 ; iselected<selectChains.size() ; iselected++ ) {
-	    
-	    if ( chainName.tail()!="" )    selectChains[iselected] += ":key="+chainName.tail();
-	    if ( chainName.extra()!="" )   selectChains[iselected] += ":extra="+chainName.extra();
-	    if ( chainName.element()!="" ) selectChains[iselected] += ":te="+chainName.element();
-	    if ( chainName.roi()!="" )     selectChains[iselected] += ":roi="+chainName.roi();
-	    if ( chainName.vtx()!="" )     selectChains[iselected] += ":vtx="+chainName.vtx();
-	    if ( !chainName.passed() )     selectChains[iselected] += ";DTE";
-	    if ( chainName.postcount() )   selectChains[iselected] += ":post:"+chainName.post();
+
+	    selectChains[iselected] = chainName.subs( selectChains[iselected] ); 
 	    
 #if 0
 	    std::cout << "sorting:: chain specification: " << chainName << "\traw:" << chainName.raw() << std::endl;
@@ -687,39 +668,8 @@ protected:
 	m_provider->msg(MSG::WARNING) << " Offline tracks not found " << endmsg;
       }
 
-      // set event configuration for tagnprobe 
-      if ( TnP_flag ) {
+    }
 
-	// dummy values
-	double ZmassMin = 40 ;
-	double ZmassMax = 150 ;
-	m_TnP_tool->SetEventConfiguration( 
-					  m_selectorRef, &filterRef,    // offline tracks and filter
-					  "Offline",                    // offline chain name
-					  0,                            // trigger object matcher
-					  ZmassMin, ZmassMax );         // set the Zmass range
-      }
-	  
-    }
-    else { 
-      /// what is this ???
-      if ( m_mcTruth && foundTruth ){
-	
-	if ( TnP_flag ) {
-	      
-	  // dummy values
-	  double ZmassMin = 40 ;
-	  double ZmassMax = 150 ;
-	      
-	  m_TnP_tool->SetEventConfiguration( 
-					    &selectorTruth, &filter_truth,   // truth tracks and filter
-					    "Truth",                         // truth chain name
-					    0,                               // trigger object matcher
-					    ZmassMin, ZmassMax );            // set the Zmass range
-	}
-	    
-      }
-    }
 
     //    std::cout << "\tloop() loop over chains proper ..." << std::endl;
 
@@ -852,10 +802,6 @@ protected:
 
 	  std::string roi_key = chainConfig.roi();
 	
-	  //	if ( roi_key=="" ) roi_key = "forID";
-	  //	if ( roi_key=="" ) roi_key = "";
-
-
 	  unsigned feature_type =TrigDefs::lastFeatureOfType;
 
 	  if ( roi_key!="" ) feature_type= TrigDefs::allFeaturesOfType;
@@ -982,7 +928,7 @@ protected:
       std::vector<TIDA::Roi*> rois ;
       
       if (TnP_flag) {
-	rois = m_TnP_tool->GetRois( m_event->chains() );
+	rois = m_TnP_tool->GetRois( m_event->chains(), m_selectorRef, &filterRef, m_invmass, m_invmass_obj );
 	// needs to be done AFTER retrieving offline tracks as m_selectorRef passed as arguement, hence restructuring
       }
       else {
@@ -996,11 +942,6 @@ protected:
 
       for ( unsigned iroi=0 ; iroi<rois.size() ; iroi++ ) {
 
-	// filling invariant mass histograms for tag and probe analysis
-	if ( TnP_flag ) {
-	  m_TnP_tool->Fill( m_invmass, m_invmass_obj, iroi ) ;
-	}
-	
 	if ( this->filterOnRoi() ) { 
 	  filterRef.setRoi( &(rois.at(iroi)->roi() ) ); 
 	  filterRef.containtracks( m_containTracks ); 
@@ -1183,17 +1124,8 @@ protected:
 
       if ( chainName.head() == "" ) {
 	
-	std::string selectChain = "";
-	
-	if ( chainName.tail()!="" )    selectChain += ":key="+chainName.tail();
-	if ( chainName.extra()!="" )   selectChain += ":extra="+chainName.extra();
-	if ( chainName.roi()!="" )     continue;
-	if ( chainName.vtx()!="" )     selectChain += ":vtx="+chainName.vtx();
-	if ( chainName.element()!="" ) continue;
-	if ( !chainName.passed() )     continue;
-	if ( chainName.postcount() )   selectChain += ":post:"+chainName.post();
-	
-	
+	std::string selectChain = chainName.raw();
+
 	/// replace wildcard with actual matching chains ...
 	chains.push_back( selectChain );
 
@@ -1209,15 +1141,8 @@ protected:
 	
 	for ( unsigned iselected=0 ; iselected<selectChains.size() ; iselected++ ) {
 	  
-	  if ( chainName.tail()!="" )    selectChains[iselected] += ":key="+chainName.tail();
-	  if ( chainName.extra()!="" )   selectChains[iselected] += ":extra="+chainName.extra();
-	  if ( chainName.roi()!="" )     selectChains[iselected] += ":roi="+chainName.roi();
-	  if ( chainName.vtx()!="" )     selectChains[iselected] += ":vtx="+chainName.vtx();
-	  if ( chainName.element()!="" ) selectChains[iselected] += ":te="+chainName.element();
-	  if ( !chainName.passed() )     selectChains[iselected] += ";DTE";
-	  if ( chainName.postcount() )   selectChains[iselected] += ":post:"+chainName.post();
-	  
-	  
+	  selectChains[iselected] = chainName.subs( selectChains[iselected] ); 
+
 	  /// replace wildcard with actual matching chains ...
 	  chains.push_back( ChainString(selectChains[iselected]) );
 	  

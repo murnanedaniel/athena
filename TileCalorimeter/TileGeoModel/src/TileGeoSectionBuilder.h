@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2018 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /**
@@ -36,7 +36,7 @@ class TileGeoSectionBuilder
 {
  public:
   /** Constructor */
-  TileGeoSectionBuilder(const StoredMaterialManager* matManager,
+  TileGeoSectionBuilder(StoredMaterialManager* matManager,
                         TileDddbManager* pDbManager,
                         const TileSwitches & switches,
                         MsgStream * log);
@@ -139,7 +139,7 @@ class TileGeoSectionBuilder
                       float                 zShiftPos, // in mm
                       float                 zShiftNeg); // in mm
 
-  /** Calculator of Z pozition given sample in region (detector):
+  /** Calculator of Z position given sample in region (detector):
       @param zshift   Z shift
       @param zcenter  Z central position
       @param dz       dZ length
@@ -150,6 +150,18 @@ class TileGeoSectionBuilder
                   float zshift,
                   float& zcenter,
                   float& dz);
+
+  /** Calculator of R position given sample in region (detector):
+      @param rcenter  R central position
+      @param dr       dR length
+  */
+  void calculateR(int detector,
+                  int sample,
+                  bool addPlates,
+                  int firstScin,
+                  int lastScin,
+                  float& rcenter,
+                  float& dr);
 
   /** calculateEta function calculates are the following parameters
       given sample in region (detector)
@@ -172,7 +184,7 @@ class TileGeoSectionBuilder
       @param level       volume level and printig level
       @param XYZ         checking variables
   */
-  void checking(std::string VolumeName, bool print, int level,
+  void checking(const std::string& VolumeName, bool print, int level,
                 double X1, double X2, double Y1, double Y2, double Z); 
 
   // These methods should be used when section contents are not built
@@ -183,7 +195,7 @@ class TileGeoSectionBuilder
 
  private:
 
-  const StoredMaterialManager*          m_theMaterialManager;
+  StoredMaterialManager*                m_theMaterialManager;
   TileDddbManager *                     m_dbManager;
   MsgStream *                           m_log;
 

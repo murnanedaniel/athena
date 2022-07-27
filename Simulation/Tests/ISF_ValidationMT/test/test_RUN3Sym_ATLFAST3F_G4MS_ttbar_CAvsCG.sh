@@ -1,12 +1,13 @@
 #!/bin/sh
 #
 # art-description: MC21-style simulation using ATLFAST3F_G4MS
+# art-include: master/22.0
+# art-include: master/Athena
 # art-type: grid
+# art-architecture:  '#x86_64-intel'
 # art-output: test.*.HITS.pool.root
 # art-output: log.*
 # art-output: Config*.pkl
-
-#  --preExec 'EVNTtoHITS:import InDetRecExample.TrackingCommon as kludgeTheConfig;kludgeTheConfig.use_tracking_geometry_cond_alg=False' \
 
 unset ATHENA_CORE_NUMBER
 
@@ -15,11 +16,9 @@ unset ATHENA_CORE_NUMBER
 Sim_tf.py \
     --CA \
     --conditionsTag 'default:OFLCOND-MC16-SDR-RUN3-01' \
-    --physicsList 'FTFP_BERT_ATL' \
-    --truthStrategy 'MC15aPlus' \
     --simulator 'ATLFAST3F_G4MS' \
     --postInclude 'PyJobTransforms.UseFrontier' \
-    --preInclude 'EVNTtoHITS:SimuJobTransforms.BeamPipeKill' \
+    --preInclude 'EVNTtoHITS:Campaigns.MC16Simulation' \
     --DataRunNumber '330000' \
     --geometryVersion 'default:ATLAS-R3S-2021-01-00-02' \
     --inputEVNTFile "/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/SimCoreTests/valid1.410000.PowhegPythiaEvtGen_P2012_ttbar_hdamp172p5_nonallhad.evgen.EVNT.e4993.EVNT.08166201._000012.pool.root.1" \
@@ -38,11 +37,9 @@ if [ $rc2 -eq -9999 ]
 then
     Sim_tf.py \
         --conditionsTag 'default:OFLCOND-MC16-SDR-RUN3-01' \
-        --physicsList 'FTFP_BERT_ATL' \
-        --truthStrategy 'MC15aPlus' \
         --simulator 'ATLFAST3F_G4MS' \
         --postInclude 'default:PyJobTransforms/UseFrontier.py' \
-        --preInclude 'EVNTtoHITS:SimulationJobOptions/preInclude.BeamPipeKill.py' \
+        --preInclude 'EVNTtoHITS:Campaigns/MC16Simulation.py' \
         --DataRunNumber '330000' \
         --geometryVersion 'default:ATLAS-R3S-2021-01-00-02_VALIDATION' \
         --inputEVNTFile "/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/SimCoreTests/valid1.410000.PowhegPythiaEvtGen_P2012_ttbar_hdamp172p5_nonallhad.evgen.EVNT.e4993.EVNT.08166201._000012.pool.root.1" \
@@ -53,11 +50,9 @@ then
 
     Sim_tf.py \
         --conditionsTag 'default:OFLCOND-MC16-SDR-RUN3-01' \
-        --physicsList 'FTFP_BERT_ATL' \
-        --truthStrategy 'MC15aPlus' \
         --simulator 'ATLFAST3F_G4MS' \
         --postInclude 'default:PyJobTransforms/UseFrontier.py' \
-        --preInclude 'EVNTtoHITS:SimulationJobOptions/preInclude.BeamPipeKill.py' \
+        --preInclude 'EVNTtoHITS:Campaigns/MC16Simulation.py' \
         --DataRunNumber '330000' \
         --geometryVersion 'default:ATLAS-R3S-2021-01-00-02_VALIDATION' \
         --inputEVNTFile "/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/SimCoreTests/valid1.410000.PowhegPythiaEvtGen_P2012_ttbar_hdamp172p5_nonallhad.evgen.EVNT.e4993.EVNT.08166201._000012.pool.root.1" \
@@ -71,18 +66,29 @@ then
 fi
 echo "art-result: $rc2 simOLD"
 
-#rc3=-9999
-#if [ $rc2 -eq 0 ]
-#then
-#  # Compare the outputs
-#  acmd.py diff-root test.CG.HITS.pool.root test.CA.HITS.pool.root \
-#    --error-mode resilient \
-#    --mode semi-detailed \
-#    --ignore-leaves RecoTimingObj_p1_EVNTtoHITS_timings index_ref
-#  rc3=$?
-#  status=$rc3
-#fi
-#
-#echo "art-result: $rc3 CAvsCG"
+rc3=-9999
+if [ $rc2 -eq 0 ]
+then
+  # Compare the outputs
+  acmd.py diff-root test.CG.HITS.pool.root test.CA.HITS.pool.root \
+    --error-mode resilient \
+    --mode semi-detailed \
+    --ignore-leaves RecoTimingObj_p1_EVNTtoHITS_timings index_ref
+  rc3=$?
+  status=$rc3
+fi
+
+echo "art-result: $rc3 OLDvsCA"
+
+rc4=-9999
+if [ $rc2 -eq 0 ]
+then
+    ArtPackage=$1
+    ArtJobName=$2
+    art.py compare grid --entries 4 ${ArtPackage} ${ArtJobName} --mode=semi-detailed --file=test.CG.HITS.pool.root
+    rc4=$?
+    status=$rc4
+fi
+echo  "art-result: $rc4 regression"
 
 exit $status

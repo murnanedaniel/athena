@@ -35,6 +35,7 @@
 #include "EgammaAnalysisInterfaces/IElectronPhotonShowerShapeFudgeTool.h"
 #include "EgammaAnalysisInterfaces/IAsgPhotonEfficiencyCorrectionTool.h"
 #include "EgammaAnalysisInterfaces/IAsgPhotonIsEMSelector.h"
+#include "EgammaAnalysisInterfaces/IAsgDeadHVCellRemovalTool.h"
 #include "EgammaAnalysisInterfaces/IEGammaAmbiguityTool.h"
 
 #include "MuonAnalysisInterfaces/IMuonSelectionTool.h"
@@ -182,13 +183,11 @@ SUSYObjDef_xAOD::SUSYObjDef_xAOD( const std::string& name )
     m_BtagWP(""),
     m_BtagTagger(""),
     m_BtagMinPt(-99.),
-    m_BtagTimeStamp(""),
     m_BtagKeyOverride(""),
     m_BtagSystStrategy(""),
     m_BtagWP_trkJet(""),
     m_BtagTagger_trkJet(""),
     m_BtagMinPt_trkJet(-99.),
-    m_BtagTimeStamp_trkJet(""),
     //configurable cuts here
     m_eleBaselinePt(-99.),
     m_eleBaselineEta(-99.),
@@ -492,13 +491,11 @@ SUSYObjDef_xAOD::SUSYObjDef_xAOD( const std::string& name )
   declareProperty( "BtagWPOR", m_orBtagWP); //the one used in the Overlap Removal
   declareProperty( "BtagWP", m_BtagWP);     //the one used in FillJet() afterwards
   declareProperty( "BtagMinPt", m_BtagMinPt);    // minimum jetPt cut (MR31061) >=20 GeV EM jets & >=10 GeV TrackJets (not calibrated below)
-  declareProperty( "BtagTimeStamp", m_BtagTimeStamp); /// Time stamp of the b-tagging containers introduced in p3954
   declareProperty( "BtagKeyOverride", m_BtagKeyOverride); /// Override for the b-tagging jet collection
   declareProperty( "BtagCalibPath", m_bTaggingCalibrationFilePath);
   declareProperty( "BtagTaggerTrkJet", m_BtagTagger_trkJet);
   declareProperty( "BtagMinPtTrkJet", m_BtagMinPt_trkJet);    // minimum jetPt cut (MR31061) >=20 GeV EM jets & >=10 GeV TrackJets (not calibrated below)
   declareProperty( "BtagWPTrkJet", m_BtagWP_trkJet);  //the one used in FillTrackJet() afterwards
-  declareProperty( "BtagTimeStampTrkJet", m_BtagTimeStamp_trkJet);  //the one used in FillTrackJet() afterwards
   //ELECTRONS
   declareProperty( "EleBaselinePt", m_eleBaselinePt);
   declareProperty( "ElePt", m_elePt);
@@ -731,9 +728,14 @@ SUSYObjDef_xAOD::SUSYObjDef_xAOD( const std::string& name )
   // -- see https://twiki.cern.ch/twiki/bin/view/AtlasProtected/RecommendedIsolationWPs#Current_official_working_points
   // -- the el iso points are those which have (or will have) SFs available
   m_el_iso_support = {
-     "Loose_VarRad", "Tight_VarRad",                    // current WPs
-     "HighPtCaloOnly",                                  // current HighPtCaloOnly WPs
-     "TightTrackOnly_VarRad", "TightTrackOnly_FixedRad" //
+     "FCLoose", "FCTight",                             // current WPs
+     "FCHighPtCaloOnly",                               // current HighPtCaloOnly WPs
+     "Gradient",                                       //
+     "HighPtCaloOnly",                                 //
+     "TightTrackOnly_VarRad","TightTrackOnly_FixedRad",//
+     "Tight_VarRad","Loose_VarRad",                    //
+     "PLVLoose", "PLVTight",                           // PLV recommended WPs, fallback support below b/o SFs and & egamma map file
+     "PLImprovedTight", "PLImprovedVeryTight"          // New PLIV WPs, fallback support below b/o SFs & egamma map file
   };
   // -- the muon iso points are those which have SFs available
   // -- more details https://indico.cern.ch/event/878781/contributions/3721998/attachments/1976194/3289315/20200127_IFFshort_2.pdf
@@ -742,18 +744,25 @@ SUSYObjDef_xAOD::SUSYObjDef_xAOD( const std::string& name )
      "TightTrackOnly_FixedRad", "TightTrackOnly_VarRad", "HighPtTrackOnly",                   // TrackOnly (new naming) recommended WPs
      "PLVLoose", "PLVTight",                                                                  // PLV recommended WPs 
      "Loose_VarRad", "Loose_FixedRad", "Tight_VarRad", "Tight_FixedRad",                      // Other WPs (new naming)
+     "PLImprovedTight", "PLImprovedVeryTight"                                                 // New PLIV WPs, fallback support below b/o SFs
   };
 
   // Construct electron fallback WPs for SFs
   for (const auto& x : m_el_iso_support) { m_el_iso_fallback[x] = x; } // all current WPs
-  m_el_iso_fallback["Tight_VarRad"] = "FCTight";                // plus actual fallback
-  m_el_iso_fallback["Loose_VarRad"] = "FCLoose";
+  m_el_iso_fallback["PLVTight"] = "FCTight";                    // plus actual fallback
+  m_el_iso_fallback["PLVLoose"] = "FCLoose";
+  m_el_iso_fallback["PLImprovedTight"] = "FCTight";
+  m_el_iso_fallback["PLImprovedVeryTight"] = "FCTight";
   m_el_iso_fallback["HighPtCaloOnly"] = "FCHighPtCaloOnly";
   m_el_iso_fallback["TightTrackOnly_VarRad"] = "FCTight";
   m_el_iso_fallback["TightTrackOnly_FixedRad"] = "FCTight";
+  m_el_iso_fallback["Tight_VarRad"] = "FCTight";
+  m_el_iso_fallback["Loose_VarRad"] = "FCLoose";
 
   // Construct muon fallback WPs for SFs
   m_mu_iso_fallback = {};
+  m_mu_iso_fallback["PLImprovedTight"] = "PLVTight";
+  m_mu_iso_fallback["PLImprovedVeryTight"] = "PLVTight";
 }
 
 #define CHECK_TOOL_RETRIEVE( TOOLHANDLE )         \
@@ -1318,7 +1327,7 @@ StatusCode SUSYObjDef_xAOD::readConfig()
   configFromFile(m_EG_corrModel, "Ele.EffNPcorrModel", rEnv, "TOTAL");
   configFromFile(m_EG_corrFNList, "Ele.EffCorrFNList", rEnv, "None");
   configFromFile(m_electronTriggerSFStringSingle, "Ele.TriggerSFStringSingle", rEnv, "SINGLE_E_2015_e24_lhmedium_L1EM20VH_OR_e60_lhmedium_OR_e120_lhloose_2016_2018_e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0");
-  configFromFile(m_eleEffMapFilePath, "Ele.EffMapFilePath", rEnv, "ElectronEfficiencyCorrection/2015_2017/rel21.2/Consolidation_September2018_v1/map3.txt");
+  configFromFile(m_eleEffMapFilePath, "Ele.EffMapFilePath", rEnv, "ElectronEfficiencyCorrection/2015_2018/rel21.2/Precision_Summer2020_v1/map1.txt");
   configFromFile(m_trig2015combination_singleLep, "Trig.Singlelep2015", rEnv, "e24_lhmedium_L1EM20VH_OR_e60_lhmedium_OR_e120_lhloose || mu20_iloose_L1MU15_OR_mu50"); 
   configFromFile(m_trig2016combination_singleLep, "Trig.Singlelep2016", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50"); 
   configFromFile(m_trig2017combination_singleLep, "Trig.Singlelep2017", rEnv, "e26_lhtight_nod0_ivarloose_OR_e60_lhmedium_nod0_OR_e140_lhloose_nod0 || mu26_ivarmedium_OR_mu50"); 
@@ -1427,19 +1436,17 @@ StatusCode SUSYObjDef_xAOD::readConfig()
   configFromFile(m_JMScalib, "Jet.JMSCalib", rEnv, false);
   //
   configFromFile(m_useBtagging, "Btag.enable", rEnv, true);
-  configFromFile(m_BtagTagger, "Btag.Tagger", rEnv, "DL1");
+  configFromFile(m_BtagTagger, "Btag.Tagger", rEnv, "DL1r");
   configFromFile(m_BtagWP, "Btag.WP", rEnv, "FixedCutBEff_77");
   configFromFile(m_BtagMinPt, "Btag.MinPt", rEnv, -1.); // Not calibrated below 20
-  configFromFile(m_BtagTimeStamp, "Btag.TimeStamp", rEnv, "201810", true);
   
-  configFromFile(m_bTaggingCalibrationFilePath, "Btag.CalibPath", rEnv, "xAODBTaggingEfficiency/13TeV/2020-21-13TeV-MC16-CDI-2020-03-11_v3.root");
+  configFromFile(m_bTaggingCalibrationFilePath, "Btag.CalibPath", rEnv, "xAODBTaggingEfficiency/13TeV/2021-22-13TeV-MC16-CDI-2021-12-02_v2.root");
   configFromFile(m_BtagSystStrategy, "Btag.SystStrategy", rEnv, "Envelope");
 
   configFromFile(m_useBtagging_trkJet, "BtagTrkJet.enable", rEnv, true);
-  configFromFile(m_BtagTagger_trkJet, "BtagTrkJet.Tagger", rEnv, "MV2c10");
+  configFromFile(m_BtagTagger_trkJet, "BtagTrkJet.Tagger", rEnv, "DL1r");
   configFromFile(m_BtagWP_trkJet, "BtagTrkJet.WP", rEnv, "FixedCutBEff_77");
   configFromFile(m_BtagMinPt_trkJet, "BtagTrkJet.MinPt", rEnv, -1.); // Not calibrated below 10
-  configFromFile(m_BtagTimeStamp_trkJet, "BtagTrkJet.TimeStamp", rEnv, "201810", true);
   configFromFile(m_BtagKeyOverride, "Btag.KeyOverride", rEnv, "", true);
   //
   configFromFile(m_orDoBoostedElectron, "OR.DoBoostedElectron", rEnv, true);

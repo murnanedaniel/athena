@@ -38,9 +38,6 @@
 #include "GaudiKernel/SmartIF.h"
 #include "Gaudi/Interfaces/IOptionsSvc.h"
 
-// TDAQ includes
-#include "eformat/write/FullEventFragment.h"
-
 // TBB includes
 #include "tbb/concurrent_queue.h"
 #include "tbb/task_arena.h"
@@ -237,6 +234,10 @@ private:
   Gaudi::Property<float> m_softTimeoutFraction{
     this, "SoftTimeoutFraction", 0.8, "Fraction of the hard timeout to be set as the soft timeout"};
 
+  Gaudi::Property<bool> m_traceOnTimeout{
+    this, "TraceOnTimeout", true,
+    "Print a stack trace on the first soft timeout (might take a while, holding all threads)"};
+
   Gaudi::Property<int> m_popFromSchedulerTimeout{
     this, "PopFromSchedulerTimeout", 200,
     "Maximum time in milliseconds to wait for a finished event before checking "
@@ -320,8 +321,8 @@ private:
    */
   std::tuple<numt, numt, numt, numt> m_detector_mask{0xffffffff, 0xffffffff, 0, 0};
 
-  /// "Event" context of current run (invalid event/slot)
-  EventContext m_currentRunCtx;
+  /// "Event" context of current run with dummy event/slot number
+  EventContext m_currentRunCtx{0,0};
   /// Event counter used for local bookkeeping; incremental per instance of HltEventLoopMgr, unrelated to global_id
   std::atomic<size_t> m_localEventNumber{0};
   /// Event selector context
@@ -350,6 +351,8 @@ private:
   tbb::concurrent_bounded_queue<DrainSchedulerStatusCode> m_drainSchedulerStatusQueue;
   /// Queue of result codes of startNextEvent
   tbb::concurrent_bounded_queue<StatusCode> m_startNextEventStatusQueue;
+  /// Flag set when a soft timeout produces a stack trace, to avoid producing multiple traces
+  bool m_timeoutTraceGenerated{false};
   /// Flag set to false if timer thread should be stopped
   std::atomic<bool> m_runEventTimer{true};
   /// Counter of framework errors

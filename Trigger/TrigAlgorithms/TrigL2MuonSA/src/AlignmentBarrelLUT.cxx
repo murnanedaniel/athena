@@ -1,10 +1,10 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "AlignmentBarrelLUT.h"
 #include<fstream>
-
+#include "TMath.h"
 #include "AthenaBaseComps/AthMsgStreamMacros.h"
 
 // --------------------------------------------------------------------------------
@@ -20,7 +20,7 @@ TrigL2MuonSA::AlignmentBarrelLUT::AlignmentBarrelLUT(const std::string& type,
 // --------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------
 
-StatusCode TrigL2MuonSA::AlignmentBarrelLUT::readLUT(std::string lut_fileName)
+StatusCode TrigL2MuonSA::AlignmentBarrelLUT::readLUT(const std::string& lut_fileName)
 {
 
   int saddress, innerR;

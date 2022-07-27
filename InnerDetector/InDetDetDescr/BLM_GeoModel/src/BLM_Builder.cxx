@@ -110,7 +110,7 @@ StatusCode InDetDD::BLM_Builder::build(GeoVPhysVol* pv)
 
 //  ATH_MSG_INFO("BLMBuilder building..."); //commented out by D.Dobos on request by M.Elsing
  
-  const StoredMaterialManager * materialManager;
+  StoredMaterialManager * materialManager;
   if (StatusCode::SUCCESS != detStore()->retrieve(materialManager, std::string("MATERIALS"))) {
     ATH_MSG_ERROR("Failed to retrieve Material Manager");
     return StatusCode::FAILURE;
@@ -224,7 +224,11 @@ StatusCode InDetDD::BLM_Builder::build(GeoVPhysVol* pv)
 
 	  //set the BLM_GeometryManeger
 	  manager->ModuleOn(moduleNo);
-	  manager->Module(moduleNo)->Set(moduleNo, module_property);
+	  if (module_property){
+	    manager->Module(moduleNo)->Set(moduleNo, module_property);
+	  } else {
+	    ATH_MSG_ERROR("module_property is null in BLM_Builder.cxx");
+	  }
 	}
     }
 

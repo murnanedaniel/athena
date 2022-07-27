@@ -7,6 +7,7 @@ from AthenaConfiguration.ComponentFactory import CompFactory
 from AthenaConfiguration.Enums import Format
 from AthenaCommon.CFElements import seqAND, seqOR, parOR, flatAlgorithmSequences, getSequenceChildren, isSequence, hasProp, getProp
 from AthenaCommon.Logging import logging
+from .TriggerRecoConfig import TriggerMetadataWriterCfg
 __log = logging.getLogger('TriggerConfig')
 
 def __isCombo(alg):
@@ -174,16 +175,16 @@ def triggerSummaryCfg(flags, hypos):
     Returns: ca, algorithm
     """
     acc = ComponentAccumulator()
-    DecisionSummaryMakerAlg=CompFactory.DecisionSummaryMakerAlg
     from TrigEDMConfig.TriggerEDMRun3 import recordable
-    decisionSummaryAlg = DecisionSummaryMakerAlg()
-    allChains = OrderedDict() # keys are chain names, values are lists of collections
+    from TrigOutputHandling.TrigOutputHandlingConfig import DecisionSummaryMakerAlgCfg
+    decisionSummaryAlg = DecisionSummaryMakerAlgCfg()
+    chainToLastCollection = OrderedDict() # keys are chain names, values are lists of collections
 
 
     # sort steps according to the step number i.e. strings Step1 Step2 ... Step10 Step11 rather than
     # alphabetic order Step10 Step11 Step1 Step2
     for stepName, stepHypos in sorted( hypos.items(), key=lambda x : __stepNumber(x[0]) ):
-        # While filling the allChains dict we will replace the content intentionally
+        # While filling the chainToLastCollection dict we will replace the content intentionally
         # i.e. the chain has typically multiple steps and we want the collections from the last one
         # In a step the chain is handled by hypo or hypo followed by the combo,
         # in second case we want out of the later.
@@ -191,13 +192,13 @@ def triggerSummaryCfg(flags, hypos):
         # (TODO, review this whn config is symmetrised by addition of ComboHypos always)
         orderedStepHypos = sorted(stepHypos, key=lambda hypo: not __isCombo(hypo))
 
-        stepChains = OrderedDict()
+        chainToCollectionInStep = OrderedDict()
         for hypo in orderedStepHypos:
             hypoChains, hypoOutputKeys = __decisionsFromHypo( hypo )
             for chain in hypoChains:
-                if chain not in stepChains:
-                    stepChains[chain] = hypoOutputKeys
-        allChains.update( stepChains )
+                if chain not in chainToCollectionInStep:
+                    chainToCollectionInStep[chain] = hypoOutputKeys
+        chainToLastCollection.update( chainToCollectionInStep )
 
     from TriggerMenuMT.HLT.Config.Utility.HLTMenuConfig import HLTMenuConfig
     from HLTSeeding.HLTSeedingConfig import mapThresholdToL1DecisionCollection
@@ -205,23 +206,23 @@ def triggerSummaryCfg(flags, hypos):
         __log.warning("No HLT menu, chains w/o algorithms are not handled")
     else:
         for chainName, chainDict in HLTMenuConfig.dicts().items():
-            if chainName not in allChains:
+            if chainName not in chainToLastCollection:
                 __log.debug("The chain %s is not mentioned in any step", chainName)
                 # TODO once sequences available in the menu we need to crosscheck it here
-                assert len(chainDict['chainParts'])  == 1, "Chains w/o the steps can not have mutiple parts in chainDict, it makes no sense: %s"%chainName
-                allChains[chainName] = [ mapThresholdToL1DecisionCollection( chainDict['chainParts'][0]['L1threshold'] ) ]
+                assert len(chainDict['chainParts'])  == 1, "Chains w/o the steps can not have multiple parts in chainDict, it makes no sense: %s"%chainName
+                chainToLastCollection[chainName] = [ mapThresholdToL1DecisionCollection( chainDict['chainParts'][0]['L1threshold'] ) ]
 
-    for c, cont in allChains.items():
+    for c, cont in chainToLastCollection.items():
         __log.debug("Final decision of chain  %s will be read from %d %s", c, len(cont), str(cont))
     # Flatten all the collections preserving the order
     collectionsWithFinalDecisions = []
-    for chain, collections in allChains.items():
+    for chain, collections in chainToLastCollection.items():
         for c in collections:
             if c not in collectionsWithFinalDecisions:
                 collectionsWithFinalDecisions.append(c)
     __log.debug("Final keys %s", collectionsWithFinalDecisions)
     decisionSummaryAlg.FinalDecisionKeys = collectionsWithFinalDecisions
-    decisionSummaryAlg.FinalStepDecisions = dict(allChains)
+    decisionSummaryAlg.FinalStepDecisions = dict(chainToLastCollection)
     decisionSummaryAlg.DecisionsSummaryKey = "HLTNav_Summary" # Output
     decisionSummaryAlg.DoCostMonitoring = flags.Trigger.CostMonitoring.doCostMonitoring
     decisionSummaryAlg.CostWriteHandleKey = recordable(flags.Trigger.CostMonitoring.outputCollection)
@@ -405,6 +406,10 @@ def triggerBSOutputCfg(flags, hypos, offline=False):
             readBSAcc.getEventAlgo('SGInputLoader').Load += [
                 ('ByteStreamMetadataContainer', 'InputMetaDataStore+ByteStreamMetadata')]
             acc.merge(readBSAcc)
+        else:
+            # No BS metadata (thus no DetectorMask) in POOL files, need to disable the checks using it
+            hltResultMakerAlg.ResultMaker.ExtraROBs = []
+            hltResultMakerAlg.ResultMaker.ExtraSubDets = []
 
         # Transfer trigger bits to xTrigDecision which is read by offline BS writing ByteStreamCnvSvc
         decmaker = CompFactory.getComp("TrigDec::TrigDecisionMakerMT")("TrigDecMakerMT")
@@ -446,19 +451,9 @@ def triggerPOOLOutputCfg(flags):
     decmaker = CompFactory.TrigDec.TrigDecisionMakerMT("TrigDecMakerMT", BitsMakerTool = bitsmaker)
     acc.addEventAlgo( decmaker )
 
-    # Produce trigger metadata
-    menuwriter = CompFactory.TrigConf.xAODMenuWriterMT()
-    menuwriter.KeyWriterTool = CompFactory.TrigConf.KeyWriterTool('KeyWriterToolOffline')
-    acc.addEventAlgo( menuwriter )
-
-    # Schedule the insertion of menus,  prescales & bunchgroups into the conditions store
-    # Required for metadata production
-    from TrigConfigSvc.TrigConfigSvcCfg import L1ConfigSvcCfg, HLTConfigSvcCfg, L1PrescaleCondAlgCfg, HLTPrescaleCondAlgCfg, BunchGroupCondAlgCfg
-    acc.merge( L1ConfigSvcCfg(flags) )
-    acc.merge( HLTConfigSvcCfg(flags) )
-    acc.merge( BunchGroupCondAlgCfg( flags ) )
-    acc.merge( L1PrescaleCondAlgCfg(flags) )
-    acc.merge( HLTPrescaleCondAlgCfg(flags) )
+    # Export trigger metadata during the trigger execution when running with POOL output.
+    metadataAcc, metadataOutputs = TriggerMetadataWriterCfg(flags)
+    acc.merge( metadataAcc )
 
     # Produce xAOD L1 RoIs from RoIBResult
     from AnalysisTriggerAlgs.AnalysisTriggerAlgsCAConfig import RoIBResultToxAODCfg
@@ -492,7 +487,7 @@ def triggerPOOLOutputCfg(flags):
         # Ensure OutputStream runs after TrigDecisionMakerMT and xAODMenuWriterMT
         alg.ExtraInputs += [
             ("xAOD::TrigDecision", str(decmaker.TrigDecisionKey)),
-            ("xAOD::TrigConfKeys", str(menuwriter.KeyWriterTool.ConfKeys))] + xRoIBResultOutputs
+            ("xAOD::TrigConfKeys", metadataOutputs)] + xRoIBResultOutputs
 
         # Keep input RDO objects in the output RDO_TRIG file
         if outputType == 'RDO':
@@ -606,6 +601,14 @@ def triggerRunCfg( flags, menu=None ):
 
     acc.addSequence( seqOR( "HLTTop") )
 
+    # HLTPreSeq only used for CostMon so far, skip if CostMon disabled
+    if flags.Trigger.CostMonitoring.doCostMonitoring:
+        acc.addSequence( parOR("HLTPreSeq"), parentName="HLTTop" )
+
+    from TrigCostMonitor.TrigCostMonitorConfig import TrigCostMonitorCfg
+    acc.merge( TrigCostMonitorCfg( flags ), sequenceName="HLTPreSeq" )
+
+
     acc.addSequence( parOR("HLTBeginSeq"), parentName="HLTTop" )
     # bit of a hack as for "legacy" type JO a seq name for cache creators has to be given,
     # in newJO realm the seqName will be removed as a comp fragment shoudl be unaware of where it will be attached
@@ -641,9 +644,6 @@ def triggerRunCfg( flags, menu=None ):
     acc.merge( monitoringAcc, sequenceName="HLTEndSeq" )
     acc.addEventAlgo( monitoringAlg, sequenceName="HLTEndSeq" )
 
-    from TrigCostMonitor.TrigCostMonitorConfig import TrigCostMonitorCfg
-    acc.merge( TrigCostMonitorCfg( flags ) )
-
     decObj = collectDecisionObjects( hypos, filters, hltSeedingAlg, summaryAlg )
     decObjHypoOut = collectHypoDecisionObjects(hypos, inputs=False, outputs=True)
     __log.info( "Number of decision objects found in HLT CF %d", len( decObj ) )
@@ -669,7 +669,7 @@ def triggerRunCfg( flags, menu=None ):
 
         if flags.Trigger.doOnlineNavigationCompactification:
             from TrigNavSlimmingMT.TrigNavSlimmingMTConfig import getTrigNavSlimmingMTOnlineConfig
-            onlineSlimAlg = getTrigNavSlimmingMTOnlineConfig()
+            onlineSlimAlg = getTrigNavSlimmingMTOnlineConfig(flags)
             acc.addEventAlgo( onlineSlimAlg, sequenceName="HLTFinalizeSeq" )
 
     return acc
@@ -702,8 +702,6 @@ def triggerPostRunCfg(flags):
 
 
 if __name__ == "__main__":
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior=1
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
 
     ConfigFlags.Trigger.HLTSeeding.forceEnableAllChains = True
@@ -715,12 +713,7 @@ if __name__ == "__main__":
         menuCA.addSequence( seqAND("HLTAllSteps") )
         return menuCA
 
-
     acc = triggerRunCfg( ConfigFlags, menu = testMenu )
-    Configurable.configurableRun3Behavior=0
-    from AthenaConfiguration.ComponentAccumulator import appendCAtoAthena
-    appendCAtoAthena( acc )
-
 
     f=open("TriggerRunConf.pkl","wb")
     acc.store(f)

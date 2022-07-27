@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /**
@@ -43,6 +43,9 @@ namespace LArGeo {
     );
     virtual ~EndcapCryostatConstruction();
 
+    EndcapCryostatConstruction(const EndcapCryostatConstruction&) = delete;
+    EndcapCryostatConstruction& operator= (const EndcapCryostatConstruction&) = delete;
+
     // Get the envelope containing one endcap (pos/neg)
     GeoFullPhysVol*     createEnvelope(bool bPos);
 
@@ -75,7 +78,7 @@ namespace LArGeo {
     friend class ::LArDetectorToolNV;
 
     GeoPhysVol* buildMbtsTrd(const IRDBRecord* rec
-			     , const StoredMaterialManager* matmanager
+			     , StoredMaterialManager* matmanager
 			     , GeoPhysVol* parent);
   };
 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /// @author Tadej Novak <tadej@cern.ch>
@@ -22,9 +22,12 @@ StatusCode EventInfoOverlay::initialize()
   ATH_MSG_DEBUG("Initializing...");
 
   ATH_MSG_INFO("Data overlay: " << m_dataOverlay.value());
+  if (m_validateBeamSpot.value()) {
+    ATH_MSG_INFO("Will validate beam spot size");
+  }
 
   // Check and initialize keys
-#if !defined(XAOD_ANALYSIS) && !defined(SIMULATIONBASE) && !defined(GENERATIONBASE)
+#if !defined(XAOD_ANALYSIS) && !defined(GENERATIONBASE)
   ATH_CHECK(m_beamSpotKey.initialize());
 #endif
 
@@ -57,15 +60,9 @@ StatusCode EventInfoOverlay::execute(const EventContext& ctx) const
   }
   ATH_MSG_DEBUG("Found signal xAOD::EventInfo " << signalEvent.name() << " in store " << signalEvent.store());
 
-  // Creating output timings container
-  SG::WriteHandle<xAOD::EventInfo> outputEvent(m_outputKey, ctx);
-  ATH_CHECK(outputEvent.record(std::make_unique<xAOD::EventInfo>(), std::make_unique<xAOD::EventAuxInfo>()));
-  if (!outputEvent.isValid()) {
-    ATH_MSG_ERROR("Could not record output xAOD::EventInfo " << outputEvent.name() << " to store " << outputEvent.store());
-    return StatusCode::FAILURE;
-  }
-  ATH_MSG_DEBUG("Recorded output xAOD::EventInfo " << outputEvent.name() << " in store " << outputEvent.store());
-
+  auto outputEvent = std::make_unique<xAOD::EventInfo>();
+  auto outputEventAux = std::make_unique<xAOD::EventAuxInfo>();
+  outputEvent->setStore (outputEventAux.get());
 
   // Copy the eventInfo data from background event
   *outputEvent = *bkgEvent;
@@ -77,8 +74,38 @@ StatusCode EventInfoOverlay::execute(const EventContext& ctx) const
   }
 
   // Propagate MC metadata
-  outputEvent->setMCChannelNumber(signalEvent->mcChannelNumber());
-  outputEvent->setMCEventNumber(signalEvent->mcEventNumber());
+  if (signalEvent->mcChannelNumber() == 0) {
+    if (m_mcChannelNumber.value() != 0) {
+      ATH_MSG_WARNING("Signal mcChannelNumber is 0, setting it to " << m_mcChannelNumber.value());
+      outputEvent->setMCChannelNumber(m_mcChannelNumber.value());
+    } else {
+      ATH_MSG_WARNING("Signal mcChannelNumber is 0");
+      outputEvent->setMCChannelNumber(signalEvent->mcChannelNumber());
+    }
+  } else {
+    if (m_mcChannelNumber.value() != 0 && signalEvent->mcChannelNumber() != m_mcChannelNumber.value()) {
+      ATH_MSG_WARNING("Signal mcChannelNumber (" << signalEvent->mcChannelNumber()
+                      << ") and provided mcChannelNumber (" << m_mcChannelNumber.value() << ") do not match.");
+    }
+    outputEvent->setMCChannelNumber(signalEvent->mcChannelNumber());
+  }
+
+  if (signalEvent->mcEventNumber() == 0) {
+    if (signalEvent->eventNumber() != 0) {
+      ATH_MSG_WARNING("Signal mcEventNumber is 0, setting it to match the eventNumber (" << signalEvent->eventNumber() << ")");
+      outputEvent->setMCEventNumber(signalEvent->eventNumber());
+    } else {
+      ATH_MSG_ERROR("Signal eventNumber and mcEventNumber are 0");
+      return StatusCode::FAILURE;
+    }
+  } else {
+    outputEvent->setMCEventNumber(signalEvent->mcEventNumber());
+  }
+
+  if (signalEvent->mcEventWeights().empty()) {
+    ATH_MSG_ERROR("Signal mcEventWeights are empty. This should not happen.");
+    return StatusCode::FAILURE;
+  }
   outputEvent->setMCEventWeights(signalEvent->mcEventWeights());
 
   // MC+MC overlay should always be marked as simulation
@@ -95,23 +122,35 @@ StatusCode EventInfoOverlay::execute(const EventContext& ctx) const
                                       bkgEvent->errorState(xAOD::EventInfo::Core)));
 
   // Ensure correct beam spot info
-#if !defined(XAOD_ANALYSIS) && !defined(SIMULATIONBASE) && !defined(GENERATIONBASE)
-  SG::ReadCondHandle<InDet::BeamSpotData> beamSpotHandle { m_beamSpotKey, ctx };
-  if (!beamSpotHandle.isValid()) {
-    ATH_MSG_ERROR("Beam spot information not valid");
-    return StatusCode::FAILURE;
+#if !defined(XAOD_ANALYSIS) && !defined(GENERATIONBASE)
+  if (m_validateBeamSpot.value()) {
+    if (std::abs(signalEvent->beamPosSigmaZ() - bkgEvent->beamPosSigmaZ()) > 1e-5f) {
+      ATH_MSG_ERROR("Beam spot size does not match between signal and background events");
+      return StatusCode::FAILURE;
+    }
+  } else {
+    SG::ReadCondHandle<InDet::BeamSpotData> beamSpotHandle { m_beamSpotKey, ctx };
+    if (!beamSpotHandle.isValid()) {
+      ATH_MSG_ERROR("Beam spot information not valid");
+      return StatusCode::FAILURE;
+    }
+    outputEvent->setBeamPos( beamSpotHandle->beamPos()[ Amg::x ],
+                            beamSpotHandle->beamPos()[ Amg::y ],
+                            beamSpotHandle->beamPos()[ Amg::z ] );
+    outputEvent->setBeamPosSigma( beamSpotHandle->beamSigma( 0 ),
+                                  beamSpotHandle->beamSigma( 1 ),
+                                  beamSpotHandle->beamSigma( 2 ) );
+    outputEvent->setBeamPosSigmaXY( beamSpotHandle->beamSigmaXY() );
+    outputEvent->setBeamTiltXZ( beamSpotHandle->beamTilt( 0 ) );
+    outputEvent->setBeamTiltYZ( beamSpotHandle->beamTilt( 1 ) );
+    outputEvent->setBeamStatus( beamSpotHandle->beamStatus() );
   }
-  outputEvent->setBeamPos( beamSpotHandle->beamPos()[ Amg::x ],
-                           beamSpotHandle->beamPos()[ Amg::y ],
-                           beamSpotHandle->beamPos()[ Amg::z ] );
-  outputEvent->setBeamPosSigma( beamSpotHandle->beamSigma( 0 ),
-                                beamSpotHandle->beamSigma( 1 ),
-                                beamSpotHandle->beamSigma( 2 ) );
-  outputEvent->setBeamPosSigmaXY( beamSpotHandle->beamSigmaXY() );
-  outputEvent->setBeamTiltXZ( beamSpotHandle->beamTilt( 0 ) );
-  outputEvent->setBeamTiltYZ( beamSpotHandle->beamTilt( 1 ) );
-  outputEvent->setBeamStatus( beamSpotHandle->beamStatus() );
 #endif
+
+  // Creating output timings container
+  SG::WriteHandle<xAOD::EventInfo> outputEventH(m_outputKey, ctx);
+  ATH_CHECK(outputEventH.record(std::move(outputEvent), std::move(outputEventAux)));
+  ATH_MSG_DEBUG("Recorded output xAOD::EventInfo " << outputEventH.name() << " in store " << outputEventH.store());
 
   ATH_MSG_DEBUG("execute() end");
   return StatusCode::SUCCESS;

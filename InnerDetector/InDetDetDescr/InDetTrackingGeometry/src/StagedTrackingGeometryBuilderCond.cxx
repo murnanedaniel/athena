@@ -34,6 +34,7 @@
 #include "AthenaKernel/IOVInfiniteRange.h"
 //Gaudi
 #include "GaudiKernel/SystemOfUnits.h"
+#include <iterator> //std::advance
 
 // constructor
 InDet::StagedTrackingGeometryBuilderCond::StagedTrackingGeometryBuilderCond(const std::string& t, const std::string& n, const IInterface* p) :
@@ -132,9 +133,11 @@ StatusCode InDet::StagedTrackingGeometryBuilderCond::initialize()
 }
 
 //FIXME: ctx, tVolPair not used yet, range not created
-std::pair<EventIDRange, Trk::TrackingGeometry*> 
+std::unique_ptr<Trk::TrackingGeometry> 
 InDet::StagedTrackingGeometryBuilderCond::trackingGeometry ATLAS_NOT_THREAD_SAFE // Thread unsafe TrackingGeometry::indexStaticLayers method is used.
-(const EventContext& ctx, std::pair<EventIDRange, const Trk::TrackingVolume*> /*tVolPair*/) const
+(const EventContext& ctx,
+ const Trk::TrackingVolume* /*tVol*/,
+ SG::WriteCondHandle<Trk::TrackingGeometry>& whandle) const
 {
    // only one assumption: 
    // layer builders are ordered in increasing r
@@ -143,7 +146,6 @@ InDet::StagedTrackingGeometryBuilderCond::trackingGeometry ATLAS_NOT_THREAD_SAFE
    
    ////////////////////////////////////////////////////////////////////////////////////////////////////////    
    // The Overall Geometry
-   Trk::TrackingGeometry* trackingGeometry = nullptr;   
 
    // get the dimensions from the envelope service 
    const RZPairVector& envelopeDefs = m_enclosingEnvelopeSvc->getInDetRZBoundary();
@@ -160,29 +162,27 @@ InDet::StagedTrackingGeometryBuilderCond::trackingGeometry ATLAS_NOT_THREAD_SAFE
    
    ATH_MSG_VERBOSE("       -> envelope R/Z defined as : " << envelopeVolumeRadius << " / " << envelopeVolumeHalfZ );
 
-   ATH_MSG_DEBUG( "[ STEP 1 ] : Getting overal dimensions from the different layer builders." );
+   ATH_MSG_DEBUG( "[ STEP 1 ] : Getting overall dimensions from the different layer builders." );
    size_t ilS = 0;
    double maximumLayerExtendZ   = 0.;
    double maximumLayerRadius    = 0.;
    std::vector<InDet::LayerSetupCond> layerSetups;
-   EventIDRange range = IOVInfiniteRange::infiniteMixed();
    for ( const auto & lProvider : m_layerProviders){
        // screen output
        ATH_MSG_DEBUG( "[ LayerBuilder : '" << lProvider->identification() << "' ] being processed. " );
        // retrieve the layers
-       std::pair< EventIDRange, std::vector<Trk::Layer*> > centralLayersPair  = lProvider->centralLayers(ctx);
-       std::tuple<EventIDRange, const std::vector<Trk::Layer*>, const std::vector<Trk::Layer*> > endcapLayersTuple = lProvider->endcapLayer(ctx);
-       range=EventIDRange::intersect(range,centralLayersPair.first, std::get<0>(endcapLayersTuple));
-       ATH_MSG_INFO("       -> retrieved "  << centralLayersPair.second.size()  << " central layers.");
-       ATH_MSG_INFO("       -> retrieved "  << std::get<2>(endcapLayersTuple).size() << " layers on negative side.");
-       ATH_MSG_INFO("       -> retrieved "  << std::get<1>(endcapLayersTuple).size() << " layers on positive side.");
+       std::vector<Trk::Layer*> centralLayers = lProvider->centralLayers(ctx, whandle);
+       std::pair<const std::vector<Trk::Layer*>, const std::vector<Trk::Layer*> > endcapLayersPair = lProvider->endcapLayer(ctx, whandle);
+       ATH_MSG_INFO("       -> retrieved "  << centralLayers.size()  << " central layers.");
+       ATH_MSG_INFO("       -> retrieved "  << endcapLayersPair.second.size() << " layers on negative side.");
+       ATH_MSG_INFO("       -> retrieved "  << endcapLayersPair.first.size() << " layers on positive side.");
        // getting the Layer setup from parsing the builder output
        InDet::LayerSetupCond lSetup =
          estimateLayerSetup(lProvider->identification(),
                             ilS,
-                            std::get<2>(endcapLayersTuple),
-                            centralLayersPair.second,
-                            std::get<1>(endcapLayersTuple),
+                            endcapLayersPair.second,
+                            centralLayers,
+                            endcapLayersPair.first,
                             envelopeVolumeRadius,
                             envelopeVolumeHalfZ);
        // get the maxima - for R and Z
@@ -293,14 +293,14 @@ InDet::StagedTrackingGeometryBuilderCond::trackingGeometry ATLAS_NOT_THREAD_SAFE
                                                                m_replaceJointBoundaries);
 
    //  create the TrackingGeometry ------------------------------------------------------  
-   trackingGeometry = new Trk::TrackingGeometry(enclosedDetector);
+   auto trackingGeometry = std::make_unique<Trk::TrackingGeometry>(enclosedDetector);
    
    if (m_indexStaticLayers) {
       ATH_MSG_VERBOSE("Re-index the static layers ...");
       trackingGeometry->indexStaticLayers(Trk::Global);   
    }                       
 
-   return std::make_pair(range, trackingGeometry);
+   return trackingGeometry;
 }
 
 // finalize
@@ -921,7 +921,8 @@ const Trk::Layer* InDet::StagedTrackingGeometryBuilderCond::mergeDiscLayers (std
   // on the input, disc layers overlapping in thickness : merge to a new DiscLayer
   std::pair<float,float> zb(1.e5,-1.e5);
   // order discs in radius
-  std::vector< std::pair<float,float> > rbounds; std::vector<size_t> discOrder;
+  std::vector< std::pair<float,float> > rbounds; 
+  std::vector<size_t> discOrder;
   size_t id=0;
   for ( const auto *  lay : inputDiscs ) {
     zb.first = fmin( zb.first, lay->surfaceRepresentation().center().z()-0.5*lay->thickness());
@@ -941,8 +942,12 @@ const Trk::Layer* InDet::StagedTrackingGeometryBuilderCond::mergeDiscLayers (std
         if ( r>rbounds[ir].first ) break; 
         ir--;
       }
-      rbounds.insert(rbounds.begin()+ir+1,std::pair<float,float> (r,db->rMax()));  
-      discOrder.insert(discOrder.begin()+ir+1,id);           
+      auto rboundsInsertionPt(rbounds.begin());
+      std::advance(rboundsInsertionPt, ir+1);
+      rbounds.insert(rboundsInsertionPt,std::pair<float,float> (r,db->rMax())); 
+      auto discOrderInsertionPt(discOrder.begin());
+      std::advance(discOrderInsertionPt, ir+1);
+      discOrder.insert(discOrderInsertionPt,id);           
     }
     id++;
   }

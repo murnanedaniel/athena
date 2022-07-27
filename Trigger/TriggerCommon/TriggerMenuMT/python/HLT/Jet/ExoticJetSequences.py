@@ -42,3 +42,34 @@ def jetEJsMenuSequence(flags, jetsin, name):
                          HypoToolGen = trigJetEJsHypoToolFromDict,
     )
                                                                                                                             
+def jetCRMenuSequence(flags, jetsin, name):
+
+    from TrigHLTJetHypo.TrigHLTJetHypoConf import TrigJetCRHypoAlg
+    from TrigHLTJetHypo.TrigJetHypoToolConfig import trigJetCRHypoToolFromDict
+
+    # Get track sequence name
+    from TrigInDetConfig.ConfigSettings import getInDetTrigConfig
+    from ..CommonSequences.FullScanDefs import fs_cells, trkFSRoI
+    IDTrigConfig = getInDetTrigConfig( 'jet' )
+    sequenceOut  = IDTrigConfig.tracks_FTF()
+    cellsin=fs_cells
+
+    from .JetRecoSequences import JetFSTrackingSequence
+    from .JetMenuSequences import getTrackingInputMaker
+    trkSeq, trkColls = RecoFragmentsPool.retrieve(
+        JetFSTrackingSequence, flags, trkopt='ftf', RoIs=trkFSRoI
+    )
+
+    IMAlg = getTrackingInputMaker('ftf')
+    sequence = seqAND( 'CalRatioExoticSeq', [IMAlg, trkSeq] )
+
+    #Setup the hypothesis algorithm
+    theCalRatioTriggerHypo           = TrigJetCRHypoAlg("L2CalRatio")
+    theCalRatioTriggerHypo.Tracks    = sequenceOut
+    theCalRatioTriggerHypo.Cells        = cellsin
+
+    return MenuSequence( Sequence    = sequence,
+                         Maker       = IMAlg,
+                         Hypo        = theCalRatioTriggerHypo,
+                         HypoToolGen = trigJetCRHypoToolFromDict,
+    )

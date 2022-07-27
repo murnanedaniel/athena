@@ -1,4 +1,4 @@
-#Copyright (C) 2020, 2021 CERN for the benefit of the ATLAS collaboration
+#Copyright (C) 2020, 2021, 2022 CERN for the benefit of the ATLAS collaboration
 
 # Declare the package name:
 atlas_subdir( CaloUtils )
@@ -11,7 +11,7 @@ find_package( CLHEP )
 atlas_add_library( CaloUtilsLib CaloUtils/*.h CaloUtils/*.icc src/*.h src/*.cxx
    PUBLIC_HEADERS CaloUtils
    PRIVATE_INCLUDE_DIRS ${Boost_INCLUDE_DIRS} ${CLHEP_INCLUDE_DIRS}
-   LINK_LIBRARIES AthenaBaseComps AthenaKernel CaloConditions CaloDetDescrLib CaloEvent CaloGeoHelpers CaloIdentifier CaloInterfaceLib CxxUtils FourMom GaudiKernel Navigation StoreGateLib xAODCaloEvent
+   LINK_LIBRARIES AthenaBaseComps AthenaKernel CaloConditions CaloDetDescrLib CaloEvent CaloGeoHelpers CaloIdentifier CaloInterfaceLib CxxUtils FourMom GaudiKernel Navigation StoreGateLib xAODCaloEvent AthLinks
    PRIVATE_LINK_LIBRARIES ${Boost_LIBRARIES} ${CLHEP_LIBRARIES} GeoModelInterfaces Identifier SGTools TestTools )
 
 atlas_add_component( CaloUtils src/components/*.cxx
@@ -53,7 +53,7 @@ atlas_add_test( CaloTowerStore_test
 atlas_add_test( CaloTowerBuilderTool_test
    SCRIPT athena.py CaloUtils/CaloTowerBuilderTool_test.py
    LOG_IGNORE_PATTERN "Reading file|Unable to locate catalog|Cache alignment|MetaReader|AutoConfiguration|IOVDbSvc +INFO|INFO Initializing"
-   ENVIRONMENT "ATLAS_REFERENCE_TAG=CaloUtils/CaloUtils-01-00-18"
+   ENVIRONMENT "ATLAS_REFERENCE_TAG=CaloUtils/CaloUtils-01-00-19"
    PROPERTIES TIMEOUT 500 )
 
 atlas_add_test( ToolWithConstants_test

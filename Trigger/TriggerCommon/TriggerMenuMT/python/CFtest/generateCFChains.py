@@ -63,17 +63,17 @@ def generateCFChains(opt):
 
         MuonChains  = []
         # step1
-        mufastS= muFastSequence()
+        mufastS= muFastSequence(ConfigFlags)
         step1mufast=makeChainStep("Step1_muFast", [ mufastS ])
         # step2
-        mucombS = muCombSequence()
+        mucombS = muCombSequence(ConfigFlags)
         step2muComb=makeChainStep("Step2_muComb", [ mucombS ])
         # step3
-        muEFSAS = muEFSASequence()
+        muEFSAS = muEFSASequence(ConfigFlags)
         step3muEFSA=makeChainStep("Step3_muEFSA", [ muEFSAS ])
         #/step3muIso =makeChainStep("Step3_muIso",  [ muIsoSequence() ])
         # step4
-        muEFCBS = muEFCBSequence()
+        muEFCBS = muEFCBSequence(ConfigFlags)
         step4muEFCB=makeChainStep("Step4_muEFCB", [ muEFCBS ])
 
         emptyStep=makeChainStep("Step2_empty", multiplicity=[])
@@ -102,8 +102,8 @@ def generateCFChains(opt):
         
         #FS Muon trigger
         # Full scan MS tracking step
-        stepFSmuEFSA=makeChainStep("Step_FSmuEFSA", [muEFSAFSSequence()])
-        stepFSmuEFCB=makeChainStep("Step_FSmuEFCB", [muEFCBFSSequence()])
+        stepFSmuEFSA=makeChainStep("Step_FSmuEFSA", [muEFSAFSSequence(ConfigFlags)])
+        stepFSmuEFCB=makeChainStep("Step_FSmuEFCB", [muEFCBFSSequence(ConfigFlags)])
         MuonChains += [ makeChain(name='HLT_mu6noL1_L1MU5VF', L1Thresholds=["FSNOSEED"],  ChainSteps=[stepFSmuEFSA, stepFSmuEFCB])] 
 
         menu.chainsInMenu['Muon'] += MuonChains
@@ -155,12 +155,12 @@ def generateCFChains(opt):
             makeChain(name='HLT_j45_L1J20',  L1Thresholds=["FSNOSEED"], ChainSteps=[step_a4_tc_em]  ),
             makeChain(name='HLT_j85_L1J20',  L1Thresholds=["FSNOSEED"], ChainSteps=[step_a4_tc_em]  ),
             makeChain(name='HLT_j420_L1J20', L1Thresholds=["FSNOSEED"], ChainSteps=[step_a4_tc_em]  ),
-            makeChain(name='HLT_j260_320eta490_L1J20',  L1Thresholds=["FSNOSEED"], ChainSteps=[step_a4_tc_em]  ),
+            makeChain(name='HLT_j260f_L1J20',  L1Thresholds=["FSNOSEED"], ChainSteps=[step_a4_tc_em]  ),
             makeChain(name='HLT_j460_a10_lcw_subjes_L1J20', L1Thresholds=["FSNOSEED"], ChainSteps=[step_a10_tc_lcw_subjes]  ),
             makeChain(name='HLT_j460_a10r_L1J20', L1Thresholds=["FSNOSEED"], ChainSteps=[step_a10r]  ),
             makeChain(name='HLT_j460_a10t_L1J20', L1Thresholds=["FSNOSEED"], ChainSteps=[step_a10t]  ),
             makeChain(name='HLT_3j200_L1J20', L1Thresholds=["FSNOSEED"], ChainSteps=[step_a4_tc_em]  ),
-            makeChain(name='HLT_5j70_0eta240_L1J20', L1Thresholds=["FSNOSEED"], ChainSteps=[step_a4_tc_em]  ), # 5j70_0eta240_L14J15 (J20 until multi-object L1 seeds supported)
+            makeChain(name='HLT_5j70c_L1J20', L1Thresholds=["FSNOSEED"], ChainSteps=[step_a4_tc_em]  ), # 5j70_0eta240_L14J15 (J20 until multi-object L1 seeds supported)
             makeChain(name='HLT_j45_pf_subresjesgscIS_ftf_preselj20_L1J20',  L1Thresholds=["FSNOSEED"], ChainSteps=[step_a4_tc_em_presel,step_a4_pf_em_ftf]  ),
             ]
 
@@ -180,8 +180,8 @@ def generateCFChains(opt):
         step3 = makeChainStep("Step3_bjet", [getBJetSequence(ConfigFlags, jc_name)])
         
         menu.chainsInMenu['Bjet']  = [
-            makeChain(name='HLT_j45_ftf_subjesgscIS_boffperf_preselj20_L1J20', L1Thresholds=["FSNOSEED"], ChainSteps=[step1,step2,step3] ),
-            makeChain(name='HLT_j45_ftf_subjesgscIS_bdl1r70_preselj20_L1J20',  L1Thresholds=["FSNOSEED"], ChainSteps=[step1,step2,step3] ),
+            makeChain(name='HLT_j45_boffperf_ftf_subjesgscIS_preselj20_L1J20', L1Thresholds=["FSNOSEED"], ChainSteps=[step1,step2,step3] ),
+            makeChain(name='HLT_j45_bdl1r70_ftf_subjesgscIS_preselj20_L1J20',  L1Thresholds=["FSNOSEED"], ChainSteps=[step1,step2,step3] ),
             ]
 
    
@@ -240,10 +240,10 @@ def generateCFChains(opt):
         from TriggerMenuMT.HLT.Muon.MuonMenuSequences import muFastSequence, muCombSequence, muEFSASequence, muEFCBSequence
         from TrigBphysHypo.TrigMultiTrkComboHypoConfig import StreamerDimuL2ComboHypoCfg, DimuEFComboHypoCfg
         
-        step1_dimufast=makeChainStep("Step1_dimuFast", [muFastSequence()], multiplicity=[2])
-        step2_dimuComb=makeChainStep("Step2_dimuComb", [muCombSequence()], multiplicity=[2], comboHypoCfg=StreamerDimuL2ComboHypoCfg)
-        step3_dimuEFSA=makeChainStep("Step3_dimuEFSA", [muEFSASequence()], multiplicity=[2])
-        step4_dimuEFCB=makeChainStep("Step4_dimuEFCB", [muEFCBSequence()], multiplicity=[2], comboHypoCfg=DimuEFComboHypoCfg)
+        step1_dimufast=makeChainStep("Step1_dimuFast", [muFastSequence(ConfigFlags)], multiplicity=[2])
+        step2_dimuComb=makeChainStep("Step2_dimuComb", [muCombSequence(ConfigFlags)], multiplicity=[2], comboHypoCfg=StreamerDimuL2ComboHypoCfg)
+        step3_dimuEFSA=makeChainStep("Step3_dimuEFSA", [muEFSASequence(ConfigFlags)], multiplicity=[2])
+        step4_dimuEFCB=makeChainStep("Step4_dimuEFCB", [muEFCBSequence(ConfigFlags)], multiplicity=[2], comboHypoCfg=DimuEFComboHypoCfg)
         steps = [step1_dimufast, step2_dimuComb, step3_dimuEFSA, step4_dimuEFCB]
 
         menu.chainsInMenu['Bphysics'] = [
@@ -263,7 +263,7 @@ def generateCFChains(opt):
         
         from TriggerMenuMT.HLT.Muon.MuonMenuSequences import muFastSequence
         
-        comboStep_et_mufast           = makeChainStep("Step1_et_mufast", [fastCaloSeq, muFastSequence()], multiplicity=[1,1])
+        comboStep_et_mufast           = makeChainStep("Step1_et_mufast", [fastCaloSeq, muFastSequence(ConfigFlags)], multiplicity=[1,1])
 
         menu.chainsInMenu['Combined'] = [
             makeChain(name='HLT_e3_etcut_mu6_L1EM7_MU8F', L1Thresholds=["EM7", "MU8F"],  ChainSteps=[comboStep_et_mufast ])]

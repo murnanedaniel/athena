@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 from AthenaCommon.Logging import logging
 logging.getLogger().info("Importing %s",__name__)
@@ -6,14 +6,6 @@ log = logging.getLogger(__name__)
 
 from TriggerMenuMT.HLT.Config.ChainConfigurationBase import ChainConfigurationBase
 
-
-
-def unconventionalTrackingChainParts(chainParts):
-    unconvtrkChainParts = []
-    for p in chainParts:
-        if p['trigType'] == 'unconvtrk':
-            unconvtrkChainParts.append(p)
-    return unconvtrkChainParts
 
 
 #----------------------------------------------------------------
@@ -34,16 +26,12 @@ class UnconventionalTrackingChainConfiguration(ChainConfigurationBase):
 
         stepDictionary = self.getStepDictionary()
 
+        key = self.chainPart['trigType']
+        steps = stepDictionary[key]
 
-        key = self.chainPart['extra']
-        steps=stepDictionary[key]
-        
-
-
-        for step_level in steps:
-            for step in step_level:
-                chainstep = getattr(self, step)()
-                chainSteps+=[chainstep]
+        for step in steps:
+            chainstep = getattr(self, step)()
+            chainSteps += [chainstep]
 
         myChain = self.buildChain(chainSteps)
 
@@ -52,62 +40,69 @@ class UnconventionalTrackingChainConfiguration(ChainConfigurationBase):
     def getStepDictionary(self):
 
         stepDictionary = {
-            "isohpttrack" : [['getIsoHPtTrackEmtpy'],['getFTFTrackReco'],['getIsoHPtTrackTrigger']],
-            "fslrt": [['getFSLRTEmpty'], ['getFSLRTTrigger']],
-            "dedx" : [['getdEdxEmpty'], ['getFTFTrackReco'],['getdEdxTrigger']],
-            "hitdv": [['getJetReco'],['getFTFTrackReco'],['getHitDVTrigger']],
-            "distrk" : [['getDisTrkEmpty'],['getFTFTrackReco'],['getDisTrkTrigger']],
-            "dispj":  [['getJetReco'],['getFTFTrackReco'],['getDJ1'],['getDJ2'],['getDJ3']]
+            "isotrk" : ['getIsoHPtTrackEmpty', 'getRoITrkEmpty', 'getFTFTrackReco', 'getIsoHPtTrackTrigger'],
+            "fslrt" : ['getFSLRTEmpty', 'getRoITrkEmpty', 'getFSLRTTrigger'],
+            "dedxtrk" : ['getdEdxEmpty', 'getRoITrkEmpty', 'getFTFTrackReco', 'getdEdxTrigger'],
+            "hitdvjet" : ['getJetReco', 'getRoITrkEmpty', 'getFTFTrackReco', 'getHitDVTrigger'],
+            "fsvsi" : ['getVSIEmpty', 'getRoITrkEmpty', 'getVSITrigger'],
+            "distrk" : ['getDisTrkEmpty', 'getRoITrkEmpty', 'getFTFTrackReco', 'getDisTrkTrigger'],
+            "dispjet" : ['getJetReco', 'getRoITrkEmpty', 'getFTFTrackReco', 'getDJPromptStep', 'getDJDispStep', 'getDJEDStep'],
+            "dispvtx" : ['getJetReco', 'getRoITrkEmpty', 'getFTFTrackReco', 'getHitDVTrigger', 'getDVRecoStep', 'getDVEDStep']
         }
 
         return stepDictionary
 
-
-        # --------------------
-    def getIsoHPtTrackTrigger(self):
-        return self.getStep(7,'IsoHPtTrackTriggerCfg',[IsoHPtTrackTriggerCfg])
-
-    def getFTFTrackReco(self):
-        return self.getStep(6,'FTFRecoOnlyCfg',[FTFRecoOnlyCfg])
-
-    def getIsoHPtTrackEmtpy(self):
-        return  self.getEmptyStep(1,"EmptyUncTrk")
-
-    def getFSLRTTrigger(self):
-        return self.getStep(2,'FSLRTTrigger',[FSLRTTriggerCfg])
-
+    # --------------------
+    # Step definitions in alignment order
+    # Step 1
+    def getJetReco(self):
+        return self.getStep(1,'JetRecoOnlyCfg',[JetRecoOnlyCfg])
+    # Empty for alignment
+    def getIsoHPtTrackEmpty(self):
+        return  self.getEmptyStep(1,'EmptyUncTrk')
     def getFSLRTEmpty(self):
         return self.getEmptyStep(1, 'FSLRTEmptyStep')
-
-    def getdEdxTrigger(self):
-        return self.getStep(7,'dEdxTriggerCfg',[dEdxTriggerCfg])
-
+    def getDisTrkEmpty(self):
+        return self.getEmptyStep(1, 'DisTrkEmptyStep')
+    def getVSIEmpty(self):
+        return self.getEmptyStep(1, 'VSIEmptyStep')
     def getdEdxEmpty(self):
         return self.getEmptyStep(1, 'dEdxEmptyStep')
 
+    # Step 2
+    def getFSLRTTrigger(self):
+        return self.getStep(2,'FSLRTTrigger',[FSLRTTriggerCfg])
+    # Empty for alignment with jets
+    def getRoITrkEmpty(self):
+        return self.getEmptyStep(2, 'RoITrkEmptyStep')
+
+    # Step 3 -- all FTF tracking here
+    def getFTFTrackReco(self):
+        return self.getStep(3,'FTFRecoOnlyCfg',[FTFRecoOnlyCfg])
+
+    # Step 4+ -- everything post FTF tracking
+    def getIsoHPtTrackTrigger(self):
+        return self.getStep(4,'IsoHPtTrackTriggerCfg',[IsoHPtTrackTriggerCfg])
+    def getdEdxTrigger(self):
+        return self.getStep(4,'dEdxTriggerCfg',[dEdxTriggerCfg])
     def getHitDVTrigger(self):
-        return self.getStep(7,'HitDVTriggerCfg',[HitDVTriggerCfg])
-
-    def getHitDVEmpty(self):
-        return self.getEmptyStep(1, 'HitDVEmptyStep')
-
-    def getJetReco(self):
-        return self.getStep(1,'JetRecoOnlyCfg',[JetRecoOnlyCfg])
-
+        return self.getStep(4,'HitDVTriggerCfg',[HitDVTriggerCfg])
     def getDisTrkTrigger(self):
-        return self.getStep(7,'DisTrkTriggerCfg',[DisTrkTriggerCfg])
+        return self.getStep(4,'DisTrkTriggerCfg',[DisTrkTriggerCfg])
+    def getVSITrigger(self):
+        return self.getStep(4,'VSITrigger',[VSITriggerCfg])
+    def getDJPromptStep(self):
+        return self.getStep(3,'DJPromptStepCfg',[DJPromptStepCfg])
+    def getDJDispStep(self):
+        return self.getStep(4,'DJDispStepCfg',[DJDispStepCfg])
+    def getDJEDStep(self):
+        return self.getStep(5,'DJEDStepCfg',[DJEDStepCfg])
+    def getDVRecoStep(self):
+        return self.getStep(5,'DVRecoStepCfg',[DVRecoStepCfg])
+    def getDVEDStep(self):
+        return self.getStep(6,'DVEDStepCfg',[DVEDStepCfg])
 
-    def getDisTrkEmpty(self):
-        return self.getEmptyStep(1, 'DisTrkEmptyStep')
 
-    def getDJ1(self):
-        return self.getStep(7,'DJTrigger1',[DJStep1])
-
-    def getDJ2(self):
-        return self.getStep(8,'DJTrigger2',[DJStep2])
-
-    def getDJ3(self):
-        return self.getStep(9,'DJTrigger3',[DJStep3])
 
 
 def IsoHPtTrackTriggerCfg(flags):
@@ -115,12 +110,16 @@ def IsoHPtTrackTriggerCfg(flags):
     return IsoHPtTrackTriggerHypoSequence()
 
 def FTFRecoOnlyCfg(flags):
-    from TriggerMenuMT.HLT.UnconventionalTracking.IsoHighPtTrackTriggerConfiguration import FTFRecoOnlySequence
-    return FTFRecoOnlySequence()
+    from TriggerMenuMT.HLT.UnconventionalTracking.CommonConfiguration import getFullScanRecoOnlySequence
+    return getFullScanRecoOnlySequence()
 
 def FSLRTTriggerCfg(flags):
     from TriggerMenuMT.HLT.UnconventionalTracking.FullScanLRTTrackingConfiguration import FullScanLRTTriggerMenuSequence
     return FullScanLRTTriggerMenuSequence()
+
+def VSITriggerCfg(flags):
+    from TriggerMenuMT.HLT.UnconventionalTracking.VrtSecInclusiveConfiguration import VrtSecInclusiveMenuSequence
+    return VrtSecInclusiveMenuSequence()
 
 def dEdxTriggerCfg(flags):
     from TriggerMenuMT.HLT.UnconventionalTracking.dEdxTriggerConfiguration import dEdxTriggerHypoSequence
@@ -138,14 +137,22 @@ def DisTrkTriggerCfg(flags):
     from TriggerMenuMT.HLT.UnconventionalTracking.DisTrkTriggerConfiguration import DisTrkTriggerHypoSequence
     return DisTrkTriggerHypoSequence()
 
-def DJStep1(flags):
+def DJPromptStepCfg(flags):
     from TriggerMenuMT.HLT.UnconventionalTracking.DJTriggerConfiguration import DJPromptStep
     return DJPromptStep()
 
-def DJStep2(flags):
+def DJDispStepCfg(flags):
     from TriggerMenuMT.HLT.UnconventionalTracking.DJTriggerConfiguration import DJDispStep
     return DJDispStep()
 
-def DJStep3(flags):
+def DJEDStepCfg(flags):
     from TriggerMenuMT.HLT.UnconventionalTracking.DJTriggerConfiguration import DJEDStep
     return DJEDStep()
+
+def DVRecoStepCfg(flags):
+    from TriggerMenuMT.HLT.UnconventionalTracking.DVTriggerConfiguration import DVRecoSequence
+    return DVRecoSequence()
+
+def DVEDStepCfg(flags):
+    from TriggerMenuMT.HLT.UnconventionalTracking.DVTriggerConfiguration import DVTriggerEDSequence
+    return DVTriggerEDSequence()

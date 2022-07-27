@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef RPC_DIGITIZATIONTOOL_H
@@ -150,7 +150,7 @@ private:
     /** Evaluate detection efficiency */
     StatusCode DetectionEfficiency(const EventContext& ctx, const Identifier& ideta, const Identifier& idphi, bool& undefinedPhiStripStatus,
                                    CLHEP::HepRandomEngine* rndmEngine, const HepMcParticleLink& trkParticle);
-    double FCPEfficiency(const HepMC::GenParticle* genParticle);
+    double FCPEfficiency(HepMC::ConstGenParticlePtr genParticle);
     /** */
     int ClusterSizeEvaluation(const EventContext& ctx, const Identifier& id, float xstripnorm, CLHEP::HepRandomEngine* rndmEngine);
     /** CoolDB */
@@ -158,7 +158,7 @@ private:
 
     const MuonGM::MuonDetectorManager* m_GMmgr{};
     const RpcIdHelper* m_idHelper{};
-    RpcHitIdHelper* m_muonHelper{};
+    const RpcHitIdHelper* m_muonHelper{};
     std::vector<std::unique_ptr<RPCSimHitCollection>> m_RPCHitCollList;
     std::unique_ptr<TimedHitCollection<RPCSimHit>> m_thpcRPC{};
     SG::ReadCondHandleKey<RpcCondDbData> m_readKey{this, "ReadKey", "RpcCondDbData", "Key of RpcCondDbData"};

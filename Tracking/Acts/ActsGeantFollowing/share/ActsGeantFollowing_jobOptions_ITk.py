@@ -1,3 +1,4 @@
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #==============================================================
 #
 #
@@ -8,12 +9,9 @@
 #==============================================================
 
 
-from __future__ import print_function
-
 import sys
 from argparse import ArgumentParser
 
-from AthenaCommon.Configurable import Configurable
 from AthenaCommon.Constants import INFO
 from AthenaConfiguration.AllConfigFlags import ConfigFlags
 from AthenaConfiguration.MainServicesConfig import MainServicesCfg
@@ -22,15 +20,13 @@ from AthenaConfiguration.ComponentFactory import CompFactory
 
 from ActsGeometry.ActsGeometryConfig import ActsExtrapolationToolCfg
 
-# Set up logging and new style config
-Configurable.configurableRun3Behavior = True
 
 def defaultTestFlags(configFlags, args):
 
 
     ## Just enable ID for the moment.
-    ConfigFlags.Input.isMC             = True
-    ConfigFlags.GeoModel.useLocalGeometry = False
+    ConfigFlags.Input.isMC            = True
+    ConfigFlags.ITk.Geometry.AllLocal = True
     detectors = [
       "ITkPixel",
       "ITkStrip",
@@ -41,7 +37,7 @@ def defaultTestFlags(configFlags, args):
     setupDetectorsFromList(ConfigFlags, detectors, toggle_geometry=True)
 
 
-    ConfigFlags.GeoModel.AtlasVersion = "ATLAS-P2-ITK-24-00-00"
+    ConfigFlags.GeoModel.AtlasVersion = "ATLAS-P2-RUN4-01-00-00"
     ConfigFlags.IOVDb.GlobalTag = "OFLCOND-SIM-00-00-00"
     ConfigFlags.GeoModel.Align.Dynamic = False
     #ConfigFlags.Acts.TrackingGeometry.MaterialSource = "Input"
@@ -58,7 +54,7 @@ def defaultTestFlags(configFlags, args):
     
     configFlags.Output.HITSFileName = args.outputhitsfile
 
-    from G4AtlasApps.SimEnums import BeamPipeSimMode, CalibrationRun, CavernBackground
+    from SimulationConfig.SimEnums import BeamPipeSimMode, CalibrationRun, CavernBackground
     configFlags.Sim.CalibrationRun = CalibrationRun.Off
     configFlags.Sim.RecordStepInfo = False
     configFlags.Sim.CavernBackground = CavernBackground.Signal
@@ -214,6 +210,10 @@ kwargs.update(UserActionSvc=svcName)
 
 from G4AtlasAlg.G4AtlasAlgConfigNew import G4AtlasAlgCfg
 acc.merge(G4AtlasAlgCfg(ConfigFlags, "ITkG4AtlasAlg", **kwargs))
+
+from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
+from SimuJobTransforms.SimOutputConfig import getStreamHITS_ItemList
+acc.merge( OutputStreamCfg(ConfigFlags,"HITS", ItemList=getStreamHITS_ItemList(ConfigFlags), disableEventTag=True, AcceptAlgs=['ITkG4AtlasAlg']) )
 
 # dump pickle
 with open("ITkTest.pkl", "wb") as f:

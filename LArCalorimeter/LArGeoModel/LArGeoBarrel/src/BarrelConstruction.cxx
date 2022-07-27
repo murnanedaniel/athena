@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 
@@ -15,6 +15,7 @@
 #include "BarrelAuxFunctions.h"
 
 #include "LArGeoCode/VDetectorParameters.h"
+#include "GeoModelKernel/GeoFullPhysVol.h"
 
 #include "GeoModelKernel/GeoElement.h"
 #include "GeoModelKernel/GeoMaterial.h"
@@ -106,10 +107,6 @@
 LArGeo::BarrelConstruction::BarrelConstruction(bool fullGeo,
                                                const VDetectorParameters* params)
   :m_parameters(params),
-   m_A_SAGGING(false),
-   m_NVISLIM(-1),
-   m_ecamPhysicalPos(NULL),
-   m_ecamPhysicalNeg(NULL),
    m_fullGeo(fullGeo)
 {
 }
@@ -208,7 +205,7 @@ void LArGeo::BarrelConstruction::MakeEnvelope()
   }
   
 
-  const StoredMaterialManager* materialManager = nullptr;
+  StoredMaterialManager* materialManager = nullptr;
   if (StatusCode::SUCCESS != detStore->retrieve(materialManager, std::string("MATERIALS"))) {
     throw std::runtime_error("Error in BarrelConstruction, stored MaterialManager is not found.");
   }
@@ -765,30 +762,25 @@ void LArGeo::BarrelConstruction::MakeEnvelope()
 							      larVersionKey.tag(),   
 							      larVersionKey.node()); 
     if (extraCones->size() > 0 ) {
-      for (unsigned int i=0; i<extraCones->size(); i++)
-      {
-        std::string conName = (*extraCones)[i]->getString("CONE");
-//        std::cout << " cone name " << conName << std::endl;
+      for(auto cone : *extraCones) {
+        const std::string& conName = cone->getString("CONE");
         if (conName=="ExtraInBar") {
-         double extra_dz = 0.5*( (*extraCones)[i]->getDouble("DZ") );
-         double extra_rmin1 = (*extraCones)[i]->getDouble("RMIN1");
-         double extra_rmin2 = (*extraCones)[i]->getDouble("RMIN2");
-         double extra_rmax1 = (*extraCones)[i]->getDouble("RMAX1");
-         double extra_rmax2 = (*extraCones)[i]->getDouble("RMAX2");
-         double extra_phi0  = (*extraCones)[i]->getDouble("PHI0");
-         double extra_dphi  = (*extraCones)[i]->getDouble("DPHI");
-         double extra_zpos = (*extraCones)[i]->getDouble("ZPOS");
-//         std::cout << " rmin1,rmin2,rmax1,rmax2,dz,phi0,dphi,zpos " << extra_rmin1 << " " << extra_rmin2 << " "
-//                 << extra_rmax1 << " " << extra_rmax2 << " " << extra_dz << " " << extra_phi0 << " "
-//                 << extra_dphi << " " << extra_zpos << std::endl;
-         std::string name = baseName + "ExtraMat1";                                      
-         GeoCons* cons = new GeoCons(extra_rmin1,extra_rmin2,extra_rmax1,extra_rmax2,    
-                               extra_dz,extra_phi0,extra_dphi);                     
-         const GeoLogVol* logVol = new GeoLogVol(name,cons,Lead);                         
-         GeoPhysVol* physVol2 = new GeoPhysVol(logVol);                                   
-         physVol->add(new GeoTransform(GeoTrf::TranslateZ3D(extra_zpos)));                    
-         physVol->add(physVol2);                                                           
+	  double extra_dz = 0.5*( cone->getDouble("DZ") );
+	  double extra_rmin1 = cone->getDouble("RMIN1");
+	  double extra_rmin2 = cone->getDouble("RMIN2");
+	  double extra_rmax1 = cone->getDouble("RMAX1");
+	  double extra_rmax2 = cone->getDouble("RMAX2");
+	  double extra_phi0  = cone->getDouble("PHI0");
+	  double extra_dphi  = cone->getDouble("DPHI");
+	  double extra_zpos = cone->getDouble("ZPOS");
 
+	  std::string name = baseName + "ExtraMat1";
+	  GeoCons* cons = new GeoCons(extra_rmin1,extra_rmin2,extra_rmax1,extra_rmax2,
+				      extra_dz,extra_phi0,extra_dphi);
+	  const GeoLogVol* logVol = new GeoLogVol(name,cons,Lead);
+	  GeoPhysVol* physVol2 = new GeoPhysVol(logVol);
+	  physVol->add(new GeoTransform(GeoTrf::TranslateZ3D(extra_zpos)));
+	  physVol->add(physVol2);
         }
       }
     }
@@ -892,7 +884,9 @@ void LArGeo::BarrelConstruction::MakeEnvelope()
 // Zcp1 = z max for eta=0.8 at the radius of the middle of the fold
 // Zcp2 = z max for eta=1.475 at the radius of the middle of the fold
 // Along = lenght of the straight sections
-    double Zcp1[15],Zcp2[15],Along[14];
+    double Zcp1[15]={};
+    double Zcp2[15]={};
+    double Along[14]={};
 
 // Rhol = radius at the beginning of the straight section
 // Rhoh = radius at the end of the straight section
@@ -900,8 +894,8 @@ void LArGeo::BarrelConstruction::MakeEnvelope()
 // Zcp1h = z max for eta=0.8 at the end of the straight section
 // Zcp2l = z max for eta~=1.475 at the beginning of the straight section
 // Zcp2h = z max for eta~=1.475 at the end of the straight section
-    double Zcp1l[14],Zcp1h[14],Zcp2l[14],Zcp2h[14];
-    double Rhol[14],Rhoh[14];
+    double Zcp1l[14]={},Zcp1h[14]={},Zcp2l[14]={},Zcp2h[14]={};
+    double Rhol[14]={},Rhoh[14]={};
 
     double safety_along = 0.007*Gaudi::Units::mm;
  

@@ -13,20 +13,28 @@ def RPCCablingConfigCfg(flags):
     rpcCabMapCorr="/RPC/CABLING/MAP_SCHEMA_CORR"
     rpcTrigEta="/RPC/TRIGGER/CM_THR_ETA"
     rpcTrigPhi="/RPC/TRIGGER/CM_THR_PHI"
-    if flags.Trigger.doLVL1 and flags.Trigger.enableL1MuonPhase1:
+
+    # This block with conditions override is only used in Trigger and Reco, and only needed until mid-May 2022.
+    # See ATR-25059 for discussion. To avoid this ConfigFlags based block being executed in simulation/digitization,
+    # skip this if ProductionStep is not Reconstruction or Default (i.e. unset)
+    from AthenaConfiguration.Enums import ProductionStep
+    if flags.Common.ProductionStep in [ProductionStep.Reconstruction, ProductionStep.Default] and \
+            flags.Trigger.doLVL1 and flags.Trigger.enableL1MuonPhase1:
         # Run3 trigger roads are not avaialble in the global tag yet (OFLCOND-MC16-SDR-RUN3-01)
         # Relevant folder tags are set for now, until new global tag (RUN3-02) becomes avaialble
         rpcTrigEta="/RPC/TRIGGER/CM_THR_ETA <tag>RPCTriggerCMThrEta_RUN12_MC16_04</tag> <forceRunNumber>330000</forceRunNumber>"
         rpcTrigPhi="/RPC/TRIGGER/CM_THR_PHI <tag>RPCTriggerCMThrPhi_RUN12_MC16_04</tag> <forceRunNumber>330000</forceRunNumber>"
         from AthenaConfiguration.Enums  import LHCPeriod
-        if flags.Input.isMC and flags.GeoModel.Run not in [LHCPeriod.Run1,LHCPeriod.Run2]:        # from Run3 on geometry
+        if flags.Input.isMC and flags.GeoModel.Run >= LHCPeriod.Run3:        # from Run3 on geometry
            rpcCabMap="/RPC/CABLING/MAP_SCHEMA <tag>RPCCablingMapSchema_2015-2018Run3-4</tag> <forceRunNumber>330000</forceRunNumber>"
            rpcCabMapCorr="/RPC/CABLING/MAP_SCHEMA_CORR <tag>RPCCablingMapSchemaCorr_2015-2018Run3-4</tag> <forceRunNumber>330000</forceRunNumber>"
 
 
     from IOVDbSvc.IOVDbSvcConfig import addFolders
     acc.merge(addFolders(flags, [rpcCabMap,rpcCabMapCorr], dbName, className='CondAttrListCollection' ))
-    if flags.Trigger.doLVL1 and not flags.Input.isMC:
+    # Same protection of ProductionStep as above, ATR-25059
+    if flags.Common.ProductionStep in [ProductionStep.Reconstruction, ProductionStep.Default] and \
+            flags.Trigger.doLVL1 and not flags.Input.isMC:
         # RPC trigger roads in the online database are not up-to-dated
         # Use offline database for now
         # Will switch to online database once online database has been updated (ATR-23465)
@@ -44,11 +52,39 @@ def RPCCablingConfigCfg(flags):
 
     return acc
 
+
+def TGCCablingDbToolCfg(flags):
+    acc = ComponentAccumulator()
+
+    filename = 'ASD2PP_diff_12_OFL.db' if flags.Input.isMC else 'ASD2PP_diff_12_ONL.db'
+    acc.setPrivateTools(CompFactory.TGCCablingDbTool(name = "TGCCablingDbTool",
+                                                     filename_ASD2PP_DIFF_12 = filename))
+
+    return acc
+
+
+def MuonTGC_CablingSvcCfg(flags):
+    acc = ComponentAccumulator()
+
+    svc = CompFactory.MuonTGC_CablingSvc()
+    tool = acc.popToolsAndMerge(TGCCablingDbToolCfg(flags))
+    # The same tool is used as a public tool by TGCCableASDToPP and a
+    # private tool by MuonTGC_CablingSvc - not great...
+    acc.addPublicTool(tool)
+    svc.TGCCablingDbTool = tool
+    acc.addService(svc, primary = True)
+
+    return acc
+
+
 def TGCCablingConfigCfg(flags):
     acc = ComponentAccumulator()
-    
+
+    # No ServiceHandle in TGCcablingServerSvc
+    acc.merge(MuonTGC_CablingSvcCfg(flags))
+
     TGCcablingServerSvc=CompFactory.TGCcablingServerSvc
-    TGCCablingSvc = TGCcablingServerSvc() 
+    TGCCablingSvc = TGCcablingServerSvc()
     acc.addService( TGCCablingSvc, primary=True )
 
     from IOVDbSvc.IOVDbSvcConfig import addFolders
@@ -112,8 +148,6 @@ def MuonCablingConfigCfg(flags):
     return acc
 
 if __name__ == '__main__':
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior=1
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
 
     from AthenaConfiguration.TestDefaults import defaultTestFiles

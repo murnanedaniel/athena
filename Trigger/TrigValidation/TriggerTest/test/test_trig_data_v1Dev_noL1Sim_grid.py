@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # art-description: Trigger BS->RDO_TRIG athena test of the Dev_pp_run3_v1 menu
 # art-type: grid
 # art-include: master/Athena
+# art-include: 22.0/Athena
 # art-athena-mt: 4
 # art-output: *.txt
 # art-output: *.log
@@ -28,7 +29,7 @@ ex.input = 'data'
 ex.threads = 4
 ex.concurrent_events = 4
 ex.max_events = 2000
-ex.args = '-c "setMenu=\'Dev_pp_run3_v1\';doWriteBS=False;doL1Sim=False;doWriteRDOTrigger=True;doRuntimeNaviVal=True;"'
+ex.args = '-c "setMenu=\'Dev_pp_run3_v1\';doWriteBS=False;doL1Sim=False;enableL1MuonPhase1=False;doWriteRDOTrigger=True;doRuntimeNaviVal=True;"'
 
 test = Test.Test()
 test.art_type = 'grid'

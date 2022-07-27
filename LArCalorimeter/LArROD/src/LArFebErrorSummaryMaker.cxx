@@ -1,11 +1,13 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
-#include "LArROD/LArFebErrorSummaryMaker.h"
+#include "LArFebErrorSummaryMaker.h"
 
 #include "LArRawEvent/LArFebErrorSummary.h" 
+#include "LArRecEvent/LArEventBitInfo.h"
 #include "LArIdentifier/LArOnlineID.h" 
+#include "StoreGate/WriteDecorHandle.h"
 
 #include <bitset>
 
@@ -73,7 +75,7 @@ StatusCode LArFebErrorSummaryMaker::initialize()
   ATH_CHECK( m_readKey.initialize() );
   ATH_CHECK( m_writeKey.initialize() );
   ATH_CHECK( m_bfKey.initialize());
-
+  ATH_CHECK(m_eventInfoKey.initialize());  
 
   //Set error counters to 0
   for (unsigned int i=0;i<LArFebErrorSummary::N_LArFebErrorType;++i){
@@ -99,6 +101,9 @@ StatusCode LArFebErrorSummaryMaker::execute(const EventContext& ctx) const
   SG::ReadCondHandle<LArBadFebCont> h_bf{m_bfKey,ctx};
   const LArBadFebCont* badFebs{*h_bf};
 
+  //  EventInfo
+  SG::WriteDecorHandle<xAOD::EventInfo,uint32_t> eventInfo (m_eventInfoKey, ctx);
+
   unsigned int nbSamplesFirst=0;
   uint32_t eventTypeFirst = 999;
 
@@ -111,8 +116,10 @@ StatusCode LArFebErrorSummaryMaker::execute(const EventContext& ctx) const
     
   }
     
+  int nbOfFebsInError = 0;
 
   for (const auto it : *hdrCont) {
+
       HWIdentifier febid= it->FEBId();
       unsigned int int_id =  febid.get_identifier32().get_compact();
    
@@ -193,16 +200,16 @@ StatusCode LArFebErrorSummaryMaker::execute(const EventContext& ctx) const
       if (rodstatusbits[6])
 	errw = errw | (1<< LArFebErrorSummary::Parity);
 	
-      if( rodstatusbits[2] | rodstatusbits[7])
+      if( rodstatusbits[2] || rodstatusbits[7])
 	errw = errw | (1<< LArFebErrorSummary::BCID);
 	
-      if(rodstatusbits[3] | rodstatusbits[8])
+      if(rodstatusbits[3] || rodstatusbits[8])
 	errw = errw | (1<< LArFebErrorSummary::SampleHeader);
 	
-      if( ( rodstatusbits[1] | rodstatusbits[9] ) && ! masked(int_id, m_knownEvtId) )
+      if( ( rodstatusbits[1] || rodstatusbits[9] ) && ! masked(int_id, m_knownEvtId) )
 	errw = errw | (1<< LArFebErrorSummary::EVTID);
 
-      if( ( rodstatusbits[4] | rodstatusbits[11] | rodstatusbits[12]) && ! masked(int_id, m_knownSCACStatus) )
+      if( ( rodstatusbits[4] || rodstatusbits[11] || rodstatusbits[12]) && ! masked(int_id, m_knownSCACStatus) )
 	errw = errw | (1<< LArFebErrorSummary::ScacStatus);
 
       if (scaOutOfRange)
@@ -252,7 +259,13 @@ StatusCode LArFebErrorSummaryMaker::execute(const EventContext& ctx) const
 
       }
 
-  }
+      if(errw!=0) { // should this FEB be counted as in error ?
+        const LArBadFeb febStatus = badFebs->status(febid);
+        if(!febStatus.inError() && ! ( febStatus.deadReadout() || febStatus.deadAll() )) 
+               nbOfFebsInError += 1;
+      } 
+
+  }// loop over headers
   
   if (m_checkAllFeb || m_isHec || m_isFcal || m_isEmb || m_isEmec || m_isEmPS){
     const uint16_t errw = 1<< LArFebErrorSummary::MissingHeader; 
@@ -284,6 +297,16 @@ StatusCode LArFebErrorSummaryMaker::execute(const EventContext& ctx) const
 	ATH_MSG_WARNING( "No more warnings about FEBs not read out!"  );
     }
   }//end if checkCompletness
+
+  if (nbOfFebsInError >= m_minFebsInError) {
+    ATH_MSG_DEBUG (" set error bit for LAr for this event ");
+    if (!eventInfo->updateErrorState(xAOD::EventInfo::LAr,xAOD::EventInfo::Error)) {
+      ATH_MSG_WARNING (" cannot set error state for LAr ");
+    }
+    if (!eventInfo->updateEventFlagBit(xAOD::EventInfo::LAr,LArEventBitInfo::DATACORRUPTED)) {
+      ATH_MSG_WARNING (" cannot set event bit info for LAr ");
+    }
+  }  
   
   return StatusCode::SUCCESS;
 

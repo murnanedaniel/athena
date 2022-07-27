@@ -37,7 +37,7 @@ def CSC_RangeCfg(flags, name="CSC_Range", **kwargs):
 def CSC_DigitizationToolCommonCfg(flags, name="CscDigitizationTool", **kwargs):
     """Return a ComponentAccumulator with configured CscDigitizationTool"""
     acc = ComponentAccumulator()
-    if flags.Digitization.PileUp and flags.Common.ProductionStep is not ProductionStep.Overlay:
+    if flags.Digitization.PileUp and not flags.Common.isOverlay:
         intervals = []
         if not flags.Digitization.DoXingByXingPileUp:
             intervals += [acc.popToolsAndMerge(CSC_RangeCfg(flags))]
@@ -116,6 +116,11 @@ def CSC_OverlayDigitizationBasicCfg(flags, **kwargs):
     """Return ComponentAccumulator with CSC Overlay digitization"""
     acc = MuonGeoModelCfg(flags, forceDisableAlignment=not flags.Overlay.DataOverlay)
     acc.merge(CscCondDbAlgCfg(flags))
+
+    if flags.Common.ProductionStep != ProductionStep.FastChain:
+        from SGComps.SGInputLoaderConfig import SGInputLoaderCfg
+        acc.merge(SGInputLoaderCfg(flags, ["CSCSimHitCollection#CSC_Hits"]))
+
     if "DigitizationTool" not in kwargs:
         tool = acc.popToolsAndMerge(CSC_OverlayDigitizationToolCfg(flags))
         kwargs["DigitizationTool"] = tool

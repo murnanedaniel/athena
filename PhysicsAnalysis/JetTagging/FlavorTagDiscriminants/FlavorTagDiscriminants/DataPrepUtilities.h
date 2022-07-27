@@ -6,7 +6,6 @@
 #define DATA_PREP_UTILITIES_H
 
 // local includes
-#include "FlavorTagDiscriminants/customGetter.h"
 #include "FlavorTagDiscriminants/FlipTagEnums.h"
 #include "FlavorTagDiscriminants/AssociationEnums.h"
 #include "FlavorTagDiscriminants/FTagDataDependencyNames.h"
@@ -29,7 +28,7 @@
 
 namespace FlavorTagDiscriminants {
 
-  enum class EDMType {UCHAR, INT, FLOAT, DOUBLE, CUSTOM_GETTER};
+  enum class EDMType {CHAR, UCHAR, INT, FLOAT, DOUBLE, CUSTOM_GETTER};
   enum class SortOrder {
    ABS_D0_SIGNIFICANCE_DESCENDING,
     D0_SIGNIFICANCE_DESCENDING,
@@ -39,6 +38,7 @@ namespace FlavorTagDiscriminants {
   enum class TrackSelection {
     ALL,
     IP3D_2018,
+    DIPS_TIGHT_UPGRADE,
     DIPS_LOOSE_202102,
     LOOSE_202102_NOIP
   };
@@ -73,6 +73,8 @@ namespace FlavorTagDiscriminants {
     std::string track_link_name;
     std::map<std::string,std::string> remap_scalar;
     TrackLinkType track_link_type;
+    float default_output_value;
+    std::string invalid_ip_key;
   };
 
 
@@ -270,6 +272,14 @@ namespace FlavorTagDiscriminants {
     createDecorators(
       const lwt::GraphConfig& config,
       const FTagOptions& options);
+
+    // return a function to check if IP is invalid
+    std::tuple<
+      std::function<char(const internal::Tracks&)>,
+      std::vector<SG::AuxElement::Decorator<char>>,
+      FTagDataDependencyNames>
+    createIpChecker(
+      const lwt::GraphConfig&, const FTagOptions&);
   }
 }
 #endif

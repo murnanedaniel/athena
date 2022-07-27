@@ -20,7 +20,7 @@ def ActsWriteTrackingGeometryCfg(configFlags, name="ActsWriteTrackingGeometry", 
 
   result = ComponentAccumulator()
 
-  acc, actsTrackingGeometryTool = ActsTrackingGeometryToolCfg(configFlags) 
+  acc = ActsTrackingGeometryToolCfg(configFlags) 
   result.merge(acc)
   ActsMaterialJsonWriterTool = ActsMaterialJsonWriterToolCfg(OutputFile = "geometry-maps.json",
                                                              processSensitives = False,
@@ -42,13 +42,10 @@ def ActsWriteTrackingGeometryCfg(configFlags, name="ActsWriteTrackingGeometry", 
   return result
 
 if "__main__" == __name__:
-  from AthenaCommon.Configurable import Configurable
   from AthenaCommon.Logging import log
   from AthenaCommon.Constants import VERBOSE
   from AthenaConfiguration.AllConfigFlags import ConfigFlags
   from AthenaConfiguration.MainServicesConfig import MainServicesCfg
-
-  Configurable.configurableRun3Behavior = True
 
   ## Just enable ID for the moment.
   ConfigFlags.Input.isMC             = True
@@ -61,7 +58,6 @@ if "__main__" == __name__:
   ConfigFlags.Detector.GeometryCalo  = True
   ConfigFlags.Detector.GeometryMuon  = False
   ConfigFlags.Detector.GeometryTRT   = True
-  ConfigFlags.Acts.TrackingGeometry.buildAllAvailableSubDetectors = True
 
   ConfigFlags.Concurrency.NumThreads = 1
   ConfigFlags.Concurrency.NumConcurrentEvents = 1

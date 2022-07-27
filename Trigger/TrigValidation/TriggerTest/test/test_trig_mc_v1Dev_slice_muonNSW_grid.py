@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # art-description: Trigger RDO->RDO_TRIG athena test of the muon slice in Dev_pp_run3_v1 menu
 # art-type: grid
 # art-include: master/Athena
+# art-include: 22.0/Athena
 # art-athena-mt: 4
 # art-output: *.txt
 # art-output: *.log
@@ -27,7 +28,7 @@ ex.job_options = 'TriggerJobOpts/runHLT_standalone.py'
 ex.input = 'munsw'
 ex.threads = 4
 ex.concurrent_events = 4
-ex.args = '-c "setMenu=\'Dev_pp_run3_v1\';doEmptyMenu=True;doMuonSlice=True;doWriteBS=False;doWriteRDOTrigger=True;setDetDescr=\'ATLAS-R3S-2021-01-00-02\';setGlobalTag=\'OFLCOND-MC16-SDR-RUN3-02\'"'
+ex.args = '-c "setMenu=\'Dev_pp_run3_v1\';doEmptyMenu=True;doMuonSlice=True;doWriteBS=False;doWriteRDOTrigger=True;setDetDescr=\'ATLAS-R3S-2021-01-00-02\';"'
 
 test = Test.Test()
 test.art_type = 'grid'

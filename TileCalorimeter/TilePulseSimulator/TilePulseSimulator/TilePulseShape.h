@@ -1,21 +1,20 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef TILEPULSESIMULATOR_TILEPULSESHAPE_H
 #define TILEPULSESIMULATOR_TILEPULSESHAPE_H
 
-#include "TObject.h"
+#include "AthenaBaseComps/AthMessaging.h"
 #include "TString.h"
 #include <vector>
 
 class TF1;
 class TGraph;
 class TSpline;
-class MsgStream;
 class IMessageSvc;
 
-class TilePulseShape : public TObject{
+class TilePulseShape : public AthMessaging {
  public:
   TilePulseShape(IMessageSvc* msgSvc, const std::string& name);
   TilePulseShape(IMessageSvc* msgSvc, const std::string& name, const TString& fileName);
@@ -26,18 +25,16 @@ class TilePulseShape : public TObject{
   
   //=== access to the underlying graph
   TGraph* getGraph(double t0=0., double ped=0., double amp=1.);
-  double  eval(double x, bool useSpline=true);
+  double  eval(double x, bool useSpline=true, bool useUndershoot=false);
 
   //=== modify the pulseshape
   void resetDeformation();
   int scalePulse(double leftSF=1., double rightSF=1.);
   
  private:
-  TGraph* m_pulseShape;
-  TGraph* m_deformedShape;
-  TSpline* m_deformedSpline;
-  
-  MsgStream* m_log;
+  TGraph* m_pulseShape{nullptr};
+  TGraph* m_deformedShape{nullptr};
+  TSpline* m_deformedSpline{nullptr};
 };
 
 #endif // TILEPULSESIMULATOR_TILEPULSESHAPE_H

@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #
 
 '''
@@ -78,7 +78,7 @@ class ExecStep(Step):
             self.misconfig_abort('Cannot configure a step without specified type or executable')
 
         # Configure executable from type
-        known_types = ['athena', 'athenaHLT', 'Reco_tf', 'Trig_reco_tf']
+        known_types = ['athena', 'athenaHLT', 'Reco_tf', 'Trig_reco_tf', 'Derivation_tf']
         if self.type in known_types:
             if self.executable is not None:
                 self.log.warning('type=%s was specified, so executable=%s '
@@ -157,7 +157,7 @@ class ExecStep(Step):
             precommand_arg_names = ['-c ', '--command = ', '--command ']
         elif self.type == 'athenaHLT':
             precommand_arg_names = ['-c ', '--precommand = ', '--precommand ']
-        elif self.type in ['Reco_tf', 'Trig_reco_tf']:
+        elif self.type in ['Reco_tf', 'Trig_reco_tf', 'Derivation_tf']:
             precommand_arg_names = ['--preExec ', '--preExec = ']
         else:
             self.log.warning('add_precommand() undefined for ExecStep with type="%s"', self.type)
@@ -214,7 +214,7 @@ class ExecStep(Step):
             self.log.debug('Skip adding modifier %s to step %s because it does not use runHLT_standalone job options',
                            modifier, self.name)
             return
-        elif self.type in ['Reco_tf', 'Trig_reco_tf']:
+        elif self.type in ['Reco_tf', 'Trig_reco_tf', 'Derivation_tf']:
             if 'inputBS_RDOFile' in self.args:
                 modifier = 'BSRDOtoRAW:' + modifier
             elif 'outputRDO_TRIGFile' in self.args or 'doRDO_TRIG' in self.args:
@@ -233,11 +233,17 @@ class ExecStep(Step):
         athenaopts = ''
 
         # Disable prmon for Reco_tf because it is already started inside the transform
-        if self.type == 'Reco_tf':
+        if self.type == 'Reco_tf' or self.type == 'Derivation_tf':
             self.prmon = False
 
         # Disable perfmon for multi-fork jobs as it cannot deal well with them
-        if self.forks and self.forks > 1:
+        if self.forks and self.forks > 1 and self.perfmon:
+            self.log.debug('Disabling perfmon because forks=%d > 1', self.forks)
+            self.perfmon = False
+        # Disable perfmon for transforms (Reco_tf enables it itself, Trig_reco_tf would need special handling
+        # depending on whether it runs athena or athenaHLT)
+        if self.type.endswith('_tf') and self.perfmon:
+            self.log.debug('Disabling perfmon for the transform step type %s', self.type)
             self.perfmon = False
 
         # Append imf/perfmon
@@ -245,7 +251,10 @@ class ExecStep(Step):
             if self.imf:
                 athenaopts += ' --imf'
             if self.perfmon:
-                athenaopts += ' --perfmon'
+                if self.type == 'athenaHLT':
+                    athenaopts += ' --perfmon'
+                elif self.type == 'athena':
+                    athenaopts += ' --pmon=perfmonmt'
             if self.malloc:
                 athenaopts += " --stdcmalloc "
 
@@ -262,7 +271,7 @@ class ExecStep(Step):
             if self.type == 'athenaHLT' or (self.type == "other" and self.executable == "athenaHLT.py") :
                 athenaopts += ' --dump-config-exit'
 
-            elif self.type == 'athena' or self.type == 'Reco_tf' or (self.type == "other" and self.executable == "athena.py") :
+            elif self.type == 'athena' or self.type == 'Reco_tf' or self.type == 'Derivation_tf' or (self.type == "other" and self.executable == "athena.py") :
                 athenaopts += ' --config-only=' + self.name + '.pkl'
 
             # No current support if it isn't clear exactly what's being run

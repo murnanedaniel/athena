@@ -7,7 +7,7 @@ from AthenaCommon.Logging import logging
 
 
 def OutputStreamCfg(configFlags, streamName, ItemList=[], MetadataItemList=[],
-                    disableEventTag=False, trigNavThinningSvc=None):
+                    disableEventTag=False, trigNavThinningSvc=None, AcceptAlgs=[]):
    eventInfoKey = "EventInfo"
    if configFlags.Common.ProductionStep == ProductionStep.PileUpPresampling:
       eventInfoKey = configFlags.Overlay.BkgPrefix + "EventInfo"
@@ -29,14 +29,23 @@ def OutputStreamCfg(configFlags, streamName, ItemList=[], MetadataItemList=[],
    writingTool = CompFactory.AthenaOutputStreamTool(f"Stream{streamName}Tool",
                                                     DataHeaderKey=outputStreamName)
 
+   # In DAOD production the EventInfo is prepared specially by the SlimmingHelper to ensure it is written in AuxDyn form
+   # So for derivations the ItemList from the SlimmingHelper alone is used without the extra EventInfo items
+   finalItemList = []
+   if ("DAOD_" or "D2AOD_") in streamName:
+      finalItemList = ItemList
+   else:
+      finalItemList = [f"xAOD::EventInfo#{eventInfoKey}", f"xAOD::EventAuxInfo#{eventInfoKey}Aux."] + ItemList 
+
    outputStream = CompFactory.AthenaOutputStream(
       f"OutputStream{streamName}",
       StreamName=outputStreamName,
       WritingTool=writingTool,
-      ItemList=[f"xAOD::EventInfo#{eventInfoKey}", f"xAOD::EventAuxInfo#{eventInfoKey}Aux."] + ItemList,
+      ItemList = finalItemList,
       MetadataItemList = MetadataItemList,
       OutputFile=fileName,
    )
+   outputStream.AcceptAlgs += AcceptAlgs
    outputStream.ExtraOutputs += [("DataHeader", f"StoreGateSvc+{outputStreamName}")]
    result.addService(CompFactory.StoreGateSvc("MetaDataStore"))
    outputStream.MetadataStore = result.getService("MetaDataStore")
@@ -52,29 +61,54 @@ def OutputStreamCfg(configFlags, streamName, ItemList=[], MetadataItemList=[],
    outputStream.HelperTools.append(streamInfoTool)
 
    # Make EventFormat object
-   eventFormatKey = f"EventFormatStream{streamName}"
-   eventFormatTool = CompFactory.xAODMaker.EventFormatStreamHelperTool(
-      f"Stream{streamName}_MakeEventFormat",
-      Key=eventFormatKey,
-      DataHeaderKey=outputStreamName,
-   )
-   outputStream.HelperTools.append(eventFormatTool)
-   msg.debug("Creating event format for this stream")
-
-   # Simplifies naming
-   outputStream.MetadataItemList.append(
-      f"xAOD::EventFormat#{eventFormatKey}"
+   from xAODEventFormatCnv.EventFormatConfig import EventFormatCfg
+   result.merge(
+      EventFormatCfg(
+         flags=configFlags, stream=outputStream, streamName=outputStreamName
+      )
    )
 
-   # setup FileMetaData
-   fileMetadataKey = "FileMetaData"
-   outputStream.HelperTools.append(
-        CompFactory.xAODMaker.FileMetaDataCreatorTool(
-            name="FileMetaDataCreatorTool",
-            OutputKey=fileMetadataKey,
-            StreamName=outputStreamName,
-        )
-   )
+   # Setup FileMetaData
+   from xAODMetaDataCnv.FileMetaDataConfig import FileMetaDataCfg
+   result.merge(FileMetaDataCfg(configFlags,
+                                stream=outputStream,
+                                streamName=outputStreamName))
+
+   # Setup additional MetaData
+
+   # ======================================================
+   # TO-DO:
+   # ======================================================
+   # For the time being we're adding common MetaData items
+   # and configure the necessary tools/services en masse.
+   # Ideally, we should introduce a self-sufficienct config
+   # for each item and merge them here.
+   # ======================================================
+   if any([ x in streamName for x in ['AOD','ESD'] ]):
+      # LumiBlockMetaDataTool seems to cause crashes in MP derivation jobs
+      # As done in RecExCommon_topOptions.py use the algorithm in MP jobs
+      # This needs to be checked and confirmed...
+      mdToolNames = ['BookkeeperTool']
+      if configFlags.Concurrency.NumProcs > 0:
+          result.addEventAlgo(CompFactory.CreateLumiBlockCollectionFromFile())
+      else:
+          mdToolNames.append('LumiBlockMetaDataTool')
+      outputStream.MetadataItemList += ['xAOD::TriggerMenuContainer#*'
+                                       ,'xAOD::TriggerMenuAuxContainer#*'
+                                       ,'xAOD::TriggerMenuJsonContainer#*'
+                                       ,'xAOD::TriggerMenuJsonAuxContainer#*'
+                                       ,'xAOD::LumiBlockRangeContainer#*'
+                                       ,'xAOD::LumiBlockRangeAuxContainer#*'
+                                       ,'xAOD::CutBookkeeperContainer#*'
+                                       ,'xAOD::CutBookkeeperAuxContainer#*'
+                                       ,'ByteStreamMetadataContainer#*'
+                                       ,'xAOD::TruthMetaDataContainer#TruthMetaData'
+                                       ,'xAOD::TruthMetaDataAuxContainer#TruthMetaDataAux.']
+
+      from AthenaServices.MetaDataSvcConfig import MetaDataSvcCfg
+      result.merge(MetaDataSvcCfg(configFlags,
+                                  tools = [CompFactory.xAODMaker.TriggerMenuMetaDataTool('TriggerMenuMetaDataTool')],
+                                  toolNames = mdToolNames))
 
    # Support for MT thinning.
    thinningCacheTool = CompFactory.Athena.ThinningCacheTool(f"ThinningCacheTool_Stream{streamName}",
@@ -82,11 +116,6 @@ def OutputStreamCfg(configFlags, streamName, ItemList=[], MetadataItemList=[],
    if trigNavThinningSvc is not None:
       thinningCacheTool.TrigNavigationThinningSvc = trigNavThinningSvc
    outputStream.HelperTools.append(thinningCacheTool)
-
-   outputStream.MetadataItemList += [
-        f"xAOD::FileMetaData#{fileMetadataKey}",
-        f"xAOD::FileMetaDataAuxInfo#{fileMetadataKey}Aux.",
-   ]
 
    # Event Tag
    if not disableEventTag:
@@ -102,7 +131,7 @@ def OutputStreamCfg(configFlags, streamName, ItemList=[], MetadataItemList=[],
    if "AOD" in streamName:
       outputStream.WritingTool.SubLevelBranchName = "<key>"
 
-   result.addEventAlgo(outputStream)
+   result.addEventAlgo(outputStream, domain='IO')
    return result
 
 def addToESD(configFlags, itemOrList, **kwargs):

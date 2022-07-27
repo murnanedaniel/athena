@@ -5,79 +5,38 @@ from AthenaConfiguration.Enums import BeamType
 import InDetConfig.TrackingCommonConfig as TC
 
 #///////////////////////////////////////////////////////////////////////////////////////////////
-def TRT_TrackExtensionAlgCfg(flags, name = 'InDetTRT_ExtensionPhase', SiTrackCollection=None, ExtendedTracksMap="ExtendedTracksMap", TrackExtensionTool=None, **kwargs):
+def TRT_TrackExtensionAlgCfg(flags, name = 'InDetTRT_ExtensionPhase', SiTrackCollection=None, ExtendedTracksMap="ExtendedTracksMap", **kwargs):
     acc = ComponentAccumulator()
-    # set output extension map name
-    OutputExtendedTracks = ExtendedTracksMap
-    if TrackExtensionTool is None:
-        TrackExtensionTool = acc.popToolsAndMerge(TC.InDetTRT_ExtensionToolPhaseCfg(flags))
-        acc.addPublicTool(TrackExtensionTool)
+
+    if "TrackExtensionTool" not in kwargs:
+        from InDetConfig.TRT_TrackExtensionToolConfig import TRT_TrackExtensionToolCfg
+        kwargs.setdefault("TrackExtensionTool", acc.popToolsAndMerge(TRT_TrackExtensionToolCfg(flags)))
 
     kwargs.setdefault("InputTracksLocation", SiTrackCollection)
-    kwargs.setdefault("ExtendedTracksLocation", OutputExtendedTracks )
-    kwargs.setdefault("TrackExtensionTool", TrackExtensionTool)
+    kwargs.setdefault("ExtendedTracksLocation", ExtendedTracksMap)
 
     acc.addEventAlgo(CompFactory.InDet.TRT_TrackExtensionAlg(name = name, **kwargs))
-    return acc
-
-def CompetingRIOsOnTrackToolCfg(flags, name = 'InDetCompetingRotCreator', **kwargs):
-    acc = ComponentAccumulator()
-    InDetCompetingTRT_DC_Tool = acc.popToolsAndMerge(TC.InDetCompetingTRT_DC_ToolCfg(flags))
-    acc.addPublicTool(InDetCompetingTRT_DC_Tool)
-
-    kwargs.setdefault("ToolForCompPixelClusters", None)
-    kwargs.setdefault("ToolForCompSCT_Clusters", None)
-    kwargs.setdefault("ToolForCompTRT_DriftCircles", InDetCompetingTRT_DC_Tool)
-    acc.setPrivateTools(CompFactory.Trk.CompetingRIOsOnTrackTool(name = name, **kwargs))
-    return acc
-
-def DeterministicAnnealingFilterCfg(flags, name = 'InDetDAF', **kwargs):
-    acc = ComponentAccumulator()
-    InDetCompetingRotCreator = acc.popToolsAndMerge(CompetingRIOsOnTrackToolCfg(flags))
-    acc.addPublicTool(InDetCompetingRotCreator)
-
-    from TrkConfig.AtlasExtrapolatorConfig import InDetExtrapolatorCfg
-    InDetExtrapolator = acc.getPrimaryAndMerge(InDetExtrapolatorCfg(flags))
-
-    from InDetConfig.TrackingCommonConfig import InDetUpdatorCfg
-    InDetUpdator = acc.popToolsAndMerge(InDetUpdatorCfg(flags))
-
-    kwargs.setdefault("ToolForExtrapolation", InDetExtrapolator)
-    kwargs.setdefault("ToolForCompetingROTsCreation", InDetCompetingRotCreator)
-    kwargs.setdefault("ToolForUpdating", InDetUpdator)
-    kwargs.setdefault("AnnealingScheme", [200., 81., 9., 4., 1., 1., 1.])
-    kwargs.setdefault("DropOutlierCutValue", 1.E-7)
-    kwargs.setdefault("OutlierCutValue", 0.01)
-    acc.setPrivateTools(CompFactory.Trk.DeterministicAnnealingFilter(name = name, **kwargs))
     return acc
 
 def InDetExtensionProcessorCfg(flags, SiTrackCollection=None, ExtendedTrackCollection = None, ExtendedTracksMap = None, **kwargs):
     acc = ComponentAccumulator()
 
-    ForwardTrackCollection = ExtendedTrackCollection
-    # set output extension map name
-    OutputExtendedTracks = ExtendedTracksMap
+    fitter_args = {}
+    if flags.InDet.Tracking.holeSearchInGX2Fit:
+        fitter_args.setdefault("DoHoleSearch", True)
+        from InDetConfig.InDetBoundaryCheckToolConfig import InDetBoundaryCheckToolCfg
+        InDetBoundaryCheckTool = acc.popToolsAndMerge(InDetBoundaryCheckToolCfg(flags))
+        fitter_args.setdefault("BoundaryCheckTool", InDetBoundaryCheckTool)
 
-    if flags.InDet.Tracking.trtExtensionType == 'DAF' :
-        #
-        # --- DAF Fitter setup
-        #
-        InDetExtensionFitter = acc.popToolsAndMerge(DeterministicAnnealingFilterCfg(flags, name = 'InDetDAF'+ flags.InDet.Tracking.ActivePass.extension))
+    if flags.InDet.Tracking.ActivePass.extension != "LowPt":
+        from TrkConfig.CommonTrackFitterConfig import InDetTrackFitterCfg
+        InDetExtensionFitter = acc.popToolsAndMerge(InDetTrackFitterCfg(flags, 'InDetTrackFitter_TRTExtension'+flags.InDet.Tracking.ActivePass.extension, **fitter_args))
         acc.addPublicTool(InDetExtensionFitter)
     else:
-        fitter_args = {}
-        if flags.InDet.Tracking.holeSearchInGX2Fit:
-            fitter_args.setdefault("DoHoleSearch", True)
-            from  InDetConfig.InDetRecToolConfig import InDetBoundaryCheckToolCfg
-            InDetBoundaryCheckTool = acc.popToolsAndMerge(InDetBoundaryCheckToolCfg(flags))
-            fitter_args.setdefault("BoundaryCheckTool", InDetBoundaryCheckTool)
+        from TrkConfig.CommonTrackFitterConfig import InDetTrackFitterLowPtCfg
+        InDetExtensionFitter = acc.popToolsAndMerge(InDetTrackFitterLowPtCfg(flags, 'InDetTrackFitter_TRTExtension'+flags.InDet.Tracking.ActivePass.extension, **fitter_args))
+        acc.addPublicTool(InDetExtensionFitter)
 
-        if flags.InDet.Tracking.ActivePass.extension != "LowPt":
-            InDetExtensionFitter = acc.popToolsAndMerge(TC.InDetTrackFitterCfg(flags, 'InDetTrackFitter_TRTExtension'+flags.InDet.Tracking.ActivePass.extension, **fitter_args))
-            acc.addPublicTool(InDetExtensionFitter)
-        else:
-            InDetExtensionFitter = acc.popToolsAndMerge(TC.InDetTrackFitterLowPtCfg(flags, 'InDetTrackFitter_TRTExtension'+flags.InDet.Tracking.ActivePass.extension, **fitter_args))
-            acc.addPublicTool(InDetExtensionFitter)
     #
     # --- load scoring for extension
     #
@@ -90,11 +49,12 @@ def InDetExtensionProcessorCfg(flags, SiTrackCollection=None, ExtendedTrackColle
     #
     # --- get configured track extension processor
     #
-    InDetTrackSummaryTool = acc.getPrimaryAndMerge(TC.InDetTrackSummaryToolCfg(flags))
+    from TrkConfig.TrkTrackSummaryToolConfig import InDetTrackSummaryToolCfg
+    InDetTrackSummaryTool = acc.popToolsAndMerge(InDetTrackSummaryToolCfg(flags))
 
     kwargs.setdefault("TrackName", SiTrackCollection)
-    kwargs.setdefault("ExtensionMap", OutputExtendedTracks)
-    kwargs.setdefault("NewTrackName", ForwardTrackCollection)
+    kwargs.setdefault("ExtensionMap", ExtendedTracksMap)
+    kwargs.setdefault("NewTrackName", ExtendedTrackCollection)
     kwargs.setdefault("TrackFitter", InDetExtensionFitter)
     kwargs.setdefault("TrackSummaryTool", InDetTrackSummaryTool)
     kwargs.setdefault("ScoringTool", InDetExtenScoringTool)
@@ -124,20 +84,18 @@ def NewTrackingTRTExtensionCfg(flags, SiTrackCollection = None, ExtendedTrackCol
     #
     acc.merge(TRT_TrackExtensionAlgCfg(flags,
                                        name = 'InDetTRT_Extension' + flags.InDet.Tracking.ActivePass.extension,
-                                       SiTrackCollection=SiTrackCollection,
-                                       ExtendedTracksMap = ExtendedTracksMap,
-                                       TrackExtensionTool = acc.popToolsAndMerge(TC.InDetTRT_ExtensionToolCfg(flags))))
+                                       SiTrackCollection = SiTrackCollection,
+                                       ExtendedTracksMap = ExtendedTracksMap))
 
     acc.merge(InDetExtensionProcessorCfg(flags,
-                                            SiTrackCollection = SiTrackCollection,
-                                            ExtendedTrackCollection = ExtendedTrackCollection,
-                                            ExtendedTracksMap = ExtendedTracksMap))
+                                         SiTrackCollection = SiTrackCollection,
+                                         ExtendedTrackCollection = ExtendedTrackCollection,
+                                         ExtendedTracksMap = ExtendedTracksMap))
+
     return acc
 ##########################################################################################################################
 
 if __name__ == "__main__":
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior=1
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
 
     numThreads=1
@@ -147,6 +105,9 @@ if __name__ == "__main__":
     ConfigFlags.Detector.GeometryPixel = True 
     ConfigFlags.Detector.GeometrySCT = True
     ConfigFlags.Detector.GeometryTRT = True
+
+    # Disable calo for this test
+    ConfigFlags.Detector.EnableCalo = False
 
     ConfigFlags.InDet.Tracking.doTRTExtension = True
     ConfigFlags.InDet.Tracking.holeSearchInGX2Fit = True
@@ -162,6 +123,17 @@ if __name__ == "__main__":
     from AthenaPoolCnvSvc.PoolReadConfig import PoolReadCfg
     top_acc.merge(PoolReadCfg(ConfigFlags))
 
+    from BeamSpotConditions.BeamSpotConditionsConfig import BeamSpotCondAlgCfg
+    top_acc.merge(BeamSpotCondAlgCfg(ConfigFlags))
+
+    if "EventInfo" not in ConfigFlags.Input.Collections:
+        from xAODEventInfoCnv.xAODEventInfoCnvConfig import EventInfoCnvAlgCfg
+        top_acc.merge(EventInfoCnvAlgCfg(ConfigFlags))
+
+    if ConfigFlags.Input.isMC:
+        from xAODTruthCnv.xAODTruthCnvConfigNew import GEN_AOD2xAODCfg
+        top_acc.merge(GEN_AOD2xAODCfg(ConfigFlags))
+
     from PixelGeoModel.PixelGeoModelConfig import PixelReadoutGeometryCfg
     from SCT_GeoModel.SCT_GeoModelConfig import SCT_ReadoutGeometryCfg
     top_acc.merge(PixelReadoutGeometryCfg(ConfigFlags))
@@ -170,53 +142,21 @@ if __name__ == "__main__":
     from TRT_GeoModel.TRT_GeoModelConfig import TRT_ReadoutGeometryCfg
     top_acc.merge(TRT_ReadoutGeometryCfg( ConfigFlags ))
 
-    from MuonConfig.MuonGeometryConfig import MuonGeoModelCfg, MuonIdHelperSvcCfg
-    top_acc.merge(MuonGeoModelCfg(ConfigFlags))
-    top_acc.merge(MuonIdHelperSvcCfg(ConfigFlags))
-
-    from PixelConditionsAlgorithms.PixelConditionsConfig import PixelDistortionAlgCfg
-    top_acc.merge(PixelDistortionAlgCfg(ConfigFlags))
-
-    from TRT_ConditionsAlgs.TRT_ConditionsAlgsConfig import TRTActiveCondAlgCfg
-    top_acc.merge(TRTActiveCondAlgCfg(ConfigFlags))
-    top_acc.merge(TC.TRT_DetElementsRoadCondAlgCfg())
-
-    from SiLorentzAngleTool.PixelLorentzAngleConfig import PixelLorentzAngleTool, PixelLorentzAngleCfg
-    top_acc.addPublicTool(PixelLorentzAngleTool(ConfigFlags))
-    top_acc.addPublicTool(top_acc.popToolsAndMerge(PixelLorentzAngleCfg(ConfigFlags)))
-
-    from SiLorentzAngleTool.SCT_LorentzAngleConfig import SCT_LorentzAngleCfg
-    top_acc.addPublicTool(top_acc.popToolsAndMerge(SCT_LorentzAngleCfg(ConfigFlags)))
-
-    from PixelConditionsAlgorithms.PixelConditionsConfig import (PixelChargeCalibCondAlgCfg, PixelConfigCondAlgCfg, PixelDeadMapCondAlgCfg, PixelCablingCondAlgCfg, PixelReadoutSpeedAlgCfg, PixelOfflineCalibCondAlgCfg, PixelDistortionAlgCfg)
-    top_acc.merge(PixelConfigCondAlgCfg(ConfigFlags))
-    top_acc.merge(PixelDeadMapCondAlgCfg(ConfigFlags))
-    top_acc.merge(PixelChargeCalibCondAlgCfg(ConfigFlags))
-    top_acc.merge(PixelCablingCondAlgCfg(ConfigFlags))
-    top_acc.merge(PixelReadoutSpeedAlgCfg(ConfigFlags))
-    top_acc.merge(PixelOfflineCalibCondAlgCfg(ConfigFlags))
-    top_acc.merge(PixelDistortionAlgCfg(ConfigFlags))
-
-    top_acc.merge(TC.PixelClusterNnCondAlgCfg(ConfigFlags))
-    top_acc.merge(TC.PixelClusterNnWithTrackCondAlgCfg(ConfigFlags))
-
     from BeamPipeGeoModel.BeamPipeGMConfig import BeamPipeGeometryCfg
     top_acc.merge(BeamPipeGeometryCfg(ConfigFlags))
 
     InputCollections = []
-    
-    InDetSpSeededTracksKey    = 'SiSPSeededTracks'  # InDetKeys.SiSpSeededTracks()
-    SiSPSeededTrackCollectionKey = InDetSpSeededTracksKey
 
-    ExtendedTrackCollection = 'ExtendedTracksPhase' # InDetKeys.ExtendedTracksPhase
-    ExtendedTracksMap = 'ExtendedTracksMapPhase'    # InDetKeys.ExtendedTracksMapPhase
+    ResolvedTracks = 'ResolvedTracks'
+    InDetSpSeededTracksKey = 'SiSPSeededTracks'
+    ExtendedTrackCollection = 'ExtendedTracks'
+    ExtendedTracksMap = 'ExtendedTracksMap'
 
     #################### Additional Configuration  ########################
     #######################################################################
     ################# TRTPreProcessing Configuration ######################
-    if not ConfigFlags.InDet.Tracking.doDBMstandalone:
-        from InDetConfig.TRTPreProcessing import TRTPreProcessingCfg
-        top_acc.merge(TRTPreProcessingCfg(ConfigFlags))
+    from InDetConfig.TRTPreProcessing import TRTPreProcessingCfg
+    top_acc.merge(TRTPreProcessingCfg(ConfigFlags))
 
     ################ TRTSegmentFinding Configuration ######################
     from InDetConfig.TRTSegmentFindingConfig import TRTSegmentFindingCfg
@@ -225,25 +165,20 @@ if __name__ == "__main__":
                                         InputCollections = InputCollections,
                                         BarrelSegments = 'TRTSegments'))
 
+    ############### SiliconPreProcessing Configuration ####################
+    from InDetConfig.SiliconPreProcessing import InDetRecPreProcessingSiliconCfg
+    top_acc.merge(InDetRecPreProcessingSiliconCfg(ConfigFlags))
+
     ####################### TrackingSiPattern #############################
-    from InDetConfig.TrackingSiPatternConfig import SiSPSeededTrackFinderCfg
-    top_acc.merge(SiSPSeededTrackFinderCfg( ConfigFlags,
-                                            InputCollections = InputCollections,
-                                            SiSPSeededTrackCollectionKey = InDetSpSeededTracksKey))
+    from InDetConfig.TrackingSiPatternConfig import TrackingSiPatternCfg
+    top_acc.merge(TrackingSiPatternCfg( ConfigFlags,
+                                        InputCollections = InputCollections,
+                                        ResolvedTrackCollectionKey = ResolvedTracks,
+                                        SiSPSeededTrackCollectionKey = InDetSpSeededTracksKey))
 
-    ########################## Clusterization #############################
-    from InDetConfig.ClusterizationConfig import InDetClusterizationAlgorithmsCfg
-    top_acc.merge(InDetClusterizationAlgorithmsCfg(ConfigFlags))
-
-    ######################## PixelByteStreamErrs ##########################
-    from PixelConditionsAlgorithms.PixelConditionsConfig import PixelHitDiscCnfgAlgCfg
-    top_acc.merge(PixelHitDiscCnfgAlgCfg(ConfigFlags))
-
-    from PixelRawDataByteStreamCnv.PixelRawDataByteStreamCnvConfig import PixelRawDataProviderAlgCfg
-    top_acc.merge(PixelRawDataProviderAlgCfg(ConfigFlags))
     ########################### TRTExtension  #############################
     top_acc.merge(NewTrackingTRTExtensionCfg(ConfigFlags,
-                                             SiTrackCollection=InDetSpSeededTracksKey,
+                                             SiTrackCollection = ResolvedTracks,
                                              ExtendedTrackCollection = ExtendedTrackCollection, 
                                              ExtendedTracksMap = ExtendedTracksMap))
     #######################################################################

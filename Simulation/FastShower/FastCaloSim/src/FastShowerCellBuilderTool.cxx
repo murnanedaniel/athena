@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "FastCaloSim/FastShowerCellBuilderTool.h"
@@ -31,7 +31,6 @@
 #include "AthenaKernel/RNGWrapper.h"
 
 #include "CaloEvent/CaloCellContainer.h"
-#include "CaloDetDescr/CaloDetDescrManager.h"
 #include "CaloDetDescr/ICaloCoordinateTool.h"
 
 
@@ -80,21 +79,19 @@
 #include <sstream>
 #include <limits>
 
-typedef std::vector<HepMC::ConstGenParticlePtr >  MCparticleCollection ;
+using MCparticleCollection = std::vector<HepMC::ConstGenParticlePtr> ;
 
 //This is a copy of the previous isGenSimulStable which depended on TruthHelper
-bool FastCaloSimIsGenSimulStable(HepMC::ConstGenParticlePtr  p) {
+bool FastCaloSimIsGenSimulStable(const HepMC::ConstGenParticlePtr&  p) {
   int status=p->status();
   auto vertex = p->end_vertex();
   // we want to keep primary particle with status==2 but without vertex in HepMC
   int vertex_barcode=-999999;
   if (vertex) vertex_barcode=HepMC::barcode(vertex);
 
-  return (
-          (status%1000 == 1) ||
+  return (status%1000 == 1) ||
           (status%1000 == 2 && status > 1000) ||
-          (status==2 && vertex_barcode<-200000)
-          ) ? true:false;
+          (status==2 && vertex_barcode<-200000);
 }
 
 
@@ -174,7 +171,7 @@ FastShowerCellBuilderTool::FastShowerCellBuilderTool(const std::string& type, co
 
 FastShowerCellBuilderTool::~FastShowerCellBuilderTool()
 {
-  for (auto* el : m_shape_correction ) delete el;
+  for (auto el : m_shape_correction ) delete el;
   m_shape_correction.clear();
   for (auto const& m1 : m_map_ParticleShapeParametrizationMap ) {
     for (auto const& m2 : m1.second ) {
@@ -340,7 +337,7 @@ void FastShowerCellBuilderTool::LoadParametrizationsFromFile(TDirectory& infile,
         }
     }
   if (iter) delete iter;
-  iter=0;
+  iter=nullptr;
 
   for(std::map< int,shape_count_info >::iterator i=n_energy.begin();i!=n_energy.end();++i) {
     ATH_MSG_LVL(level,"     Energy parametrization id="<<i->first<<" : "<<i->second.n<<" parametrizations loaded: "<<i->second.min_eta<<"<|eta|<"<<i->second.max_eta<<" ; "<<i->second.min_E<<"<E<"<<i->second.max_E );
@@ -359,31 +356,6 @@ StatusCode FastShowerCellBuilderTool::initialize()
   ATH_CHECK(BasicCellBuilderTool::initialize());
 
   ATH_CHECK(m_partPropSvc.retrieve());
-
-  // If alignments are enabled, then arrange for caloAligned() to be called
-  // after they are applied, to build our tables.  If alignments are not
-  // enabled, then do this immediately.  
-  ServiceHandle<IGeoModelSvc> geoModelSvc ("GeoModelSvc", name());
-  ATH_CHECK( geoModelSvc.retrieve() );
-  bool registeredCB = false;
-  if (IProperty* geoModelProp = dynamic_cast<IProperty*> (geoModelSvc.get())) {
-    if (geoModelProp->getProperty ("AlignCallbacks").toString() == "True") {
-      const IGeoModelTool* larDetectorTool =
-        geoModelSvc->getTool("LArDetectorToolNV");
-      ATH_CHECK( detStore()->regFcn (&IGeoModelTool::align,
-                                     dynamic_cast<const IGeoModelTool*>(larDetectorTool),
-                                     &FastShowerCellBuilderTool::caloAligned,
-                                     this) );
-      registeredCB = true;
-    }
-  }
-  if (!registeredCB) {
-    // No alignments, make the call now.
-    int dumi = 0;
-    std::list<std::string> duml;
-    ATH_CHECK( caloAligned (dumi, duml) );
-  }
-
   m_particleDataTable = (HepPDT::ParticleDataTable*) m_partPropSvc->PDT();
   if(!m_particleDataTable) {
     ATH_MSG_ERROR("PDG table not found");
@@ -412,50 +384,10 @@ StatusCode FastShowerCellBuilderTool::initialize()
   ATH_CHECK(m_calo_tb_coord.retrieve());
   ATH_MSG_INFO("retrieved " << m_calo_tb_coord.name());
 
-  //#if FastCaloSim_project_release_v1 == 12
-  //m_calosurf_middle->setCaloDepth(m_calodepth);
-  //#endif
-
-  //#if FastCaloSim_project_release_v1 == 12
-  //m_calosurf_entrance->setCaloDepth(m_calodepthEntrance);
-  //#endif
-
-  /*
-    if(m_mcLocation=="") {
-    log << MSG::INFO <<  "========================= Atlfast::GlobalEventData::Instance() =========================" <<endmsg;
-    Atlfast::GlobalEventData* ged = Atlfast::GlobalEventData::Instance();
-    m_mcLocation       = ged -> mcLocation();
-    }
-  */
   ATH_MSG_INFO("McCollection="<< m_mcCollectionKey.key());
-
-  //m_gentesIO = new GenAccessIO();
-
 
   // get the CoolHistSvc
   ATH_CHECK(m_coolhistsvc.retrieve());
-
-  /*
-    if(m_spline_reweight_x.size()>0 && m_spline_reweight_x.size()==m_spline_reweight_y.size()) {
-    TEtaSplineReweight* cor_ele=new TEtaSplineReweight("EtaEleCorrection","EtaEleCorrection");
-    TSpline3* sp=new TSpline3("",&m_spline_reweight_x[0],&m_spline_reweight_y[0],m_spline_reweight_x.size(),"b1e1",0,0);
-    cor_ele->SetSpline(sp);
-    cor_ele->m_pdgid=11;
-    cor_ele->m_calosample=2;
-    cor_ele->m_min_eta=-1.37;
-    cor_ele->m_max_eta=+1.37;
-    cor_ele->m_min_p=0;
-    cor_ele->m_max_p=20000000;
-    cor_ele->m_min_pT=0;
-    cor_ele->m_max_pT=20000000;
-    m_shape_correction.push_back(cor_ele);
-
-    TEtaSplineReweight* cor_gamma=new TEtaSplineReweight("EtaGammaCorrection","EtaGammaCorrection");
-    *cor_gamma=*cor_ele;
-    cor_gamma->m_pdgid=22;
-    m_shape_correction.push_back(cor_gamma);
-    }
-  */
 
   if (OpenParamSource(m_ParticleParametrizationFileName).isFailure()) {
     ATH_MSG_WARNING("Open of "<<m_ParticleParametrizationFileName<<" failed");
@@ -503,13 +435,15 @@ StatusCode FastShowerCellBuilderTool::initialize()
     ATH_CHECK( m_MuonEnergyInCaloContainerKey.initialize() );
   }
 
+  ATH_CHECK(m_cellInfoContKey.initialize());
+
   ATH_MSG_INFO("Initialisating finished");
   return StatusCode::SUCCESS;
 }
 
 StatusCode FastShowerCellBuilderTool::OpenParamSource(std::string insource)
 {
-  if(insource=="") return StatusCode::SUCCESS;
+  if(insource.empty()) return StatusCode::SUCCESS;
 
   if(boost::starts_with (insource, "DB=")) {
     const unsigned int maxdbINFOoutput=2;
@@ -568,16 +502,13 @@ StatusCode FastShowerCellBuilderTool::OpenParamSource(std::string insource)
     }
   } else {
     std::string ParticleParametrizationFile = PathResolver::find_file(insource, "DATAPATH");
-    if ( ParticleParametrizationFile == "" ) {
+    if ( ParticleParametrizationFile.empty() ) {
       ATH_MSG_WARNING("Can't find parametrization file " << insource << " in DATAPATH");
       return StatusCode::SUCCESS;
     }
 
     TFile* infile=TFile::Open(ParticleParametrizationFile.c_str(),"READ");
     if(infile) {
-      //log << MSG::INFO <<  "infile non zero" <<endmsg;
-      //infile->ls();
-      //log << MSG::INFO <<  "open="<<infile->IsOpen()<<endmsg;
       if(infile->IsOpen()) {
         ATH_MSG_INFO("==== LoadParametrizations from file : "<<ParticleParametrizationFile<<" ====");
         TDirectory* dir;
@@ -612,7 +543,7 @@ StatusCode FastShowerCellBuilderTool::OpenParamSource(std::string insource)
     if(infile) {
       infile->Close();
       delete infile;
-      infile=0;
+      infile=nullptr;
     }
   }
   return StatusCode::SUCCESS;
@@ -638,7 +569,7 @@ StatusCode FastShowerCellBuilderTool::callBack( IOVSVC_CALLBACK_ARGS_P( I, keys)
       if (*itr==m_DB_folder[icool]) {
         TObject* odir;
         if (m_coolhistsvc->getTObject(m_DB_folder[icool],m_DB_channel[icool],m_DB_dirname[icool],odir).isSuccess()) {
-          if (odir!=0) {
+          if (odir!=nullptr) {
             TDirectory* dir=(TDirectory*)odir;
             if(nprint>1) {
               if(level==MSG::INFO) ATH_MSG_LVL(level,"==== ...skipping further INFO output for LoadParametrizations from DB ====");
@@ -650,7 +581,7 @@ StatusCode FastShowerCellBuilderTool::callBack( IOVSVC_CALLBACK_ARGS_P( I, keys)
             if(mdir) {
               ATH_MSG_DEBUG("  removing "<<m_DB_folder[icool]<<":"<<m_DB_channel[icool]<<":"<<m_DB_dirname[icool]<<" from DirList to prevent crash in finalize");
               mdir->GetList()->Remove(dir);
-              dir->SetMother(0);
+              dir->SetMother(nullptr);
             }
             ++nprint;
           } else {
@@ -667,47 +598,6 @@ StatusCode FastShowerCellBuilderTool::callBack( IOVSVC_CALLBACK_ARGS_P( I, keys)
   }
   return StatusCode::SUCCESS;
 }
-
-StatusCode FastShowerCellBuilderTool::caloAligned( IOVSVC_CALLBACK_ARGS)
-{
-  const CaloDetDescrManager* caloDDM = nullptr;
-  ATH_CHECK( detStore()->retrieve (caloDDM, "CaloMgr") );
-
-  find_phi0(caloDDM);
-
-  ATH_MSG_INFO("========================= Init EM map =============================");
-  m_em_map.init(-5,+5,-M_PI+m_phi0_em ,+M_PI+m_phi0_em ,100,64);
-  m_em_map.setname("EM");
-
-  ATH_MSG_INFO("========================= Init EM fine map ========================");
-  m_em_fine_map.init(-2.8,+2.8,-M_PI+m_phi0_em ,+M_PI+m_phi0_em ,224,256);
-  m_em_fine_map.setname("EM fine");
-
-  ATH_MSG_INFO("========================= Init HAD map ============================");
-  m_had_map.init(-5,+5,-M_PI+m_phi0_had,+M_PI+m_phi0_had,100,64);
-  m_had_map.setname("HAD");
-
-  ATH_MSG_INFO("========================= Init EM celllist map =============================");
-  m_em_celllist_map.init(-5,+5,-M_PI+m_phi0_em ,+M_PI+m_phi0_em ,100,64,2,2);
-  m_em_celllist_map.setname("EMlist");
-
-  ATH_MSG_INFO("========================= Init celllist maps sample 0 ... "<< CaloCell_ID_FCS::LastSample);
-  for(int sample=CaloCell_ID_FCS::FirstSample;sample<CaloCell_ID_FCS::MaxSample;++sample) {
-    //log << MSG::INFO <<  "========================= Init celllist map sample "<<sample<<" =============================" <<endmsg;
-    m_celllist_maps[sample].init(-5,+5,-M_PI+m_phi0_em ,+M_PI+m_phi0_em ,100,64,3,3);
-    m_celllist_maps[sample].setname("samplecelllist");
-    //    m_celllist_maps[sample];
-  }
-
-  init_all_maps(caloDDM);
-  ATH_MSG_INFO("========================= Init volume all maps =========================");
-  init_volume(m_em_map);
-  init_volume(m_em_fine_map);
-  init_volume(m_had_map);
-
-  return StatusCode::SUCCESS;
-}
-
 
 ParticleEnergyParametrization* FastShowerCellBuilderTool::findElower(int id,double E,double eta) const
 {
@@ -752,7 +642,7 @@ ParticleEnergyParametrization* FastShowerCellBuilderTool::findElower(int id,doub
             ATH_MSG_DEBUG("begin="<<iter_E->second.begin()->first);
             ATH_MSG_DEBUG("rbegin="<<iter_E->second.rbegin()->first);
           }
-          return 0;
+          return nullptr;
         }
       } else {
         if(iter_eta!=iter_E->second.end()) {
@@ -767,7 +657,7 @@ ParticleEnergyParametrization* FastShowerCellBuilderTool::findElower(int id,doub
             ATH_MSG_DEBUG("begin="<<iter_E->second.begin()->first);
             ATH_MSG_DEBUG("rbegin="<<iter_E->second.rbegin()->first);
           }
-          return 0;
+          return nullptr;
         }
       }
     } else {
@@ -776,11 +666,11 @@ ParticleEnergyParametrization* FastShowerCellBuilderTool::findElower(int id,doub
         ATH_MSG_DEBUG("begin="<<iter_id->second.begin()->first);
         ATH_MSG_DEBUG("rbegin="<<iter_id->second.rbegin()->first);
       }
-      return 0;
+      return nullptr;
     }
   } else {
     ATH_MSG_DEBUG("ID "<<id<<" not found");
-    return 0;
+    return nullptr;
   }
 }
 
@@ -823,7 +713,7 @@ ParticleEnergyParametrization* FastShowerCellBuilderTool::findEupper(int id,doub
             ATH_MSG_DEBUG("begin="<<iter_E->second.begin()->first);
             ATH_MSG_DEBUG("rbegin="<<iter_E->second.rbegin()->first);
           }
-          return 0;
+          return nullptr;
         }
       } else {
         if(iter_eta!=iter_E->second.end()) {
@@ -838,7 +728,7 @@ ParticleEnergyParametrization* FastShowerCellBuilderTool::findEupper(int id,doub
             ATH_MSG_DEBUG("begin="<<iter_E->second.begin()->first);
             ATH_MSG_DEBUG("rbegin="<<iter_E->second.rbegin()->first);
           }
-          return 0;
+          return nullptr;
         }
       }
     }else {
@@ -847,11 +737,11 @@ ParticleEnergyParametrization* FastShowerCellBuilderTool::findEupper(int id,doub
         ATH_MSG_DEBUG("begin="<<iter_id->second.begin()->first);
         ATH_MSG_DEBUG("rbegin="<<iter_id->second.rbegin()->first);
       }
-      return 0;
+      return nullptr;
     }
   } else {
     ATH_MSG_DEBUG("ID "<<id<<" not found");
-    return 0;
+    return nullptr;
   }
 }
 
@@ -882,7 +772,7 @@ const TShape_Result* FastShowerCellBuilderTool::findShape (int id,int calosample
         }
 
         double bestscore=10000000;
-        TShape_Result* best_shape=0;
+        TShape_Result* best_shape=nullptr;
 
         for(t_map_PSP_DistEta::const_iterator iter_disteta=iter_E->second.begin();iter_disteta<iter_E->second.end();++iter_disteta) {
           double scoreeta=fabs(((*iter_disteta)->eta()-fabs(eta))/0.2);
@@ -899,7 +789,7 @@ const TShape_Result* FastShowerCellBuilderTool::findShape (int id,int calosample
           return best_shape;
         } else {
           ATH_MSG_WARNING("no parametrization found for id="<<id<<" E="<<E<<" eta="<<eta<<" dist="<<dist);
-          return 0;
+          return nullptr;
         }
       } else {
         if(msgLvl(MSG::DEBUG)) {
@@ -907,15 +797,15 @@ const TShape_Result* FastShowerCellBuilderTool::findShape (int id,int calosample
           ATH_MSG_DEBUG("begin="<<iter_id->second.begin()->first);
           ATH_MSG_DEBUG("rbegin="<<iter_id->second.rbegin()->first);
         }
-        return 0;
+        return nullptr;
       }
     } else {
       ATH_MSG_DEBUG("calosample="<<calosample<<" not found");
-      return 0;
+      return nullptr;
     }
   } else {
     ATH_MSG_DEBUG("ID found="<<id<<" not found");
-    return 0;
+    return nullptr;
   }
 }
 
@@ -954,13 +844,14 @@ FastShowerCellBuilderTool::get_calo_etaphi(std::vector<Trk::HitInfo>* hitVector,
                                            double letaCalo[CaloCell_ID_FCS::MaxSample],
                                            double lphiCalo[CaloCell_ID_FCS::MaxSample],
                                            double dCalo[CaloCell_ID_FCS::MaxSample],
-                                           double distetaCaloBorder[CaloCell_ID_FCS::MaxSample]) const
+                                           double distetaCaloBorder[CaloCell_ID_FCS::MaxSample],
+					   const CellInfoContainer* cont) const
 {
   layerCaloOK[sample]=false;
   letaCalo[sample]=eta_calo_surf;
   lphiCalo[sample]=phi_calo_surf;
-  double distsamp =deta(sample,eta_calo_surf);
-  double rzmiddle =rzmid(sample,eta_calo_surf);
+  double distsamp =deta(sample,eta_calo_surf,cont);
+  double rzmiddle =rzmid(sample,eta_calo_surf,cont);
   double hitdist=0;
   bool best_found=false;
   double best_target=0;
@@ -984,13 +875,13 @@ FastShowerCellBuilderTool::get_calo_etaphi(std::vector<Trk::HitInfo>* hitVector,
       double eta_avg=0.5*(hitPos1.eta()+hitPos2.eta());
       double t;
       if(isCaloBarrel(sample)) {
-        double r=rmid(sample,eta_avg);
+        double r=rmid(sample,eta_avg,cont);
         double r1=hitPos1.perp();
         double r2=hitPos2.perp();
         t=(r-r1)/(r2-r1);
         best_target=r;
       } else {
-        double z=zmid(sample,eta_avg);
+        double z=zmid(sample,eta_avg,cont);
         double z1=hitPos1[Amg::z];
         double z2=hitPos2[Amg::z];
         t=(z-z1)/(z2-z1);
@@ -1007,8 +898,8 @@ FastShowerCellBuilderTool::get_calo_etaphi(std::vector<Trk::HitInfo>* hitVector,
     lphiCalo[sample]=phiCalo;
     hitdist=hitPos.mag();
     layerCaloOK[sample]=true;
-    rzmiddle=rzmid((CaloCell_ID_FCS::CaloSample)sample,etaCalo);
-    distsamp=deta((CaloCell_ID_FCS::CaloSample)sample,etaCalo);
+    rzmiddle=rzmid((CaloCell_ID_FCS::CaloSample)sample,etaCalo,cont);
+    distsamp=deta((CaloCell_ID_FCS::CaloSample)sample,etaCalo,cont);
     best_found=true;
     ATH_MSG_DEBUG(" extrapol with layer hit: id="<<sid1<<" -> "<<sid2<<
                   " target r/z="<<best_target<<
@@ -1036,11 +927,11 @@ FastShowerCellBuilderTool::get_calo_etaphi(std::vector<Trk::HitInfo>* hitVector,
       double r1=hitPos1.perp();
       double r2=hitPos2.perp();
       if(isCaloBarrel(sample) && std::abs(r1-r2) > 1e-3) {
-        double r=rmid(sample,eta_avg);
+        double r=rmid(sample,eta_avg,cont);
         t=(r-r1)/(r2-r1);
         tmp_target=r;
       } else {
-        double z=zmid(sample,eta_avg);
+        double z=zmid(sample,eta_avg,cont);
         double z1=hitPos1[Amg::z];
         double z2=hitPos2[Amg::z];
         t=(z-z1)/(z2-z1);
@@ -1081,8 +972,8 @@ FastShowerCellBuilderTool::get_calo_etaphi(std::vector<Trk::HitInfo>* hitVector,
         letaCalo[sample]=best_hitPos.eta();
         lphiCalo[sample]=best_hitPos.phi();
         hitdist=best_hitPos.mag();
-        rzmiddle=rzmid((CaloCell_ID_FCS::CaloSample)sample,letaCalo[sample]);
-        distsamp=deta((CaloCell_ID_FCS::CaloSample)sample,letaCalo[sample]);
+        rzmiddle=rzmid((CaloCell_ID_FCS::CaloSample)sample,letaCalo[sample],cont);
+        distsamp=deta((CaloCell_ID_FCS::CaloSample)sample,letaCalo[sample],cont);
         layerCaloOK[sample]=true;
       }
     }
@@ -1114,7 +1005,8 @@ bool
 FastShowerCellBuilderTool::get_calo_surface(std::vector<Trk::HitInfo>* hitVector,
                                             double& eta_calo_surf,
                                             double& phi_calo_surf,
-                                            double& d_calo_surf) const
+                                            double& d_calo_surf,
+					    const CellInfoContainer* cont) const
 {
   CaloCell_ID_FCS::CaloSample sample_calo_surf=CaloCell_ID_FCS::noSample;
   eta_calo_surf=-999;
@@ -1136,7 +1028,7 @@ FastShowerCellBuilderTool::get_calo_surface(std::vector<Trk::HitInfo>* hitVector
 
     if (fabs(etaCalo)<900) {
       double phiCalo = hitPos.phi();
-      double distsamp =deta(sample,etaCalo);
+      double distsamp =deta(sample,etaCalo,cont);
 
       msg(MSG::DEBUG)<<" phi="<<phiCalo<<" dist="<<distsamp;
       if(distsamp<min_calo_surf_dist) {
@@ -1144,7 +1036,7 @@ FastShowerCellBuilderTool::get_calo_surface(std::vector<Trk::HitInfo>* hitVector
         phi_calo_surf=phiCalo;
         min_calo_surf_dist=distsamp;
         sample_calo_surf=sample;
-        d_calo_surf=rzent(sample,etaCalo);
+        d_calo_surf=rzent(sample,etaCalo,cont);
         msg(MSG::DEBUG)<<" r/z="<<d_calo_surf;
         if(isCaloBarrel(sample)) d_calo_surf*=cosh(etaCalo);
         else                     d_calo_surf= fabs(d_calo_surf/tanh(etaCalo));
@@ -1195,16 +1087,26 @@ FastShowerCellBuilderTool::process_particle(CaloCellContainer* theCellContainer,
                                             FastShowerInfoContainer* fastShowerInfoContainer,
                                             TRandom3& rndm,
                                             Stats& stats,
-                                            const EventContext& ctx) const
+                                            const EventContext& ctx,
+					    const CellInfoContainer* cont) const
 {
+  const CellInfoContainer* cellInfoCont{cont};
+  if(!cellInfoCont) {
+    // This method gets called directly by some client
+    // Get the CellInfoContainer from the cond handle
+    SG::ReadCondHandle<CellInfoContainer> cellInfoContHandle{m_cellInfoContKey,ctx};
+    ATH_CHECK(cellInfoContHandle.isValid());
+    cellInfoCont = *cellInfoContHandle;
+  }
+
   // no intersections with Calo layers found : abort;
-  if(!hitVector || !hitVector->size())  {
+  if(!hitVector || hitVector->empty())  {
     ATH_MSG_DEBUG(" Calo hit vector empty: aborting particle processing ");
     return StatusCode::FAILURE;
   }
 
   // Setup of the FastShowerInfo debug containers if requested
-  FastShowerInfo *fastshowerinfo(0);
+  FastShowerInfo *fastshowerinfo(nullptr);
   if( m_storeFastShowerInfo ) {
     ATH_MSG_DEBUG("Creating FastShowerInfoObject: ");
     fastshowerinfo = new FastShowerInfo();
@@ -1330,7 +1232,8 @@ FastShowerCellBuilderTool::process_particle(CaloCellContainer* theCellContainer,
   if(!get_calo_surface(hitVector,
                        eta_calo_surf,
                        phi_calo_surf,
-                       d_calo_surf))
+                       d_calo_surf,
+		       cellInfoCont))
   {
     if(TMath::Abs(ptruth_eta)>5 || EinT<500) {
       ATH_MSG_DEBUG("Calo hit vector does not contain calo layer entry: aborting processing particle "<<particle_info_str.str());
@@ -1411,7 +1314,7 @@ FastShowerCellBuilderTool::process_particle(CaloCellContainer* theCellContainer,
     //////////////////////////////
     const ParticleEnergyParametrization* Elower=findElower(refid , Ein , eta_calo_surf);
     const ParticleEnergyParametrization* Eupper=findEupper(refid , Ein , eta_calo_surf);
-    const ParticleEnergyParametrization* Epara=0;
+    const ParticleEnergyParametrization* Epara=nullptr;
     if(Elower) {
       ATH_MSG_DEBUG("lower : "<< Elower->GetTitle()<< " lower E: " << Elower->E());
       Epara=Elower;
@@ -1481,34 +1384,6 @@ FastShowerCellBuilderTool::process_particle(CaloCellContainer* theCellContainer,
         return StatusCode::SUCCESS; // See ATLASSIM-5434
       }
 
-      /*
-      // now loop over intersections and match with the parametrized deposit ( by default in the middle )
-      double dCurr = hitPos.mag();
-      while ( it < hitVector->end()-1 )  {
-      it++;
-      hitPos = (*it).trackParms->position();
-      if (sample>0) {  // save layer deposit as relative fraction of the momentum ?
-      if(p.E_layer[sample]<0) p.E_layer[sample]=0;
-      if(p.E_layer[sample]>0) {
-      dCalo[sample] = 0.5*( dCurr + hitPos.mag() );
-      p.dist000+=p.E_layer[sample]*hitPos.mag();
-      if(dCalo[sample]<0.01 && p.E_layer[sample]>0) {
-      ATH_MSG_WARNING("Calo position for sample "<<sample<<" E/Etot="<<p.E_layer[sample]<<" ; in : eta= " << hitPos.eta() <<" dCalo="<<dCalo[sample]);
-      }
-      }
-      }
-      dCurr = hitPos.mag();
-      sample = (CaloCell_ID_FCS::CaloSample)((*it).detID-3000);         // to be updated
-      }
-
-      p.dist000/=p.E;
-      distrange=fabs((Epara->GetDistMax()-Epara->GetDistMin())/Epara->GetNDistBins());
-
-      ATH_MSG_DEBUG("Ein="<<Ein<<" Ecal/Ein="<<p.Ecal<<" E/Ein="<<p.E<<" E="<<p.E*Ein
-      <<" din="<<p.dist_in<<" dist000="<<p.dist000<<" drec="<<p.dist_rec
-      <<" dmin="<<Epara->GetDistMin()<<" dmax="<<Epara->GetDistMax()<<" nd="<<Epara->GetNDistBins()<<" drange="<<distrange);
-      */
-
 
       // now try to extrapolate to all calo layers, that contain energy
       for(int sample=CaloCell_ID_FCS::FirstSample;sample<CaloCell_ID_FCS::MaxSample;++sample) {
@@ -1522,7 +1397,8 @@ FastShowerCellBuilderTool::process_particle(CaloCellContainer* theCellContainer,
                               letaCalo,
                               lphiCalo,
                               dCalo,
-                              distetaCaloBorder) )
+                              distetaCaloBorder,
+			      cellInfoCont) )
           {
             p.dist000+=p.E_layer[sample]*dCalo[sample];
             if(dCalo[sample]<0.01 && p.E_layer[sample]>0) {
@@ -1625,7 +1501,7 @@ FastShowerCellBuilderTool::process_particle(CaloCellContainer* theCellContainer,
         double lookup_lphiCalo=fcy;
 
         /*          direction_factor = 0;  */
-        if(shape!=0) {
+        if(shape!=nullptr) {
           distfactor = 2*(p.dist_in-shape->distmin())/(shape->distmax()-shape->distmin())-1;
           if(distfactor > 1.) distfactor =1.;
           if(distfactor < -1.) distfactor =-1.;
@@ -1635,9 +1511,9 @@ FastShowerCellBuilderTool::process_particle(CaloCellContainer* theCellContainer,
           fcy=shape->phi_center(lphiCalo[sample]);
           lookup_letaCalo=fcx;
           lookup_lphiCalo=fcy;
-          distetaCaloBorder[sample]=deta((CaloCell_ID_FCS::CaloSample)sample,fcx);
+          distetaCaloBorder[sample]=deta((CaloCell_ID_FCS::CaloSample)sample,fcx,cellInfoCont);
           double mineta,maxeta;
-          minmaxeta((CaloCell_ID_FCS::CaloSample)sample,fcx,mineta,maxeta);
+          minmaxeta((CaloCell_ID_FCS::CaloSample)sample,fcx,mineta,maxeta,cellInfoCont);
 
           // correct shower position in calo, if it is outside the calo layer boundaries
           // TODO: Apply relocation of shape to overlap with active calo also if no shape function is found
@@ -1645,7 +1521,7 @@ FastShowerCellBuilderTool::process_particle(CaloCellContainer* theCellContainer,
             double bordereta=maxeta;
             if(fcx<mineta) bordereta=mineta;
             lookup_letaCalo=bordereta;
-            double eta_jakobi=shape->eta_jakobi_factor(bordereta);
+            double eta_jakobi=TShape_Result::eta_jakobi_factor(bordereta);
             //TODO: dCalo[sample] should not be taken, better dcalo at mineta/maxeta
             double cutoff_eta=shape->cutoff_eta()/(eta_jakobi*dCalo[sample]);
             double newetaCaloBorder=cutoff_eta/2;
@@ -1684,7 +1560,7 @@ FastShowerCellBuilderTool::process_particle(CaloCellContainer* theCellContainer,
                  fcx=shape->eta_center(letaCalo[sample],direction_factor*sign);
               */
 
-              distetaCaloBorder[sample]=deta((CaloCell_ID_FCS::CaloSample)sample,fcx);
+              distetaCaloBorder[sample]=deta((CaloCell_ID_FCS::CaloSample)sample,fcx,cellInfoCont);
               if(msgLvl(MSG::DEBUG)) {
                 msg(MSG::DEBUG)<<" new deta="<<distetaCaloBorder[sample]<<endmsg;
               }
@@ -1713,9 +1589,9 @@ FastShowerCellBuilderTool::process_particle(CaloCellContainer* theCellContainer,
         }
 
         // Ugly code: does a fast lookup which cells should be considered to be filled with energy
-        int iphi=m_celllist_maps[sample].phi_to_index(lookup_lphiCalo);
-        int ieta=m_celllist_maps[sample].eta_to_index(lookup_letaCalo);
-        const cellinfo_map::cellinfo_vec& vec=m_celllist_maps[sample].vec(ieta,iphi);
+        int iphi=cellInfoCont->getCellistMap(sample).phi_to_index(lookup_lphiCalo);
+        int ieta=cellInfoCont->getCellistMap(sample).eta_to_index(lookup_letaCalo);
+        const cellinfo_map::cellinfo_vec& vec=cellInfoCont->getCellistMap(sample).vec(ieta,iphi);
         int n_cells=vec.size();
 
         ATH_MSG_DEBUG("  n_cells=" <<n_cells);
@@ -1734,7 +1610,7 @@ FastShowerCellBuilderTool::process_particle(CaloCellContainer* theCellContainer,
         truthimpact.setREtaPhi(1,fcx,fcy);
         truthimpact.setMag(dCalo[sample]);
 
-        if(shape==0) {
+        if(shape==nullptr) {
           // If no shape is found, find the hit cell and deposit all energy in the hit cell
           for(int icell=0;icell<n_cells;++icell) {
             const CaloDetDescrElement* cell=theDDE[icell];
@@ -1793,7 +1669,7 @@ FastShowerCellBuilderTool::process_particle(CaloCellContainer* theCellContainer,
             ATH_MSG_WARNING(" - fcx="<<fcx<<" fcy="<<fcy);
 
           }
-          const CaloDetDescrElement* cell_hit=0;
+          const CaloDetDescrElement* cell_hit=nullptr;
           if(ibestcell >= 0){
             cell_hit= theDDE[ibestcell];
             cellpos = (fcx - cell_hit->eta() + cell_hit->deta()/2 )/ cell_hit->deta();
@@ -1969,7 +1845,7 @@ FastShowerCellBuilderTool::process_particle(CaloCellContainer* theCellContainer,
 }
 
 
-bool FastShowerCellBuilderTool::Is_ID_Vertex(HepMC::ConstGenVertexPtr ver) const
+bool FastShowerCellBuilderTool::Is_ID_Vertex(const HepMC::ConstGenVertexPtr& ver) const
 {
   if(ver) {
     double inr=ver->position().perp();
@@ -1984,11 +1860,11 @@ bool FastShowerCellBuilderTool::Is_ID_Vertex(HepMC::ConstGenVertexPtr ver) const
   }
 }
 
-bool FastShowerCellBuilderTool::Is_EM_Vertex(HepMC::ConstGenVertexPtr ver) const
+bool FastShowerCellBuilderTool::Is_EM_Vertex(const HepMC::ConstGenVertexPtr& ver) 
 {
   if(ver) {
 #ifdef HEPMC3
-    for(auto par:ver->particles_in()) {
+    for(const auto& par:ver->particles_in()) {
 #else
     for(HepMC::GenVertex::particles_in_const_iterator pin=ver->particles_in_const_begin();pin!=ver->particles_in_const_end();++pin) {
       const HepMC::GenParticle* par=*pin;
@@ -1996,7 +1872,7 @@ bool FastShowerCellBuilderTool::Is_EM_Vertex(HepMC::ConstGenVertexPtr ver) const
       int absid=abs(par->pdg_id());
       if(!(absid==11 || absid==22)) return false;
     }
-    for(auto par_out: *ver) {
+    for(const auto& par_out: *ver) {
       int absid=std::abs(par_out->pdg_id());
       if(!(absid==11 || absid==22)) return false;
     }
@@ -2006,17 +1882,17 @@ bool FastShowerCellBuilderTool::Is_EM_Vertex(HepMC::ConstGenVertexPtr ver) const
   return true;
 }
 
-FastShowerCellBuilderTool::flag_simul_sate FastShowerCellBuilderTool::Is_below_v14_truth_cuts_Vertex(HepMC::ConstGenVertexPtr ver) const
+FastShowerCellBuilderTool::flag_simul_sate FastShowerCellBuilderTool::Is_below_v14_truth_cuts_Vertex(const HepMC::ConstGenVertexPtr& ver) 
 {
   if(ver) {
     int nin=0;
     int id_in=0;
 #ifdef HEPMC3
     HepMC::ConstGenParticlePtr par_in;
-    for(auto pin:ver->particles_in()) {
+    for(const auto& pin:ver->particles_in()) {
     par_in=pin;
 #else
-    const HepMC::GenParticle* par_in=0;
+    const HepMC::GenParticle* par_in=nullptr;
     for(HepMC::GenVertex::particles_in_const_iterator pin=ver->particles_in_const_begin();pin!=ver->particles_in_const_end();++pin) {
       par_in=*pin;
 #endif
@@ -2028,7 +1904,7 @@ FastShowerCellBuilderTool::flag_simul_sate FastShowerCellBuilderTool::Is_below_v
     int nele=0;
     int ngamma=0;
     int nother=0;
-    for( auto par_out: *ver) {
+    for( const auto& par_out: *ver) {
       int absid=std::abs(par_out->pdg_id());
       if(absid==22) {
         ++ngamma;
@@ -2052,12 +1928,12 @@ FastShowerCellBuilderTool::flag_simul_sate FastShowerCellBuilderTool::Is_below_v
   return zero_state;
 }
 
-typedef FastShowerCellBuilderTool::MCdo_simul_state MCdo_simul_state;
-typedef FastShowerCellBuilderTool::MCparticleCollection MCparticleCollection ;
+using MCdo_simul_state = FastShowerCellBuilderTool::MCdo_simul_state;
+using MCparticleCollection = FastShowerCellBuilderTool::MCparticleCollection ;
 
 void MC_init_particle_simul_state(MCdo_simul_state& do_simul_state,const MCparticleCollection& particles)
 {
-  for(auto par: particles){
+  for(const auto& par: particles){
     if(par) {
       do_simul_state[HepMC::barcode(par)]=1;
       auto outver=par->end_vertex();
@@ -2072,11 +1948,11 @@ void MC_init_particle_simul_state(MCdo_simul_state& do_simul_state,const MCparti
   }
 }
 
-void MC_recursive_remove_out_particles(MCdo_simul_state& do_simul_state,HepMC::ConstGenVertexPtr ver,FastShowerCellBuilderTool::flag_simul_sate simul_state)
+void MC_recursive_remove_out_particles(MCdo_simul_state& do_simul_state,const HepMC::ConstGenVertexPtr& ver,FastShowerCellBuilderTool::flag_simul_sate simul_state)
 {
   if(ver) {
     do_simul_state[HepMC::barcode(ver)]=simul_state;
-    for(auto par_out: *ver) {
+    for(const auto& par_out: *ver) {
       do_simul_state[HepMC::barcode(par_out)]=simul_state;
       auto outver=par_out->end_vertex();
       if(outver) MC_recursive_remove_out_particles(do_simul_state,outver,simul_state);
@@ -2084,7 +1960,7 @@ void MC_recursive_remove_out_particles(MCdo_simul_state& do_simul_state,HepMC::C
   }
 }
 
-void MC_recursive_remove_in_particles(MCdo_simul_state& do_simul_state,HepMC::ConstGenVertexPtr ver,FastShowerCellBuilderTool::flag_simul_sate simul_state)
+void MC_recursive_remove_in_particles(MCdo_simul_state& do_simul_state,const HepMC::ConstGenVertexPtr& ver,FastShowerCellBuilderTool::flag_simul_sate simul_state)
 {
   if(ver) {
     if(do_simul_state[HepMC::barcode(ver)]==simul_state) {
@@ -2092,14 +1968,14 @@ void MC_recursive_remove_in_particles(MCdo_simul_state& do_simul_state,HepMC::Co
     }
     do_simul_state[HepMC::barcode(ver)]=simul_state;
 #ifdef HEPMC3
-    for(auto par:ver->particles_in()) {
+    for(const auto& par:ver->particles_in()) {
 #else
 
     for(HepMC::GenVertex::particles_in_const_iterator pin=ver->particles_in_const_begin();pin!=ver->particles_in_const_end();++pin) {
       const HepMC::GenParticle* par=*pin;
 #endif
       do_simul_state[HepMC::barcode(par)]=simul_state;
-      auto inver=par->production_vertex();
+      auto  inver=par->production_vertex();
       if(inver) MC_recursive_remove_in_particles(do_simul_state,inver,simul_state);
     }
   }
@@ -2108,7 +1984,7 @@ void MC_recursive_remove_in_particles(MCdo_simul_state& do_simul_state,HepMC::Co
 
 void FastShowerCellBuilderTool::MC_remove_out_of_ID(MCdo_simul_state& do_simul_state,const MCparticleCollection& particles) const
 {
-  for(auto par: particles){
+  for(const auto& par: particles){
     if(par) {
       if(do_simul_state[HepMC::barcode(par)]<=0) continue;
 
@@ -2117,7 +1993,7 @@ void FastShowerCellBuilderTool::MC_remove_out_of_ID(MCdo_simul_state& do_simul_s
         if(!Is_ID_Vertex(inver)) {
           int nin=0;
 #ifdef HEPMC3
-    for(auto invpar:inver->particles_in()) {
+    for(const auto& invpar:inver->particles_in()) {
 #else
           for(HepMC::GenVertex::particles_in_const_iterator pin=inver->particles_in_const_begin();pin!=inver->particles_in_const_end();++pin) {
             const HepMC::GenParticle* invpar=*pin;
@@ -2139,9 +2015,9 @@ void FastShowerCellBuilderTool::MC_remove_out_of_ID(MCdo_simul_state& do_simul_s
   }
 }
 
-void FastShowerCellBuilderTool::MC_remove_out_of_EM(MCdo_simul_state& do_simul_state,const MCparticleCollection& particles) const
+void FastShowerCellBuilderTool::MC_remove_out_of_EM(MCdo_simul_state& do_simul_state,const MCparticleCollection& particles) 
 {
-  for(auto par_out: particles){
+  for(const auto& par_out: particles){
     if(par_out) {
       if(do_simul_state[HepMC::barcode(par_out)]<=0) continue;
 
@@ -2157,9 +2033,9 @@ void FastShowerCellBuilderTool::MC_remove_out_of_EM(MCdo_simul_state& do_simul_s
   }
 }
 
-void FastShowerCellBuilderTool::MC_remove_below_v14_truth_cuts(MCdo_simul_state& do_simul_state,const MCparticleCollection& particles) const
+void FastShowerCellBuilderTool::MC_remove_below_v14_truth_cuts(MCdo_simul_state& do_simul_state,const MCparticleCollection& particles) 
 {
-  for(auto par_out: particles){
+  for(const auto& par_out: particles){
     if(par_out) {
       if(do_simul_state[HepMC::barcode(par_out)]<=0) continue;
 
@@ -2178,7 +2054,7 @@ void FastShowerCellBuilderTool::MC_remove_below_v14_truth_cuts(MCdo_simul_state&
 
 void MC_remove_decay_to_simul(MCdo_simul_state& do_simul_state,const MCparticleCollection& particles)
 {
-  for(auto par_out: particles){
+  for(const auto& par_out: particles){
     if(par_out) {
       if(do_simul_state[HepMC::barcode(par_out)]<=0) continue;
 
@@ -2192,7 +2068,7 @@ void MC_remove_decay_to_simul(MCdo_simul_state& do_simul_state,const MCparticleC
 
 void FastShowerCellBuilderTool::init_shape_correction()
 {
-  if(m_shape_correction.size()==0) return;
+  if(m_shape_correction.empty()) return;
 
   ATH_MSG_INFO("Assigning shape correction functions...");
   for(t_map_PSP_ID::iterator iter_id=m_map_ParticleShapeParametrizationMap.begin();
@@ -2236,6 +2112,11 @@ FastShowerCellBuilderTool::process (CaloCellContainer* theCellContainer,
 {
   ATH_MSG_DEBUG("Executing start calo size=" <<theCellContainer->size()<<" Event="<<ctx.evt());
 
+  // Get the CellInfoContainer
+  SG::ReadCondHandle<CellInfoContainer> cellInfoContHandle{m_cellInfoContKey,ctx};
+  ATH_CHECK(cellInfoContHandle.isValid());
+  const CellInfoContainer* cellInfoCont = *cellInfoContHandle;
+
   TRandom3 rndm;
   if(setupEvent(ctx, rndm).isFailure() ) {
     ATH_MSG_ERROR("setupEvent() failed");
@@ -2252,7 +2133,7 @@ FastShowerCellBuilderTool::process (CaloCellContainer* theCellContainer,
 
   ATH_MSG_DEBUG("Start getting particles");
 
-  if (mcCollptr->size() >0)
+  if (!mcCollptr->empty())
     {
 #ifdef HEPMC3
       auto istart = mcCollptr->at(0)->particles().begin();
@@ -2270,7 +2151,7 @@ FastShowerCellBuilderTool::process (CaloCellContainer* theCellContainer,
   particles.erase(last_good, particles.end());
 
 
-  const BarcodeEnergyDepositMap* MuonEnergyMap=0;
+  const BarcodeEnergyDepositMap* MuonEnergyMap=nullptr;
   if (!m_MuonEnergyInCaloContainerKey.key().empty()) {
     SG::ReadHandle<BarcodeEnergyDepositMap> h (m_MuonEnergyInCaloContainerKey, ctx);
     // FIXME: Fix configuration so as not to request this object if it does not exist.
@@ -2291,7 +2172,7 @@ FastShowerCellBuilderTool::process (CaloCellContainer* theCellContainer,
   int indpar=0;
   ATH_MSG_DEBUG("start finding partilces n="<<particles.size());
 
-  for(auto par: particles){
+  for(const auto& par: particles){
     if(par->pdg_id()==0) do_simul_state[HepMC::barcode(par)]=pdg_id_unkown;
     // Do not treat nuclei
     if((!m_simul_heavy_ions) && par->pdg_id() > 1000000000) do_simul_state[HepMC::barcode(par)]=heavy_ion;
@@ -2348,7 +2229,7 @@ FastShowerCellBuilderTool::process (CaloCellContainer* theCellContainer,
       msg(MSG::DEBUG)<<reason;
 
       msg()<<indpar<<": id="<<par->pdg_id()<<" stat="<<par->status()<<" pt="<<par->momentum().perp()<<" eta="<<par->momentum().eta()<<" phi="<<par->momentum().phi();
-      auto  inver =par->production_vertex();
+      auto   inver =par->production_vertex();
       auto outver =par->end_vertex();
       if(inver) {
         double inr=inver->position().perp();
@@ -2356,7 +2237,7 @@ FastShowerCellBuilderTool::process (CaloCellContainer* theCellContainer,
         msg()<<" ; bc="<<HepMC::barcode(inver)<<" r="<<inr<<" z="<<inz<<" phi="<<inver->position().phi()<<" ; ";
         bool sep=false;
 #ifdef HEPMC3
-    for(auto invpar:inver->particles_in()) {
+    for(const auto& invpar:inver->particles_in()) {
 #else
         for(HepMC::GenVertex::particles_in_const_iterator pin=inver->particles_in_const_begin();pin!=inver->particles_in_const_end();++pin) {
           const HepMC::GenParticle* invpar=*pin;
@@ -2372,7 +2253,7 @@ FastShowerCellBuilderTool::process (CaloCellContainer* theCellContainer,
       if(outver) {
         msg()<<"->";
         bool sep=false;
-        for(auto outpar: *outver) {
+        for(const auto& outpar: *outver) {
           if(outpar) {
             if(sep) msg()<<",";
             msg()<<HepMC::barcode(outpar);
@@ -2410,7 +2291,7 @@ FastShowerCellBuilderTool::process (CaloCellContainer* theCellContainer,
   int stat_npar=0;
   int stat_npar_OK=0;
   int stat_npar_nOK=0;
-  for(auto part: Simulparticles) {
+  for(const auto& part: Simulparticles) {
 
     std::vector<Trk::HitInfo>* hitVector = caloHits(*part);
 
@@ -2425,19 +2306,14 @@ FastShowerCellBuilderTool::process (CaloCellContainer* theCellContainer,
                         fastShowerInfoContainer.get(),
                         rndm,
                         stats,
-                        ctx))
+                        ctx,
+			cellInfoCont))
     {
       ++stat_npar_nOK;
     } else {
       ++stat_npar_OK;
     }
 
-    for(std::vector<Trk::HitInfo>::iterator it = hitVector->begin();it < hitVector->end();++it)  {
-      if((*it).trackParms) {
-        delete (*it).trackParms;
-        (*it).trackParms=0;
-      }
-    }
     delete hitVector;
 
     ++stat_npar;
@@ -2537,7 +2413,7 @@ std::vector<Trk::HitInfo>* FastShowerCellBuilderTool::caloHits(const HepMC::GenP
 
   /* uncomment if unstable particles used by FastCaloSim
   // beta calculated here for further use in validation
-  double mass = m_particleMasses.mass[pHypothesis];
+  double mass = Trk::ParticleMasses::mass[pHypothesis];
   double mom = isp.momentum().mag();
   double beta = mom/sqrt(mom*mom+mass*mass);
 
@@ -2572,38 +2448,48 @@ std::vector<Trk::HitInfo>* FastShowerCellBuilderTool::caloHits(const HepMC::GenP
     if (!m_caloEntrance)  ATH_MSG_INFO("CaloEntrance not found ");
   }
 
-  const Trk::TrackParameters* caloEntry = 0;
+  std::unique_ptr<const Trk::TrackParameters> caloEntry = nullptr;
 
   if (m_caloEntrance && m_caloEntrance->inside(pos,0.001) &&
       !m_extrapolator->trackingGeometry()->atVolumeBoundary(pos,m_caloEntrance,0.001)) {
     ATH_MSG_DEBUG("Inside calo entrace extrapolation");
     std::vector<Trk::HitInfo>*     dummyHitVector = nullptr;
-    if ( charge==0 ) {
+    if (charge == 0) {
 
-      caloEntry = m_extrapolator->transportNeutralsWithPathLimit(inputPar,pathLim,timeLim,
-                                                                 Trk::alongMomentum,pHypothesis,dummyHitVector,nextGeoID,m_caloEntrance);
+      caloEntry =
+        m_extrapolator->transportNeutralsWithPathLimit(inputPar,
+                                                       pathLim,
+                                                       timeLim,
+                                                       Trk::alongMomentum,
+                                                       pHypothesis,
+                                                       dummyHitVector,
+                                                       nextGeoID,
+                                                       m_caloEntrance);
 
     } else {
 
-      caloEntry = m_extrapolator->extrapolateWithPathLimit(inputPar,pathLim,timeLim,
-                                                           Trk::alongMomentum,pHypothesis,dummyHitVector,nextGeoID,m_caloEntrance);
+      caloEntry = m_extrapolator->extrapolateWithPathLimit(inputPar,
+                                                           pathLim,
+                                                           timeLim,
+                                                           Trk::alongMomentum,
+                                                           pHypothesis,
+                                                           dummyHitVector,
+                                                           nextGeoID,
+                                                           m_caloEntrance);
     }
   } else {
-    caloEntry=&inputPar;
-  }  
-  
-  if(caloEntry==&inputPar) {
+    caloEntry = inputPar.uniqueClone();
+  }
+
+  if(caloEntry.get()==&inputPar) {
     ATH_MSG_DEBUG("Use clone of inputPar as caloEntry");
-    caloEntry=inputPar.clone();
+    caloEntry=inputPar.uniqueClone();
   }
 
   if ( caloEntry ) {
-    ATH_MSG_DEBUG("caloEntry="<<caloEntry<<" nextGeoID="<<nextGeoID<<" charge="<<charge);
+    ATH_MSG_DEBUG("caloEntry="<<caloEntry.get()<<" nextGeoID="<<nextGeoID<<" charge="<<charge);
 
-    const Trk::TrackParameters* eParameters = 0;
-
-    // save Calo entry hit (fallback info)
-    hitVector->push_back(Trk::HitInfo(caloEntry,timeLim.time,nextGeoID,0.));
+    std::unique_ptr<const Trk::TrackParameters> eParameters = nullptr;
 
     ATH_MSG_DEBUG( "[ fastCaloSim transport ] starting Calo transport from position "<< pos<<" charge="<<charge );
 
@@ -2616,9 +2502,11 @@ std::vector<Trk::HitInfo>* FastShowerCellBuilderTool::caloHits(const HepMC::GenP
       eParameters = m_extrapolator->extrapolateWithPathLimit(*caloEntry,pathLim,timeLim,
                                                              Trk::alongMomentum,pHypothesis,hitVector,nextGeoID);
     }
+    // save Calo entry hit (fallback info)
+    hitVector->push_back(Trk::HitInfo(std::move(caloEntry),timeLim.time,nextGeoID,0.));
 
     // save Calo exit hit (fallback info)
-    if (eParameters) hitVector->push_back(Trk::HitInfo(eParameters,timeLim.time,nextGeoID,0.));
+    if (eParameters) hitVector->push_back(Trk::HitInfo(std::move(eParameters),timeLim.time,nextGeoID,0.));
 
     //delete eParameters;   // HitInfo took ownership
 

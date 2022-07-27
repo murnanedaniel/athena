@@ -3,7 +3,7 @@
 from AthenaCommon.SystemOfUnits import TeV
 from AthenaConfiguration.AthConfigFlags import AthConfigFlags
 from AthenaConfiguration.AutoConfigFlags import GetFileMD, getInitialTimeStampsFromRunNumbers, getRunToTimestampDict, getSpecialConfigurationMetadata
-from AthenaConfiguration.Enums import BeamType, Format, ProductionStep
+from AthenaConfiguration.Enums import BeamType, Format, ProductionStep, BunchStructureSource
 from PyUtils.moduleExists import moduleExists
 
 
@@ -12,7 +12,7 @@ def _addFlagsCategory (acf, name, generator, modName = None):
         return acf.addFlagsCategory (name, generator)
     return None
 
-        
+
 def _createCfgFlags():
 
     acf=AthConfigFlags()
@@ -20,7 +20,7 @@ def _createCfgFlags():
     #Flags steering the job execution:
     from AthenaCommon.Constants import INFO
     acf.addFlag('Exec.OutputLevel',INFO) #Global Output Level
-    acf.addFlag('Exec.MaxEvents',-1) 
+    acf.addFlag('Exec.MaxEvents',-1)
     acf.addFlag('Exec.SkipEvents',0)
     acf.addFlag('Exec.DebugStage','')
 
@@ -28,20 +28,26 @@ def _createCfgFlags():
     acf.addFlag('ExecutorSplitting.Step', -1)
     acf.addFlag('ExecutorSplitting.TotalEvents', -1)
 
-    #Flags describing the input data 
+    #Flags describing the input data
     acf.addFlag('Input.Files', ["_ATHENA_GENERIC_INPUTFILE_NAME_",]) # former global.InputFiles
     acf.addFlag('Input.SecondaryFiles', []) # secondary input files for DoubleEventSelector
     acf.addFlag('Input.isMC', lambda prevFlags : "IS_SIMULATION" in GetFileMD(prevFlags.Input.Files).get("eventTypes", [])) # former global.isMC
     acf.addFlag('Input.OverrideRunNumber', False )
     acf.addFlag("Input.ConditionsRunNumber", -1) # Override the HITS file Run Number with one from a data run (TODO merge with Input.RunNumber)
     acf.addFlag('Input.RunNumber', lambda prevFlags : list(GetFileMD(prevFlags.Input.Files).get("runNumbers", []))) # former global.RunNumber
+    acf.addFlag('Input.MCChannelNumber', lambda prevFlags : GetFileMD(prevFlags.Input.Files).get("mc_channel_number", 0))
     acf.addFlag('Input.LumiBlockNumber', lambda prevFlags : list(GetFileMD(prevFlags.Input.Files).get("lumiBlockNumbers", []))) # former global.RunNumber
     acf.addFlag('Input.TimeStamp', lambda prevFlags : getInitialTimeStampsFromRunNumbers(prevFlags.Input.RunNumber) if prevFlags.Input.OverrideRunNumber else [])
     # Configure EvtIdModifierSvc with a list of dictionaries of the form:
-    # {'run': 152166, 'lb': 202, 'starttstamp': 1269948352889940910, 'dt': 104.496, 'evts': 1, 'mu': 0.005, 'force_new': False}
+    # {'run': 152166, 'lb': 202, 'starttstamp': 1269948352889940910, 'evts': 1, 'mu': 0.005}
     acf.addFlag("Input.RunAndLumiOverrideList", [])
+    # Job number
+    acf.addFlag("Input.JobNumber", 1)
+    acf.addFlag('Input.FailOnUnknownCollections', False)
 
     acf.addFlag('Input.ProjectName', lambda prevFlags : GetFileMD(prevFlags.Input.Files).get("project_name", "data17_13TeV")) # former global.ProjectName
+    acf.addFlag('Input.TriggerStream', lambda prevFlags : GetFileMD(prevFlags.Input.Files).get("stream", "") if prevFlags.Input.Format == Format.BS
+                                                          else GetFileMD(prevFlags.Input.Files).get("triggerStreamOfFile", "")) # former global.TriggerStream
     acf.addFlag('Input.Format', lambda prevFlags : Format.BS if GetFileMD(prevFlags.Input.Files).get("file_type", "BS") == "BS" else Format.POOL, enum=Format) # former global.InputFormat
     acf.addFlag('Input.ProcessingTags', lambda prevFlags : GetFileMD(prevFlags.Input.Files).get("processingTags", []) ) # list of names of streams written to this file
     acf.addFlag('Input.SpecialConfiguration', lambda prevFlags : getSpecialConfigurationMetadata(prevFlags.Input.Files, prevFlags.Input.SecondaryFiles))  # special Configuration options read from input file metadata
@@ -58,6 +64,7 @@ def _createCfgFlags():
     acf.addFlag('Input.Collections', lambda prevFlags : _inputCollections(prevFlags.Input.Files) )
     acf.addFlag('Input.SecondaryCollections', lambda prevFlags : _inputCollections(prevFlags.Input.SecondaryFiles) )
     acf.addFlag('Input.TypedCollections', lambda prevFlags : _typedInputCollections(prevFlags.Input.Files) )
+    acf.addFlag('Input.SecondaryTypedCollections', lambda prevFlags : _typedInputCollections(prevFlags.Input.SecondaryFiles) )
 
     acf.addFlag('Concurrency.NumProcs', 0)
     acf.addFlag('Concurrency.NumThreads', 0 )
@@ -69,6 +76,7 @@ def _createCfgFlags():
     acf.addFlag('Scheduler.ShowDataFlow', True)
     acf.addFlag('Scheduler.ShowControlFlow', True)
     acf.addFlag('Scheduler.EnableVerboseViews', True)
+    acf.addFlag('Scheduler.AutoLoadUnmetDependencies', True)
 
     acf.addFlag('MP.WorkerTopDir', 'athenaMP_workers')
     acf.addFlag('MP.OutputReportFile', 'AthenaMPOutputs')
@@ -95,6 +103,9 @@ def _createCfgFlags():
     acf.addFlag('Common.MsgSourceLength',50) #Length of the source-field in the format str of MessageSvc
     acf.addFlag('Common.isOnline', False ) #  Job runs in an online environment (access only to resources available at P1) # former global.isOnline
     acf.addFlag('Common.useOnlineLumi', lambda prevFlags : prevFlags.Common.isOnline ) #  Use online version of luminosity. ??? Should just use isOnline?
+    acf.addFlag('Common.isOverlay', lambda prevFlags: (prevFlags.Common.ProductionStep == ProductionStep.Overlay or
+                                                       (prevFlags.Common.ProductionStep == ProductionStep.FastChain and
+                                                        prevFlags.Overlay.FastChain)))  # Enable Overlay
     acf.addFlag('Common.doExpressProcessing', False)
     acf.addFlag('Common.ProductionStep', ProductionStep.Default, enum=ProductionStep)
 
@@ -106,6 +117,8 @@ def _createCfgFlags():
             return "AthGeneration"
         if "AthAnalysis_DIR" in os.environ:
             return "AthAnalysis"
+        if "AthDerivation_DIR" in os.environ:
+            return "AthDerivation"
         #TODO expand this method.
         return "Athena"
     acf.addFlag('Common.Project', _checkProject())
@@ -117,6 +130,7 @@ def _createCfgFlags():
     acf.addFlag('Beam.Energy', lambda prevFlags : GetFileMD(prevFlags.Input.Files).get('beam_energy',7*TeV)) # former global.BeamEnergy
     acf.addFlag('Beam.estimatedLuminosity', lambda prevFlags : ( 1E33*(prevFlags.Beam.NumberOfCollisions)/2.3 ) *\
         (25./prevFlags.Beam.BunchSpacing)) # former flobal.estimatedLuminosity
+    acf.addFlag('Beam.BunchStructureSource', lambda prevFlags: BunchStructureSource.MC if prevFlags.Input.isMC else BunchStructureSource.TrigConf)
 
 
 
@@ -128,13 +142,14 @@ def _createCfgFlags():
     acf.addFlag('Output.ESDFileName',  '')
     acf.addFlag('Output.AODFileName',  '')
     acf.addFlag('Output.HISTFileName', '')
-    
+
 
     acf.addFlag('Output.doWriteRDO', lambda prevFlags: bool(prevFlags.Output.RDOFileName)) # write out RDO file
     acf.addFlag('Output.doWriteRDO_SGNL', lambda prevFlags: bool(prevFlags.Output.RDO_SGNLFileName)) # write out RDO_SGNL file
     acf.addFlag('Output.doWriteESD', lambda prevFlags: bool(prevFlags.Output.ESDFileName)) # write out ESD file
     acf.addFlag('Output.doWriteAOD', lambda prevFlags: bool(prevFlags.Output.AODFileName)) # write out AOD file
     acf.addFlag('Output.doWriteBS',  False) # write out RDO ByteStream file
+    acf.addFlag('Output.doWriteDAOD',  False) # write out at least one DAOD file
 
     # Might move this elsewhere in the future.
     # Some flags from https://gitlab.cern.ch/atlas/athena/blob/master/Tracking/TrkDetDescr/TrkDetDescrSvc/python/TrkDetDescrJobProperties.py
@@ -150,9 +165,9 @@ def _createCfgFlags():
 
 #Simulation Flags:
     def __simulation():
-        from G4AtlasApps.SimConfigFlags import createSimConfigFlags
+        from SimulationConfig.SimConfigFlags import createSimConfigFlags
         return createSimConfigFlags()
-    _addFlagsCategory (acf, "Sim", __simulation, 'G4AtlasApps' )
+    _addFlagsCategory (acf, "Sim", __simulation, 'SimulationConfig' )
 
 #Digitization Flags:
     def __digitization():
@@ -199,7 +214,7 @@ def _createCfgFlags():
     def __lar():
         from LArConfiguration.LArConfigFlags import createLArConfigFlags
         return createLArConfigFlags()
-    _addFlagsCategory(acf, "LAr", __lar, 'LArConfiguration' ) 
+    _addFlagsCategory(acf, "LAr", __lar, 'LArConfiguration' )
 
     def __tile():
         from TileConfiguration.TileConfigFlags import createTileConfigFlags
@@ -217,7 +232,7 @@ def _createCfgFlags():
 
     def __trigger():
         from TriggerJobOpts.TriggerConfigFlags import createTriggerFlags
-        return createTriggerFlags()
+        return createTriggerFlags(acf.Common.Project!='AthAnalysis')
     _addFlagsCategory(acf, "Trigger", __trigger, 'TriggerJobOpts' )
 
     def __indet():
@@ -276,9 +291,9 @@ def _createCfgFlags():
     _addFlagsCategory(acf,"PF",__pflow, 'eflowRec')
 
     def __btagging():
-        from BTagging.BTaggingConfigFlags import createBTaggingConfigFlags
+        from JetTagConfig.BTaggingConfigFlags import createBTaggingConfigFlags
         return createBTaggingConfigFlags()
-    _addFlagsCategory(acf,"BTagging",__btagging, 'BTagging')
+    _addFlagsCategory(acf,"BTagging",__btagging, 'JetTagConfig')
 
     def __hi():
         from HIRecConfig.HIRecConfigFlags import createHIRecConfigFlags
@@ -307,8 +322,7 @@ if __name__=="__main__":
         ConfigFlags.Input.Files = sys.argv[1:]
     else:
         ConfigFlags.Input.Files = [ "/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/CommonInputs/data16_13TeV.00311321.physics_Main.recon.AOD.r9264/AOD.11038520._000001.pool.root.1",]
-    
+
     ConfigFlags.loadAllDynamicFlags()
     ConfigFlags.initAll()
     ConfigFlags.dump()
-    

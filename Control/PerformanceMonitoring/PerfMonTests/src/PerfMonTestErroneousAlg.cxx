@@ -95,11 +95,17 @@ bool ErroneousAlg::invalidRead()
   double *invalidReadPointer = new double[maximum];
   
   // fill with something
-  for ( unsigned int i=1; i<=maximum; ++i )
+  for ( unsigned int i=1; i<=maximum; ++i ){
+    //intentional out-of-bounds access
+    //cppcheck-suppress arrayIndexOutOfBounds
     invalidReadPointer[i] = double(i);
+  }
   ATH_MSG_INFO ( "Found, that last element contains " << invalidReadPointer[maximum] ) ;
   
   // and delete
+#if __GNUC__ >= 12
+# pragma GCC diagnostic ignored "-Wuse-after-free"
+#endif  
   delete [] invalidReadPointer;
   
   // and print out element 10 !

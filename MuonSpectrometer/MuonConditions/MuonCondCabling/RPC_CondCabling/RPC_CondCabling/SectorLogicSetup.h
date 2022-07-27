@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef SECTORLOGICSETUP_H
@@ -61,7 +61,7 @@ namespace RPC_CondCabling {
         EvenPhiCMAmap::iterator find_evenphiCMA(int Eta, int Phi);
         OddPhiCMAmap::iterator find_oddphiCMA(int Eta, int Phi);
 
-        const static std::map<std::string, std::string>* s_trigroads;
+        const std::map<std::string, std::string>* m_trigroads = nullptr;
 
     public:
         SectorLogicSetup(int, const std::string&, const std::string&, bool);
@@ -109,31 +109,39 @@ namespace RPC_CondCabling {
 
         const CMAparameters::CMAlist give_CMAs(const int, const ViewType, const int, const int) const;
 
-        bool give_RoI_borders(CMAidentity ETA, CMAidentity PHI, unsigned int& firstEtaCode, unsigned int& lastEtaCode,
+        bool give_RoI_borders(const CMAidentity& ETA,
+                              const CMAidentity& PHI,
+                              unsigned int& firstEtaCode, unsigned int& lastEtaCode,
                               unsigned int& firstPhiCode, unsigned int& lastPhiCode) const;
 
-        bool give_LowPt_borders(CMAidentity ETA, CMAidentity PHI, unsigned int& firstEtaCode, unsigned int& lastEtaCode,
+        bool give_LowPt_borders(const CMAidentity& ETA,
+                                const CMAidentity& PHI,
+                                unsigned int& firstEtaCode, unsigned int& lastEtaCode,
                                 unsigned int& firstPhiCode, unsigned int& lastPhiCode) const;
 
-        bool give_HighPt_borders(CMAidentity ETA, CMAidentity PHI, unsigned int& firstEtaCode, unsigned int& lastEtaCode,
+        bool give_HighPt_borders(const CMAidentity& ETA,
+                                 const CMAidentity& PHI,
+                                 unsigned int& firstEtaCode, unsigned int& lastEtaCode,
                                  unsigned int& firstPhiCode, unsigned int& lastPhiCode) const;
 
-        bool give_LowPt_layout(CMAidentity ID, unsigned short int& start_pivot_ch, unsigned int& start_pivot_code,
+        bool give_LowPt_layout(const CMAidentity& ID, unsigned short int& start_pivot_ch, unsigned int& start_pivot_code,
                                unsigned short int& stop_pivot_ch, unsigned int& stop_pivot_code, unsigned short int& start_confirm_ch,
                                unsigned int& start_confirm_code, unsigned short int& stop_confirm_ch,
                                unsigned int& stop_confirm_code) const;
 
-        bool give_HighPt_layout(CMAidentity ID, unsigned short int& start_pivot_ch, unsigned int& start_pivot_code,
+        bool give_HighPt_layout(const CMAidentity& ID, unsigned short int& start_pivot_ch, unsigned int& start_pivot_code,
                                 unsigned short int& stop_pivot_ch, unsigned int& stop_pivot_code, unsigned short int& start_confirm_ch,
                                 unsigned int& start_confirm_code, unsigned short int& stop_confirm_ch,
                                 unsigned int& stop_confirm_code) const;
 
-        const CMAparameters* give_CMA(CMAidentity CMA) const;
+        const CMAparameters* give_CMA(const CMAidentity& CMA) const;
 
-        bool correct(CMAidentity CMA, L1RPCcabCorrection type, CMAinput it, unsigned int layer, unsigned short int Channel1,
+        bool correct(const CMAidentity& CMA,
+                     L1RPCcabCorrection type, CMAinput it, unsigned int layer, unsigned short int Channel1,
                      unsigned short int Channel2, short int num) const;
 
-        std::list<unsigned int> give_strip_code(CMAidentity CMA, int logic_sector, unsigned short int lh, unsigned short int ijk,
+        std::list<unsigned int> give_strip_code(const CMAidentity& CMA,
+                                                int logic_sector, unsigned short int lh, unsigned short int ijk,
                                                 unsigned short int Channel) const;
 
         bool operator+=(RPCchamberdata&);
@@ -148,8 +156,8 @@ namespace RPC_CondCabling {
         void PrintElement(std::ostream&, int, const std::string&, int, bool) const;
         friend std::ostream& operator<<(std::ostream&, const SectorLogicSetup&);
 
-        static void SetPtoTrigRoads(const std::map<std::string, std::string>*);
-        const std::map<std::string, std::string>* GetPtoTrigRoads() const { return s_trigroads; }  // LBTAG
+        void SetPtoTrigRoads(const std::map<std::string, std::string>*);
+        const std::map<std::string, std::string>* GetPtoTrigRoads() const { return m_trigroads; }  // LBTAG
     };
 
 }  // namespace RPC_CondCabling

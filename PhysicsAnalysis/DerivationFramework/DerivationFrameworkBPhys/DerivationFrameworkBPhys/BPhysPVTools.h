@@ -8,11 +8,9 @@
 #include "GaudiKernel/ToolHandle.h"
 #include "xAODBPhys/BPhysHelper.h"
 #include <vector>
-
+#include "xAODEventInfo/EventInfo.h"
+  
 // Author: Adam Barton <abarton@SPAMMENOTTtttcern.ch>
-namespace InDet{
-class BeamSpotData;
-}
 namespace Trk {
   class V0Tools;
 }
@@ -27,7 +25,7 @@ namespace DerivationFramework {
 
   private:
        const Trk::V0Tools *m_v0Tools;
-       const InDet::BeamSpotData *m_beamSpotData;
+       const xAOD::EventInfo *m_EvtData;
 
        /// minimum number of tracks required in PVs considered
        size_t m_PV_minNTracks;
@@ -37,7 +35,7 @@ namespace DerivationFramework {
   public:
   
        BPhysPVTools(const Trk::V0Tools *v0Tools);
-       BPhysPVTools(const Trk::V0Tools *v0Tools, const InDet::BeamSpotData*);
+       BPhysPVTools(const Trk::V0Tools *v0Tools, const xAOD::EventInfo*);
        void SetSave3d(bool v) { m_3dCalc =v; }
        StatusCode FillCandExistingVertices(xAOD::VertexContainer* vtxContainer, const xAOD::VertexContainer* pvContainer, int DoVertexType);
        
@@ -83,20 +81,20 @@ namespace DerivationFramework {
        /// BeamCondSvc.
        /// Before processing a new event, make sure to call
        /// GetBeamSpot();
-       [[nodiscard]] const Amg::Vector3D& GetBeamSpot() const noexcept;
+       [[nodiscard]] Amg::Vector3D GetBeamSpot() const;
 
        /// Find the index for the PV with the lowest distance in z of
        /// the SV's DOCA point w.r.t. the beamline and the PV.
-       size_t FindLowZ0BAIndex(const xAOD::BPhysHelper &obj,
+       size_t FindLowZ0BAIndex(xAOD::BPhysHelper &obj,
 			       const std::vector<const xAOD::Vertex*> &PVlist,
 			       const size_t PV_minNTracks=0) const;
        /// Calculate the distance along z axis between the PV and
        ///  SV's DOCA point w.r.t. the beamline.
-       double DistInZtoDOCA(const xAOD::BPhysHelper &obj,
+       double DistInZtoDOCA(xAOD::BPhysHelper &obj,
 			    const xAOD::Vertex* vertex) const;
        /// Point of DOCA w.r.t. the beamline backward extrapolated
        /// along the B candidate's momentum direction. 
-       Amg::Vector3D DocaExtrapToBeamSpot(const xAOD::BPhysHelper &obj) const;
+       Amg::Vector3D DocaExtrapToBeamSpot(xAOD::BPhysHelper &obj) const;
 
        static void PrepareVertexLinks(xAOD::Vertex* theResult,
                const xAOD::TrackParticleContainer* importedTrackCollection);

@@ -26,8 +26,10 @@ public:
   VertexNewMatcher( const std::string& s, double d=0.5 ) : BestMatcher<TIDA::Vertex>( s, d*d ) { }  
 
   ~VertexNewMatcher() { }
+
+  BestMatcher<TIDA::Vertex>* clone() override { return new VertexNewMatcher(*this); }
   
-  virtual double distance( const TIDA::Vertex* v0, const TIDA::Vertex* v1 ) const {
+  virtual double distance( const TIDA::Vertex* v0, const TIDA::Vertex* v1 ) const override {
 
     // vectors of pointers to tracks belonging to ref and test vertices
     const std::vector<TIDA::Track*>& refTracks= v0->tracks();
@@ -40,7 +42,7 @@ public:
     double n_matches = (double)track_matcher.size();
     double eff = n_matches/refTracks.size();
 
-    // 1-eff as BestMatcher uses lower than threshold, squared as BestMatcer takes d*d
+    // 1-eff as BestMatcher uses lower than threshold, squared as BestMatcher takes d*d
     return (1-eff)*(1-eff);
   };
   

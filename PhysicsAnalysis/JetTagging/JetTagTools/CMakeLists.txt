@@ -1,11 +1,11 @@
-# Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # Declare the package name:
 atlas_subdir( JetTagTools )
 
 # External dependencies:
 find_package( CLHEP )
-find_package( ROOT COMPONENTS TMVA Core Tree MathCore Hist RIO pthread
+find_package( ROOT COMPONENTS Core Tree MathCore Hist RIO pthread
     MathMore Minuit Minuit2 Matrix Physics HistPainter Rint RooFitCore RooFit )
 
 # Component(s) in the package:
@@ -18,9 +18,9 @@ atlas_add_library( JetTagToolsLib
     src/SVForIPTool.cxx src/SVTag.cxx src/JetFitterTag.cxx
     src/JetFitterNtupleWriter.cxx src/JetFitterNNTool.cxx
     src/JetFitterInputWriter.cxx src/JetFitterDummyClassifier.cxx
-    src/MV1Tag.cxx src/MV2Tag.cxx
+    src/MV2Tag.cxx
     src/JetFitterVariablesFactory.cxx src/MSVVariablesFactory.cxx
-    src/MultiSVTag.cxx src/SoftMuonTag.cxx
+    src/MultiSVTag.cxx
     src/MultivariateTagManager.cxx
     src/TagNtupleDumper.cxx
 
@@ -29,12 +29,12 @@ atlas_add_library( JetTagToolsLib
     PRIVATE_INCLUDE_DIRS ${CLHEP_INCLUDE_DIRS}
     PRIVATE_DEFINITIONS ${CLHEP_DEFINITIONS}
     LINK_LIBRARIES ${ROOT_LIBRARIES} AthenaBaseComps AthenaKernel CxxUtils GaudiKernel
-    GeoPrimitives ITrackToVertex InDetRecToolInterfaces InDetSVWithMuonToolLib JetTagCalibrationLib JetTagInfo
-    MVAUtils StoreGateLib xAODBTagging xAODJet xAODTracking
-    PRIVATE_LINK_LIBRARIES ${CLHEP_LIBRARIES} InDetTrackSelectionToolLib MuonAnalysisInterfacesLib
+    GeoPrimitives ITrackToVertex InDetRecToolInterfaces JetTagCalibrationLib JetTagInfo
+    MVAUtils xAODBTagging xAODJet xAODTracking
+    PRIVATE_LINK_LIBRARIES ${CLHEP_LIBRARIES} InDetTrackSelectionToolLib
     Navigation Particle ParticleJetToolsLib TrkEventPrimitives TrkLinks TrkNeuralNetworkUtilsLib
     TrkParameters TrkTrack TrkTrackLink TrkTrackSummary TrkVertexFitterInterfaces VxJetVertex
-    VxSecVertex VxVertex xAODMuon )
+    VxSecVertex VxVertex )
 
 atlas_add_component( JetTagTools
     src/components/*.cxx

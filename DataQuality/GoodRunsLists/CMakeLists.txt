@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # Declare the package name:
 atlas_subdir( GoodRunsLists )
@@ -12,7 +12,7 @@ atlas_add_root_dictionary( GoodRunsListsLib
    GoodRunsListsLibDictSource
    ROOT_HEADERS GoodRunsLists/TLumiBlockRange.h GoodRunsLists/RegularFormula.h
    GoodRunsLists/TGoodRunsListReader.h GoodRunsLists/TGoodRunsListWriter.h
-   GoodRunsLists/DQHelperFunctions.h Root/LinkDef.h
+   Root/LinkDef.h
    EXTERNAL_PACKAGES LibXml2 ROOT )
 
 set( extra_libs DerivationFrameworkInterfaces )
@@ -24,9 +24,9 @@ atlas_add_library( GoodRunsListsLib
    GoodRunsLists/*.h Root/*.cxx ${GoodRunsListsLibDictSource}
    PUBLIC_HEADERS GoodRunsLists
    INCLUDE_DIRS ${ROOT_INCLUDE_DIRS}
-   PRIVATE_INCLUDE_DIRS ${LIBXML2_INCLUDE_DIR}
+   PRIVATE_INCLUDE_DIRS ${LIBXML2_INCLUDE_DIRS}
    LINK_LIBRARIES ${ROOT_LIBRARIES} AsgTools xAODEventInfo AsgAnalysisInterfaces
-   AnaAlgorithmLib EventBookkeeperToolsLib ${extra_libs}
+   AnaAlgorithmLib EventBookkeeperToolsLib CxxUtils ${extra_libs}
    PRIVATE_LINK_LIBRARIES ${LIBXML2_LIBRARIES} PathResolver )
 
 if( NOT XAOD_STANDALONE )

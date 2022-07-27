@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////////////////////////////////////////////////////////////
@@ -20,7 +20,6 @@
 
 // Trk
 #include "TrkEventPrimitives/PropDirection.h"
-#include "TrkEventPrimitives/ParticleHypothesis.h"
 
 // ISF
 #include "ISF_Event/ITruthIncident.h"
@@ -95,8 +94,8 @@ namespace iFatras {
  
    private:
       /** interface for calculation of absorption length */
-      double absorptionLength(const Trk::MaterialProperties* mat,
-            double p, double q, Trk::ParticleHypothesis particle=Trk::pion) const;
+      static double absorptionLength(const Trk::MaterialProperties* mat,
+            double p, double q, Trk::ParticleHypothesis particle=Trk::pion) ;
 
       /** collect secondaries for layer material update */                           
       ISF::ISFParticleVector getHadState(const ISF::ISFParticle* parent,
@@ -127,8 +126,6 @@ namespace iFatras {
        CLHEP::HepRandomEngine*                     m_randomEngine;
        std::string                          m_randomEngineName; //!< Name of the random number stream
 
-       /** struct of Particle Masses */
-       static Trk::ParticleMasses    s_particleMasses;
                     
        bool                          m_validationMode;
        ToolHandle<IPhysicsValidationTool>  m_validationTool;

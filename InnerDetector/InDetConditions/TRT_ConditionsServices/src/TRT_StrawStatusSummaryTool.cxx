@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /** @file TRT_StrawStatusSummaryTool.cxx
@@ -34,6 +34,7 @@ StatusCode TRT_StrawStatusSummaryTool::initialize()
   // Only require this input if not using G4 sim
   ATH_CHECK( m_statHTReadKey.initialize( !m_isGEANT4 ) );
 
+  // G4sim
   if ( m_isGEANT4 ) {
     // processing GEANT4 simulation - revert to old non-MT style cond access
     if ( StatusCode::SUCCESS!=detStore()->retrieve( m_strawstatusHTG4, m_par_strawstatusHTcontainerkey ) ) {
@@ -122,16 +123,16 @@ const TRTCond::StrawStatusMultChanContainer* TRT_StrawStatusSummaryTool::getStra
 
 bool TRT_StrawStatusSummaryTool::get_status(Identifier offlineID, const EventContext& ctx) const{
   constexpr unsigned int statusbitmask = 1 << 8;// 0000001 00000000
-  ATH_MSG_VERBOSE("offlineID "<<offlineID<<" "<<getStatus(offlineID)<<" "<<((getStatus(offlineID) & statusbitmask) >> 8));
-  bool st = false, stperm=false;
   const int status=getStatus(offlineID,ctx);
+  const int statusperm=getStatusPermanent(offlineID,ctx);
+  ATH_MSG_VERBOSE("offlineID "<<offlineID<<" "<<status <<" "<< statusperm);
+  
+  bool st = false, stperm=false;
   
   if (status==1) st = true;
   else if (status==0) st = false;
   else {st = bool( (status & statusbitmask) >> 8);};
 
-
-  const int statusperm=getStatusPermanent(offlineID,ctx);
   if (statusperm==1) stperm = true;
   else if (statusperm==0) stperm = false;
   else {stperm = bool( (statusperm & statusbitmask) >> 8);};
@@ -144,7 +145,6 @@ bool TRT_StrawStatusSummaryTool::get_status(Identifier offlineID, const EventCon
 
 bool TRT_StrawStatusSummaryTool::get_statusHT(Identifier offlineID, const EventContext& ctx) const{
   constexpr unsigned int statusbitmask = 1 << 8;// 0000001 00000000
-  ATH_MSG_VERBOSE("offlineID "<<offlineID<<" "<<getStatus(offlineID)<<" "<<((getStatus(offlineID) & statusbitmask) >> 8));
   bool stHT=false;
   const int statusHT=getStatusHT(offlineID,ctx);
 

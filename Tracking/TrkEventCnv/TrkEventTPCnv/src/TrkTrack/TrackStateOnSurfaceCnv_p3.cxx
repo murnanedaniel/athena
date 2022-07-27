@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 //-----------------------------------------------------------------------------
@@ -38,13 +38,12 @@ persToTrans( const Trk::TrackStateOnSurface_p3 *persObj, Trk::TrackStateOnSurfac
   // which did allow reading  such tracks.  So defer setting these pointers
   // until after the checks,
   *transObj = Trk::TrackStateOnSurface (nullptr,
-                                        trackParameters,
-                                        fitQoS,
+                                        std::unique_ptr<const Trk::TrackParameters> (trackParameters),
+                                        std::unique_ptr<const Trk::FitQualityOnSurface> (fitQoS),
                                         nullptr,
                                         persObj->m_typeFlags);
   transObj->m_measurementOnTrack.reset(meas);
   transObj->m_materialEffectsOnTrack.reset(materialEffects);
-  transObj->setFlags();
 }
 
 
@@ -54,8 +53,9 @@ transToPers( const Trk::TrackStateOnSurface *transObj, Trk::TrackStateOnSurface_
   //--- Parameters
   ITPConverter* dummy = topConverter ()->converterForType( typeid(Trk::TrackParameters));    
   if (!m_parametersCnv)  m_parametersCnv = dynamic_cast<TrackParametersCnv_p2*>(dummy); // FIXME - only in init?
+  
   bool persistify_all = !(transObj->type(Trk::TrackStateOnSurface::PartialPersistification));
-
+ 
   persObj->m_trackParameters = toPersistent( &m_parametersCnv,
                                              ( (persistify_all || transObj->type(Trk::TrackStateOnSurface::PersistifyTrackParameters) ) 
                                                ? transObj->trackParameters()
@@ -101,3 +101,31 @@ transToPers( const Trk::TrackStateOnSurface *transObj, Trk::TrackStateOnSurface_
     persObj->m_typeFlags = typePattern.to_ulong();
   }
 }
+
+void
+MultiComponentStateOnSurfaceCnv_p1::persToTrans(
+  const Trk::TrackStateOnSurface_p3* persObj,
+  Trk::MultiComponentStateOnSurface* transObj,
+  MsgStream& log)
+{
+  ITPConverter* dummy =
+    topConverter()->converterForType(typeid(Trk::TrackStateOnSurface));
+  if (!m_trackStateOnSurfaceCnv){
+    m_trackStateOnSurfaceCnv = dynamic_cast<TrackStateOnSurfaceCnv_p3*>(dummy);
+  }
+  m_trackStateOnSurfaceCnv->persToTrans(persObj, transObj, log);
+}
+void
+MultiComponentStateOnSurfaceCnv_p1::transToPers(
+  const Trk::MultiComponentStateOnSurface* transObj,
+  Trk::TrackStateOnSurface_p3* persObj,
+  MsgStream& log)
+{
+  ITPConverter* dummy =
+    topConverter()->converterForType(typeid(Trk::TrackStateOnSurface));
+  if (!m_trackStateOnSurfaceCnv){
+    m_trackStateOnSurfaceCnv = dynamic_cast<TrackStateOnSurfaceCnv_p3*>(dummy);
+  }
+  m_trackStateOnSurfaceCnv->transToPers(transObj, persObj, log);
+}
+

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration.
+ * Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration.
  */
 /**
  * @file CaloRec/ToolConstantsCondAlg.h
@@ -10,9 +10,7 @@
 
 
 #include "ToolConstantsCondAlg.h"
-#include "GaudiKernel/ICondSvc.h"
-#include "GaudiKernel/ServiceHandle.h"
-
+#include "AthenaKernel/IOVInfiniteRange.h"
 
 /**
  * @brief Algorithm initialize method.
@@ -33,10 +31,6 @@ StatusCode ToolConstantsCondAlg::initialize()
   }
 
   ATH_CHECK( m_toolConstantsKey.initialize() );
-
-  ServiceHandle<ICondSvc> condSvc ("CondSvc", name());
-  ATH_CHECK( condSvc.retrieve() );
-  ATH_CHECK( condSvc->regHandle (this, m_toolConstantsKey) );
 
   return StatusCode::SUCCESS;
 }
@@ -79,11 +73,7 @@ StatusCode ToolConstantsCondAlg::execute (const EventContext& ctx) const
     ATH_CHECK( detStore()->retrieve (tc_in, m_detStoreKey) );
     *tc = *tc_in;
 
-    const EventIDBase::number_type UNDEFEVT = EventIDBase::UNDEFEVT;
-    const EventIDBase::number_type UNDEFNUM = EventIDBase::UNDEFNUM;
-    const EventIDRange fullRange (EventIDBase (0, UNDEFEVT, 0, 0, 0),
-                                  EventIDBase (UNDEFNUM-1, UNDEFEVT, UNDEFNUM-1, 0, 0));
-
+    const EventIDRange fullRange=IOVInfiniteRange::infiniteRunLB();
     toolConstants.addDependency (fullRange);
   }
   else {

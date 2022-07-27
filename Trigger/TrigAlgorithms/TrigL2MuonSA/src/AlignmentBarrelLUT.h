@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef TRIGL2MUONSA_ALIGNMENTBARRELLUT_H
@@ -7,9 +7,6 @@
 
 #include "AthenaBaseComps/AthAlgTool.h"
 
-#include "TMath.h"
-
-#include "GaudiKernel/Service.h"
 
 #include <string>
 
@@ -24,7 +21,7 @@ class AlignmentBarrelLUT: public AthAlgTool
                        const std::string& name,
                        const IInterface*  parent);
 
-    StatusCode readLUT(std::string lut_fileName);
+    StatusCode readLUT(const std::string& lut_fileName);
 
     double GetDeltaZ(int& saddress, double& etaMap, double& phiMap, double& MFphi, float& sp1R ) const;
 
@@ -32,11 +29,11 @@ class AlignmentBarrelLUT: public AthAlgTool
 
   private:
 
-    static const int s_saddress = 4;
-    static const int s_innerR = 2;
-    static const int s_eta = 15;
-    static const int s_phi = 30;
-    static const int s_etaQ = 2;
+    static constexpr int s_saddress = 4;
+    static constexpr int s_innerR = 2;
+    static constexpr int s_eta = 15;
+    static constexpr int s_phi = 30;
+    static constexpr int s_etaQ = 2;
 
     double m_dZ[s_saddress][s_innerR][s_eta][s_phi][s_etaQ];
 

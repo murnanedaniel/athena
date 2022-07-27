@@ -1,10 +1,10 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 import logging
 import threading
 from argparse import ArgumentParser, Namespace
 from os import environ
 from pathlib import Path
-from sys import exit
+from sys import exit, stdout
 from typing import List
 
 from .Checks import FailedOrPassedCheck, FPECheck, SimpleCheck, WarningsComparisonCheck
@@ -49,7 +49,7 @@ def setup_logger(name: str) -> logging.Logger:
     fileHandler.setFormatter(fileFormatter)
 
     streamFormatter = CustomFormatter("%(levelname)-8s %(message)s")
-    streamHandler = logging.StreamHandler()
+    streamHandler = logging.StreamHandler(stdout)
     streamHandler.setFormatter(streamFormatter)
 
     logger = logging.getLogger()
@@ -90,10 +90,11 @@ def setup_parser() -> ArgumentParser:
                           help="Define a particular validation release")
     advanced.add_argument("--reference-path", type=str, dest="reference_run_path", default="",
                           help="Specify the head directory for running the reference tests. The default is /tmp/${USER}")
-    advanced.add_argument("-z", "--exclusion-lists", type=str, dest="diff_rules_path", default=".",
+    advanced.add_argument("-z", "--exclusion-lists", type=str, dest="diff_rules_path", default=None,
                           help="""Specify the directory that contains the lists of variables that will be omitted
                                 while comparing the outputs. The default is ./ and the format of the files is
-                                ${q-test}_${format}_diff-exclusion-list.txt, e.g. q431_AOD_diff-exclusion-list.txt.""")
+                                ${test}_${format}_diff-exclusion-list.txt, e.g. q445_AOD_diff-exclusion-list.txt.
+                                The file should contain one regexp per line.""")
     advanced.add_argument("--no-output-checks", action="store_true", dest="disable_output_checks", default=False,
                           help="Disable output checks")
 
@@ -113,6 +114,8 @@ def setup_parser() -> ArgumentParser:
                        help="Run MC reconstruction chain with pile-up")
     tests.add_argument("-r", "--reco", action="store_true", dest="reco", default=False,
                        help="Run MC reconstruction (in case the default execution also runs simulation)")                   
+    tests.add_argument("-d", "--derivation", action="store_true", dest="derivation", default=False,
+                       help="Run derivation test using Derivation_tf.py")  
 
     return parser
 
@@ -121,7 +124,7 @@ def get_test_setup(name: str, options: Namespace, log: logging.Logger) -> TestSe
     # define test setup
     setup = TestSetup(log)
     setup.reference_run_path = Path(options.reference_run_path) if options.reference_run_path else Path(f"/tmp/{environ['USER']}")
-    setup.diff_rules_path = Path(options.diff_rules_path)
+    setup.diff_rules_path = Path(options.diff_rules_path) if options.diff_rules_path is not None else None
     setup.disable_release_setup = options.ci_mode
     setup.validation_only = options.validation_only
     if options.unique_ID:
@@ -133,8 +136,8 @@ def get_test_setup(name: str, options: Namespace, log: logging.Logger) -> TestSe
     # not in global setup:
     # options.extra_args
 
-    if options.ami_tag:
-        log.error("Custom AMI tags not supported yet!")
+    if options.ami_tag and not options.workflow:
+        log.error("Custom AMI tags supported only with specific workflows!")
         exit(1)
 
     # Are we running in CI
@@ -162,12 +165,7 @@ def get_test_setup(name: str, options: Namespace, log: logging.Logger) -> TestSe
 
     # Is an ATLAS release setup?
     if "AtlasPatchVersion" not in environ and "AtlasArea" not in environ and "AtlasBaseDir" not in environ and "AtlasVersion" not in environ:
-        log.error("Exit. Please setup the an ATLAS release")
-        exit(3)
-
-
-    if "AtlasPatchVersion" not in environ and "AtlasArea" not in environ and "AtlasBaseDir" in environ and "AtlasVersion" not in environ:
-        log.warning("Please be aware that you are running a release which seems to not be a Tier0 release, where in general q-tests are not guaranteed to work.")
+        log.warning("Not running in a standard ATLAS release setup.\n")
 
     # setup reference path
     setup.reference_run_path /= f"reference_test_{setup.unique_ID}"

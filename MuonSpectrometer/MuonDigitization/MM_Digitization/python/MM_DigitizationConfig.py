@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 #
 # Import MM_Digitization job properties
@@ -19,6 +19,7 @@ def MM_LastXing():
     return 200
 
 def MM_DigitizationTool(name="MM_DigitizationTool",**kwargs):
+    kwargs.setdefault("CalibrationTool", "NSWCalibTool")
     if jobproperties.Digitization.doXingByXingPileUp():
         kwargs.setdefault("FirstXing", MM_FirstXing() ) # this should match the range for the MM in Digitization/share/MuonDigitization.py
         kwargs.setdefault("LastXing",  MM_LastXing() )  # this should match the range for the MM in Digitization/share/MuonDigitization.py
@@ -27,14 +28,16 @@ def MM_DigitizationTool(name="MM_DigitizationTool",**kwargs):
         kwargs.setdefault("MergeSvc", '')
         kwargs.setdefault("OnlyUseContainerName", False)
     kwargs.setdefault("CheckSimHits", True)
-    kwargs.setdefault("InputObjectName", "MicromegasSensitiveDetector")
+    if 'LegacyNSWContainers' in jobproperties.Digitization.experimentalDigi():
+        kwargs.setdefault("InputObjectName", "MicromegasSensitiveDetector")
+    else:
+        kwargs.setdefault("InputObjectName", "MM_Hits")
     kwargs.setdefault("OutputObjectName", "MM_DIGITS")
     if jobproperties.Digitization.PileUpPresampling and 'LegacyOverlay' not in jobproperties.Digitization.experimentalDigi():
         from OverlayCommonAlgs.OverlayFlags import overlayFlags
         kwargs.setdefault("OutputSDOName", overlayFlags.bkgPrefix() + "MM_SDO")
     else:
         kwargs.setdefault("OutputSDOName", "MM_SDO")
-    kwargs.setdefault("SmearingTool","MMCalibSmearingTool")
     if 'NewMerge' in jobproperties.Digitization.experimentalDigi():
         kwargs.setdefault("UseMcEventCollectionHelper",True)
     else:
@@ -51,7 +54,10 @@ def getMMRange(name="MMRange", **kwargs):
     kwargs.setdefault('FirstXing', MM_FirstXing() )
     kwargs.setdefault('LastXing',  MM_LastXing() )
     kwargs.setdefault('CacheRefreshFrequency', 1.0 ) #default 0 no dataproxy reset
-    kwargs.setdefault('ItemList', ["MMSimHitCollection#MicromegasSensitiveDetector"] )
+    if 'LegacyNSWContainers' in jobproperties.Digitization.experimentalDigi():
+        kwargs.setdefault('ItemList', ["MMSimHitCollection#MicromegasSensitiveDetector"] )
+    else:
+        kwargs.setdefault('ItemList', ["MMSimHitCollection#MM_Hits"] )
     return CfgMgr.PileUpXingFolder(name, **kwargs)
 
 

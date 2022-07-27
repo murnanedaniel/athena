@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /* file contains the implementation for the AthenaRootSerializeSvc class.
@@ -11,10 +11,11 @@
 
 #include "StorageSvc/DbReflex.h"
 #include "TBufferFile.h"
+#include "TClass.h"
 
 //___________________________________________________________________________
 AthenaRootSerializeSvc::AthenaRootSerializeSvc(const std::string& name,
-	ISvcLocator* pSvcLocator) : AthService(name, pSvcLocator) {
+	ISvcLocator* pSvcLocator) : base_class(name, pSvcLocator) {
 }
 
 //___________________________________________________________________________
@@ -24,28 +25,11 @@ AthenaRootSerializeSvc::~AthenaRootSerializeSvc() {
 //___________________________________________________________________________
 StatusCode AthenaRootSerializeSvc::initialize() {
    ATH_MSG_INFO("Initializing " << name());
-   if (!::AthService::initialize().isSuccess()) {
-      ATH_MSG_FATAL("Cannot initialize AthService base class.");
-      return(StatusCode::FAILURE);
-   }
-   return(StatusCode::SUCCESS);
-}
 
-//___________________________________________________________________________
-StatusCode AthenaRootSerializeSvc::finalize() {
-   ATH_MSG_INFO("in finalize()");
-   return(::AthService::finalize());
-}
+   // Load message handler dictionary to avoid crashes when reporting
+   // possible errors during event processing (ATR-25049)
+   TClass::GetClass("TMessageHandler");
 
-//___________________________________________________________________________
-StatusCode AthenaRootSerializeSvc::queryInterface(const InterfaceID& riid, void** ppvInterface) {
-   if ( IAthenaSerializeSvc::interfaceID().versionMatch(riid) ) {
-      *ppvInterface = (IAthenaSerializeSvc*)this;
-   } else {
-      // Interface is not directly available: try out a base class
-      return(AthService::queryInterface(riid, ppvInterface));
-   }
-   addRef();
    return(StatusCode::SUCCESS);
 }
 
@@ -89,10 +73,9 @@ void* AthenaRootSerializeSvc::deserialize(void* buffer, size_t& nbytes, const Ro
       obj = new char[nbytes];
       std::memcpy(obj, buffer, nbytes); static_cast<char*>(obj)[nbytes - 1] = 0;
    } else {
-      TBufferFile readBuffer(TBuffer::kRead, nbytes, buffer, kTRUE);
+      TBufferFile readBuffer(TBuffer::kRead, nbytes, buffer, kFALSE);
       obj = readBuffer.ReadObjectAny(cltype);
       nbytes = readBuffer.Length();
-      readBuffer.ResetBit(TBuffer::kIsOwner); readBuffer.SetBuffer(nullptr);
    }
    return(obj);
 }

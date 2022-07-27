@@ -1,7 +1,7 @@
 ///////////////////////// -*- C++ -*- /////////////////////////////
 
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // METTruthTool.h 
@@ -45,11 +45,10 @@ namespace met{
     // Constructor with name (does this have to be a non-const
     // std::string and not a const reference?)
     METTruthTool(const std::string& name);
-    ~METTruthTool();
+    ~METTruthTool() = default;
 
     // AsgTool Hooks
-    StatusCode  initialize();
-    StatusCode  finalize();
+    virtual StatusCode initialize() override;
 
     /////////////////////////////////////////////////////////////////// 
     // Const methods: 
@@ -62,30 +61,34 @@ namespace met{
     /////////////////////////////////////////////////////////////////// 
     // Private data: 
     /////////////////////////////////////////////////////////////////// 
-  protected: 
-    StatusCode  executeTool(xAOD::MissingET* metTerm, xAOD::MissingETComponentMap* metMap) const;
+  protected:
+    virtual
+    StatusCode  executeTool(xAOD::MissingET* metTerm, xAOD::MissingETComponentMap* metMap) const override;
     // Accept functions
-    bool accept            (const xAOD::IParticle* object) const;
+    virtual
+    bool accept            (const xAOD::IParticle* object) const override;
     bool accept_nonint     (const xAOD::TruthParticle* truth) const;
     bool accept_int        (const xAOD::TruthParticle* truth) const;
     bool accept_intout     (const xAOD::TruthParticle* truth) const;
     bool accept_intmuons   (const xAOD::TruthParticle* truth) const;
     // Overlap resolver function
+    virtual
     bool resolveOverlap    (const xAOD::IParticle*,
                             xAOD::MissingETComponentMap*,
                             std::vector<const xAOD::IParticle*>&,
-                            MissingETBase::Types::weight_t&) const { return true;};
+                            MissingETBase::Types::weight_t&) const override { return true;};
 
   private:
     // Default constructor: 
     METTruthTool();
-    std::string m_inputType;
-    MissingETBase::Types::bitmask_t m_truth_type;
 
-    double m_det_maxEta;
-    double m_truthmu_minPt;
-    double m_truthmu_maxEta;
-    SG::ReadHandleKey<xAOD::TruthEventContainer>           m_truthEventKey;
+    Gaudi::Property<std::string> m_inputType{this, "InputComposition", "NonInt", "truth type"}; // NonInt, Int, IntMuons, IntOut
+    MissingETBase::Types::bitmask_t m_truth_type{};
+
+    Gaudi::Property<double> m_det_maxEta{this, "MaxEtaDet", 5., "nominal max detector eta"};
+    Gaudi::Property<double> m_truthmu_minPt{this, "MinPtMu", 6e3, "nominal min muon pt"};
+    Gaudi::Property<double> m_truthmu_maxEta{this, "MaxEtaMu", 2.7, "nominal max MS eta"};
+    SG::ReadHandleKey<xAOD::TruthEventContainer> m_truthEventKey{this, "InputCollection", "TruthEvents", "truth events input collection"};
 
     // TEMPORARILY recopy some helper from TruthHelper and GeneratorUtils packages
     //  *** via JetSimTools ***

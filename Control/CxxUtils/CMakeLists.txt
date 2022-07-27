@@ -37,12 +37,13 @@ atlas_add_test( read_athena_statm_test
 atlas_add_test( PageAccessControl_test
    SOURCES test/PageAccessControl_test.cxx
    INCLUDE_DIRS ${Boost_INCLUDE_DIRS}
-   LINK_LIBRARIES ${Boost_LIBRARIES} CxxUtils )
+   LINK_LIBRARIES ${Boost_LIBRARIES} CxxUtils
+   LOG_IGNORE_PATTERN "for page .* 0x" )
 
 atlas_add_test( SEGVHandler_test
    SOURCES test/SEGVHandler_test.cxx
    LINK_LIBRARIES CxxUtils
-   LOG_IGNORE_PATTERN "page fault|FIXME NOT Freeing memory" )
+   LOG_IGNORE_PATTERN "0x[0-9a-f]{4,}|page fault|FIXME NOT Freeing memory" )
 
 atlas_add_test( procmaps_test
    SOURCES test/procmaps_test.cxx
@@ -64,7 +65,7 @@ if( NOT XAOD_STANDALONE )
       LINK_LIBRARIES CxxUtils ${CMAKE_DL_LIBS}
       # With clang12 i see DWARF error messages from addr2line.
       # It still works ok, though.
-      LOG_IGNORE_PATTERN "DebugAids::stacktrace|CxxUtils::backtraceByUnwind|DWARF error")
+      LOG_IGNORE_PATTERN "0x[0-9a-f]{4,}|DebugAids::stacktrace|CxxUtils::backtraceByUnwind|DWARF error")
 endif()
 
 atlas_add_test( MD5_test
@@ -109,10 +110,21 @@ if ( IS_DIRECTORY /usr/include/ck )
     PRIVATE "-DHAVE_CK" )
 endif()
 
+
+atlas_add_test( ConcurrentPtrSet_test
+  SOURCES test/ConcurrentPtrSet_test.cxx
+  INCLUDE_DIRS ${TBB_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${CK_INCLUDE}
+  LINK_LIBRARIES CxxUtils TestTools ${TBB_LIBRARIES} ${Boost_LIBRARIES} ${CK_LIBRARIES} )
+if ( IS_DIRECTORY /usr/include/ck )
+  target_compile_definitions(CxxUtils_ConcurrentPtrSet_test
+    PRIVATE "-DHAVE_CK" )
+endif()
+
 atlas_add_test( exctrace2_test
    SOURCES test/exctrace2_test.cxx
    LINK_LIBRARIES CxxUtils
-   LOG_IGNORE_PATTERN "no version information available" )
+   LOG_IGNORE_PATTERN "0x[0-9a-f]{4,}"
+)
 
 atlas_add_test(
    OptionalContainer_test
@@ -136,7 +148,6 @@ foreach( test sincos_test ArrayScanner_test Arrayrep_test
       reverse_wrapper_test )
    atlas_add_test( ${test}
       SOURCES test/${test}.cxx
-      LOG_IGNORE_PATTERN "no version information available"
       LINK_LIBRARIES CxxUtils TestTools )
 endforeach()
 # Needed because this executable directly uses multiversioned functions.
@@ -147,14 +158,15 @@ if( ATLAS_RELEASE_MODE )
    return()
 endif()
 
-# Install the ubsan.supp file already during the CMake configuration.
+# Install the ubsan config files already during the CMake configuration.
 # This is necessary because the file may be needed very early during the
 # build, and we don't explicitly make everything else wait for this
 # file's installation. Creating a race condition.
-file( INSTALL share/ubsan.supp
-   DESTINATION ${CMAKE_SHARE_OUTPUT_DIRECTORY} )
-install( FILES share/ubsan.supp
-   DESTINATION ${CMAKE_INSTALL_SHAREDIR} )
+set( _install
+   "share/ubsan.supp" )
+
+file( INSTALL ${_install} DESTINATION ${CMAKE_SHARE_OUTPUT_DIRECTORY} )
+install( FILES ${_install} DESTINATION ${CMAKE_INSTALL_SHAREDIR} )
 
 # Set the directory to put the configured environment setup file into:
 set( CxxUtilsEnvironment_DIR
@@ -163,7 +175,7 @@ set( CxxUtilsEnvironment_DIR
 
 # Configure the environment setup module:
 configure_file(
-   ${CMAKE_CURRENT_SOURCE_DIR}/CxxUtilsEnvironmentConfig.cmake.in
+   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CxxUtilsEnvironmentConfig.cmake.in
    ${CxxUtilsEnvironment_DIR}/CxxUtilsEnvironmentConfig.cmake
    @ONLY )
 

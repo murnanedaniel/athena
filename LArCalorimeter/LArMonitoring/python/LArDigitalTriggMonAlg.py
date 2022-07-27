@@ -45,7 +45,9 @@ def LArDigitalTriggMonConfigCore(helper, algoinstance,inputFlags):
             iovDbSvc=helper.resobj.getService("IOVDbSvc")
             helper.resobj.addCondAlgo(CompFactory.LArOnOffMappingAlg("LArOnOffMappingAlgSC",ReadKey=folder, WriteKey="LArOnOffIdMapSC", isSuperCell=True)) 
     else:
-        from LArRecUtils.LArRecUtilsConf import LArOnOffMappingAlg#, LArFebRodMappingAlg, LArCalibLineMappingAlg
+        from LArCabling.LArCablingAccess import  LArLATOMEMappingSC
+        LArLATOMEMappingSC()
+        from LArRecUtils.LArRecUtilsConf import LArOnOffMappingAlg
         from AthenaCommon import CfgGetter
         iovDbSvc=CfgGetter.getService("IOVDbSvc")
         #from AthenaCommon.AlgSequence import AthSequencer
@@ -314,12 +316,9 @@ def LArDigitalTriggMonConfigCore(helper, algoinstance,inputFlags):
 
 if __name__=='__main__':
 
-   #import os
    from AthenaConfiguration.AllConfigFlags import ConfigFlags
    from AthenaCommon.Logging import log
-   from AthenaCommon.Constants import DEBUG, ERROR #WARNING,
-   from AthenaCommon.Configurable import Configurable
-   Configurable.configurableRun3Behavior=1
+   from AthenaCommon.Constants import DEBUG, ERROR
    log.setLevel(DEBUG)
    
    #from LArMonitoring.LArMonitoringConf import  LArSuperCellMonAlg
@@ -343,7 +342,7 @@ if __name__=='__main__':
    from LArByteStream.LArRawSCDataReadingConfig import LArRawSCDataReadingCfg
    SCData_acc =  LArRawSCDataReadingCfg(ConfigFlags)
    SCData_acc.OutputLevel=DEBUG
-
+ 
    cfg.merge(SCData_acc)
 
 

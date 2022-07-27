@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 include.block('EventOverlayJobTransforms/OverlayOutput_jobOptions.py')
 
@@ -81,7 +81,7 @@ if DetFlags.overlay.Truth_on():
     if DetFlags.overlay.sTGC_on():
         outStream.ItemList += [ 'MuonSimDataCollection#sTGC_SDO' ]
 
-    if DetFlags.overlay.Micromegas_on():
+    if DetFlags.overlay.MM_on():
         outStream.ItemList += [ 'MuonSimDataCollection#MM_SDO' ]
 
 # Inner detector
@@ -126,11 +126,9 @@ if DetFlags.overlay.TGC_on():
 
 if DetFlags.overlay.sTGC_on():
     outStream.ItemList += [ 'Muon::STGC_RawDataContainer#sTGCRDO' ]
-    outStream.ItemList += [ "sTgcDigitContainer#sTGC_DIGITS" ]
 
-if DetFlags.overlay.Micromegas_on():
+if DetFlags.overlay.MM_on():
     outStream.ItemList += [ 'Muon::MM_RawDataContainer#MMRDO' ]
-    outStream.ItemList += [ "MmDigitContainer#MM_DIGITS" ]
 
 if DetFlags.overlay.LVL1_on():
     if DetFlags.simulateLVL1.LAr_on():
@@ -146,6 +144,16 @@ if DetFlags.overlay.LVL1_on():
         outStream.ItemList += [ 'TileDigitsContainer#MuRcvDigitsCnt' ]
         outStream.ItemList += [ 'TileRawChannelContainer#MuRcvRawChCnt' ]
         outStream.ItemList += [ 'TileMuonReceiverContainer#TileMuRcvCnt' ]
+
+#add the tracks
+if overlayFlags.doTrackOverlay():
+    outStream.ItemList += [ 'TrackCollection#'+overlayFlags.bkgPrefix()+'CombinedInDetTracks' ]
+    outStream.ItemList += [ 'TrackCollection#'+overlayFlags.bkgPrefix()+'DisappearingTracks' ]
+    outStream.ItemList += [ 'TrackCollection#'+overlayFlags.bkgPrefix()+'ResolvedForwardTracks' ]
+    outStream.ItemList += [ 'TrackCollection#'+overlayFlags.bkgPrefix()+'ResolvedLargeD0Tracks' ]
+    outStream.ItemList += [ 'InDet::TRT_DriftCircleContainer#'+overlayFlags.bkgPrefix()+'TRT_DriftCircles' ]
+    outStream.ItemList += [ 'InDet::PixelClusterContainer#'+overlayFlags.bkgPrefix()+'PixelClusters' ]
+    outStream.ItemList += [ 'InDet::SCT_ClusterContainer#'+overlayFlags.bkgPrefix()+'SCT_Clusters' ]
 
 # Temporary to ensure the output is stored
 outStream.TransientItems = outStream.ItemList

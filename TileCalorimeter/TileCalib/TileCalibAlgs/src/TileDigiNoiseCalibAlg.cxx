@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // ********************************************************************
@@ -22,14 +22,14 @@
 #include "AthenaKernel/errorcheck.h"
 
 // Tile includes
-#include "TileCalibAlgs/TileDigiNoiseCalibAlg.h"
+#include "TileDigiNoiseCalibAlg.h"
 #include "CaloIdentifier/TileID.h"
 #include "TileIdentifier/TileHWID.h"
 #include "TileEvent/TileDigitsContainer.h"
 #include "TileEvent/TileBeamElemContainer.h"
 #include "TileEvent/TileRawChannelContainer.h"
 #include "TileByteStream/TileBeamElemContByteStreamCnv.h"
-#include "TileCalibAlgs/TileOFCorrelation.h"
+#include "TileOFCorrelation.h"
 #include "TileCalibBlobObjs/TileCalibUtils.h"
 
 #include "TFile.h"
@@ -42,12 +42,12 @@
 
 TileDigiNoiseCalibAlg::TileDigiNoiseCalibAlg(const std::string& name, ISvcLocator* pSvcLocator)
     : AthAlgorithm(name, pSvcLocator)
-  , m_beamCnv(0)
-  , m_cabling(0)
-  , m_tileOFCorrelation(0)
-  , m_tileID(0)
-  , m_tileHWID(0)
-  , m_cispar(0)
+  , m_beamCnv(nullptr)
+  , m_cabling(nullptr)
+  , m_tileOFCorrelation(nullptr)
+  , m_tileID(nullptr)
+  , m_tileHWID(nullptr)
+  , m_cispar(nullptr)
 //  , m_nDrawers(0)
   , m_time(0)
   , m_year(0)
@@ -174,16 +174,16 @@ StatusCode TileDigiNoiseCalibAlg::FirstEvt_initialize() {
       ServiceHandle<IConversionSvc> cnvSvc("ByteStreamCnvSvc", "");
       if (cnvSvc.retrieve().isFailure()) {
         ATH_MSG_ERROR( " Can't get ByteStreamCnvSvc " );
-        m_beamCnv = NULL;
+        m_beamCnv = nullptr;
       } else {
         m_beamCnv = dynamic_cast<TileBeamElemContByteStreamCnv *>(cnvSvc->converter(ClassID_traits<TileBeamElemContainer>::ID()));
-        if (m_beamCnv == NULL) {
+        if (m_beamCnv == nullptr) {
           ATH_MSG_ERROR( " Can't get TileBeamElemContByteStreamCnv " );
         }
       }
 
     } else {
-      m_beamCnv = NULL;
+      m_beamCnv = nullptr;
     }
   }
 
@@ -296,7 +296,18 @@ StatusCode TileDigiNoiseCalibAlg::finalize() {
 
 /// StoreRunInfo is called only during the first event
 void TileDigiNoiseCalibAlg::StoreRunInfo (const TileDQstatus* dqStatus) {
-
+  if (not dqStatus){
+    m_time = 0;
+    m_year = 0;
+    m_month = 0;
+    m_day = 0;
+    m_yday = 0;
+    m_hour = 0;
+    m_min = 0;
+    m_trigType = 0;
+    ATH_MSG_WARNING( "TileDigiNoiseCalibAlg::StoreRunInfo : dqStatus pointer is null" );
+    return;
+  }
   if (dqStatus->calibMode() == 1 && m_beamElemContainer.length() > 0) {// Bigain can use cispar
     if (m_beamCnv) {
       //    std::cout << "LUCA m_time= "<< m_time << "   bc_time_seconds= "<<  m_beamCnv->eventFragment()->bc_time_seconds() <<
@@ -309,7 +320,7 @@ void TileDigiNoiseCalibAlg::StoreRunInfo (const TileDQstatus* dqStatus) {
     } else
       m_run = 0;
 
-    if (dqStatus && m_cispar) {
+    if (m_cispar) {
       m_time = m_cispar[10]; //time in sc from 1970
       m_trigType = m_cispar[12];
     } else {
@@ -386,8 +397,8 @@ StatusCode TileDigiNoiseCalibAlg::fillDigits (const TileDQstatus* theDQstatus) {
       int drawer = m_tileHWID->drawer(adc_id);
       // IMPORTANT! Drawers are from 0 to 63!
 
-      double mean_tmp[48][16][2];
-      memset(mean_tmp, 0, sizeof(mean_tmp));
+      double mean_tmp[48][16][2] = {};
+
 
       for (; digitsItr != lastDigits; ++digitsItr) { // loop over all channels in the drawer
 
@@ -501,8 +512,8 @@ void TileDigiNoiseCalibAlg::finalDigits() {
     m_tileOFCorrelation->CalcCorrelation(msg(), m_nSamples, false, m_doRobustCov);
 
   // Needed to store autoCorrelation matrix
-  float tmpCorr[9][9];
-  memset(tmpCorr, 0, sizeof(tmpCorr));
+  float tmpCorr[9][9] = {};
+
 
   for (unsigned int ros = 1; ros < TileCalibUtils::MAX_ROS; ++ros) {
     for (unsigned int drawer = 0; drawer < TileCalibUtils::MAX_DRAWER; ++drawer) {

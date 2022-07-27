@@ -1,7 +1,7 @@
 // -*- C++ -*-
 
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */ 
 
 #ifndef SCT_LINKMASKINGCONDALG
@@ -14,25 +14,20 @@
 #include "StoreGate/ReadCondHandleKey.h"
 #include "StoreGate/WriteCondHandleKey.h"
 
-#include "GaudiKernel/ICondSvc.h"
-
-class SCT_LinkMaskingCondAlg : public AthReentrantAlgorithm 
+class SCT_LinkMaskingCondAlg : public AthReentrantAlgorithm
 {  
  public:
   SCT_LinkMaskingCondAlg(const std::string& name, ISvcLocator* pSvcLocator);
   virtual ~SCT_LinkMaskingCondAlg() = default;
-  virtual StatusCode initialize() override;
-  virtual StatusCode execute(const EventContext& ctx) const override;
-  virtual StatusCode finalize() override;
-  /** Make this algorithm clonable. */
-  virtual bool isClonable() const override { return true; };
+  virtual StatusCode initialize() override final;
+  virtual StatusCode execute(const EventContext& ctx) const override final;
+  virtual StatusCode finalize() override final;
+  virtual bool isReEntrant() const override final { return false; }
 
  private:
   SG::ReadCondHandleKey<CondAttrListCollection> m_readKey{this, "ReadKey", "/purple/pants", "Key of input (raw) bad wafer conditions folder"};
   // This folder can be created by InnerDetector/InDetConditions/SCT_ConditionsTools/python/createLinkMaskingSQLiteFile.py
   SG::WriteCondHandleKey<SCT_ModuleVetoCondData> m_writeKey{this, "WriteKey", "SCT_LinkMaskingCondData", "Key of output (derived) bad wafer conditions data"};
-
-  ServiceHandle<ICondSvc> m_condSvc{this, "CondSvc", "CondSvc"};
 };
 
 #endif // SCT_LINKMASKINGCONDALG

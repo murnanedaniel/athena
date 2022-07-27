@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 import re
 from copy import deepcopy
@@ -63,7 +63,7 @@ class MenuThresholdsCollection( object ):
 
     def json(self):
         confObj = odict()
-        for ttype in (ThrType.Run3Types() + ThrType.NIMTypes() + [ThrType.TOPO, ThrType.MUTOPO] + [ThrType.ALFA]):
+        for ttype in (ThrType.Run3Types() + ThrType.NIMTypes() + [ThrType.TOPO, ThrType.MUTOPO] + [ThrType.ALFA] + [ThrType.NSWMon]):
             confObj[ttype.name] = odict()
             confObj[ttype.name]["type"] = ttype.name
             confObj[ttype.name]["thresholds"] = odict()
@@ -604,6 +604,16 @@ class MuonThreshold( Threshold ):
                 confObj["rpcExclROIList"] = self.rpcExclROIList
         return confObj
 
+class NSWMonThreshold( Threshold ):
+
+    def __init__(self, name, mapping = -1):
+        super(NSWMonThreshold,self).__init__(name = name, ttype = ThrType.NSWMon, mapping=mapping, run = 3)
+        self.thresholdValues = [ThresholdValue(thrtype=self.ttype,value=0,**ThresholdValue.getDefaults(self.ttype))]
+
+    def json(self):
+        confObj = odict()
+        confObj["mapping"] = self.mapping
+        return confObj
 
 
 class eTauThreshold( Threshold ):
@@ -653,7 +663,7 @@ class eTauThreshold( Threshold ):
 
     def setIsolation(self, rCore = "None", rHad = "None"):
         allowed_rCore = [ "None", "Loose", "Medium", "Tight" ]
-        allowed_rHad = [ "None", "HadLoose", "HadMedium", "HadTight", "Had" ] # Had = HadMedium for backward compatibility
+        allowed_rHad = [ "None", "Loose", "Medium", "Tight"]
         if rCore not in allowed_rCore:
             raise RuntimeError("Threshold %s of type %s: isolation wp %s not allowed for rCore, must be one of %s", self.name, self.ttype, rCore, ', '.join(allowed_rCore) )
         if rHad not in allowed_rHad:

@@ -11,6 +11,7 @@
 # art-output: art_core*
 # art-output: dcube-*
 # art-html: dcube-g4msVsaf2
+# art-architecture: '#x86_64-intel'
 
 echo "ArtProcess: $ArtProcess"
 
@@ -32,23 +33,28 @@ case $ArtProcess in
         # merge the outputs
         merge_ntup_file=physval_g4ms_validation_merge.root
         NTUPMerge_tf.py --inputNTUP_PHYSVALFile=art_core_*/physval_g4ms_* --outputNTUP_PHYSVAL_MRGFile=${merge_ntup_file}
-        echo  "art-result: $? ntup-merge"
+        rc=$?
+        echo  "art-result: $rc ntup-merge"
 
         dcubeXmlNTUP="/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/FastChainPileup/DCube-configs/${AtlasBuildBranch}/physval-validation.xml"
         dcubeRefNTUP="/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/FastChainPileup/DCube-refs/${AtlasBuildBranch}/test_g4ms_validation/${merge_ntup_file}"
         dcubeRefAF2NTUP="/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/FastChainPileup/DCube-refs/${AtlasBuildBranch}/test_af2_validation/physval_af2_validation_merge.root"
 
-        # Histogram comparison of G4MS with AF2 DCube
-         $ATLAS_LOCAL_ROOT/dcube/current/DCubeClient/python/dcube.py \
-         -p -x dcube-physval \
-         -c ${dcubeXmlNTUP} -r ${dcubeRefNTUP} ./${merge_ntup_file}
-         echo  "art-result: $? dcube-physval"
+        if [ ${rc} -eq 0 ]
+        then
 
-         # Histogram comparison of G4MS with AF2 DCube
-         $ATLAS_LOCAL_ROOT/dcube/current/DCubeClient/python/dcube.py \
-         -p -x dcube-g4msVsaf2 \
-         -c ${dcubeXmlNTUP} -r ${dcubeRefAF2NTUP} ./${merge_ntup_file}
-         echo  "art-result: $? dcube-g4msVsaf2"
+           # Histogram comparison of G4MS with AF2 DCube
+            $ATLAS_LOCAL_ROOT/dcube/current/DCubeClient/python/dcube.py \
+            -p -x dcube-physval \
+            -c ${dcubeXmlNTUP} -r ${dcubeRefNTUP} ./${merge_ntup_file}
+            echo  "art-result: $? dcube-physval"
+
+            # Histogram comparison of G4MS with AF2 DCube
+            $ATLAS_LOCAL_ROOT/dcube/current/DCubeClient/python/dcube.py \
+            -p -x dcube-g4msVsaf2 \
+            -c ${dcubeXmlNTUP} -r ${dcubeRefAF2NTUP} ./${merge_ntup_file}
+            echo  "art-result: $? dcube-g4msVsaf2"
+        fi
 
 	;;
 
@@ -76,12 +82,13 @@ case $ArtProcess in
         ntup_file=physval_g4ms_${ArtProcess}.root
 
         # Sim & Reco step
-        Sim_tf.py --conditionsTag 'default:OFLCOND-MC16-SDR-14' \
+        Sim_tf.py --conditionsTag 'default:OFLCOND-MC16-SDR-RUN2-09' \
                   --physicsList 'FTFP_BERT_ATL' --truthStrategy 'MC15aPlus' \
                   --simulator 'ATLFASTIIF_G4MS' \
                   --postInclude 'default:PyJobTransforms/UseFrontier.py' 'EVNTtoHITS:G4AtlasTests/postInclude.DCubeTest.py' \
                   --preInclude 'EVNTtoHITS:SimulationJobOptions/preInclude.BeamPipeKill.py' \
                   --preExec 'EVNTtoHITS:simFlags.TightMuonStepping=True' \
+                  --postExec 'from IOVDbSvc.CondDB import conddb;conddb.addOverride("/TILE/OFL02/CALIB/SFR","TileOfl02CalibSfr-SIM-05")' \
                   --DataRunNumber '284500' --geometryVersion 'default:ATLAS-R2-2016-01-00-01' \
                   --inputEVNTFile=${x} \
                   --outputHITSFile=${hits_file} \
@@ -92,11 +99,11 @@ case $ArtProcess in
         if [ $rc -eq 0 ]
         then
             Reco_tf.py --autoConfiguration 'everything' \
-                  --inputHITSFile=${hits_file} --conditionsTag 'default:OFLCOND-MC16-SDR-25' \
+                  --inputHITSFile=${hits_file} --conditionsTag 'default:OFLCOND-MC16-SDR-RUN2-09' \
                   --geometryVersion 'default:ATLAS-R2-2016-01-00-01' \
-                  --postExec "all:CfgMgr.MessageSvc().setError+=['HepMcParticleLink']" \
+                  --postExec 'all:CfgMgr.MessageSvc().setError+=["HepMcParticleLink"];from IOVDbSvc.CondDB import conddb;conddb.addOverride("/TILE/OFL02/CALIB/SFR","TileOfl02CalibSfr-SIM-05")' \
                   --postInclude "default:PyJobTransforms/UseFrontier.py" \
-                  --preExec "all:rec.Commissioning.set_Value_and_Lock(True);from AthenaCommon.BeamFlags import jobproperties;jobproperties.Beam.numberOfCollisions.set_Value_and_Lock(20.0);from LArROD.LArRODFlags import larRODFlags;larRODFlags.NumberOfCollisions.set_Value_and_Lock(20);larRODFlags.nSamples.set_Value_and_Lock(4);larRODFlags.doOFCPileupOptimization.set_Value_and_Lock(True);larRODFlags.firstSample.set_Value_and_Lock(0);larRODFlags.useHighestGainAutoCorr.set_Value_and_Lock(True); from LArDigitization.LArDigitizationFlags import jobproperties;jobproperties.LArDigitizationFlags.useEmecIwHighGain.set_Value_and_Lock(False)" 'HITtoRDO:userRunLumiOverride={"run":310000,"lb":61,"starttstamp":1550003600,"mu":60.500};' "from InDetPhysValMonitoring.InDetPhysValJobProperties import InDetPhysValFlags; InDetPhysValFlags.doValidateTightPrimaryTracks.set_Value_and_Lock(True);rec.doCalo=True;rec.doForwardDet=False; rec.doInDet=True;" 'RAWtoESD:from EventTagRawAlgs.EventTagRawAlgsConf import RawInfoSummaryForTagWriter;RawInfoSummaryForTagWriter.BCM_RDOKey=""' \
+                  --preExec "all:rec.Commissioning.set_Value_and_Lock(True);from AthenaCommon.BeamFlags import jobproperties;jobproperties.Beam.numberOfCollisions.set_Value_and_Lock(20.0);from LArROD.LArRODFlags import larRODFlags;larRODFlags.NumberOfCollisions.set_Value_and_Lock(20);larRODFlags.nSamples.set_Value_and_Lock(4);larRODFlags.doOFCPileupOptimization.set_Value_and_Lock(True);larRODFlags.firstSample.set_Value_and_Lock(0);larRODFlags.useHighestGainAutoCorr.set_Value_and_Lock(True); from LArDigitization.LArDigitizationFlags import jobproperties;jobproperties.LArDigitizationFlags.useEmecIwHighGain.set_Value_and_Lock(False)" 'HITtoRDO:userRunLumiOverride={"run":310000,"lb":61,"starttstamp":1550003600,"mu":60.500};' "from InDetPhysValMonitoring.InDetPhysValJobProperties import InDetPhysValFlags; InDetPhysValFlags.doValidateTightPrimaryTracks.set_Value_and_Lock(True);rec.doCalo=True;rec.doForwardDet=False; rec.doInDet=True;" \
                   --outputAODFile=${aod_file} \
                   --ignoreErrors True \
                   --valid=True --validationFlags 'doInDet,doMET,doMuon,doZee,doJet' \

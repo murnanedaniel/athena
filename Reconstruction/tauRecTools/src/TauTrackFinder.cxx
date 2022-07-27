@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef XAOD_ANALYSIS
@@ -96,8 +96,7 @@ StatusCode TauTrackFinder::executeTrackFinder(xAOD::TauJet& pTau, xAOD::TauTrack
   }
 
   // get the primary vertex
-  const xAOD::Vertex* pVertex = nullptr;
-  if (pTau.vertexLink().isValid()) pVertex = pTau.vertex();
+  const xAOD::Vertex* pVertex = pTau.vertex();
 
   // retrieve tracks wrt a vertex                                                                                                                              
   // as a vertex is used: tau origin / PV / beamspot / 0,0,0 (in this order, depending on availability)                                                        
@@ -260,7 +259,8 @@ StatusCode TauTrackFinder::executeTrackFinder(xAOD::TauJet& pTau, xAOD::TauTrack
   xAOD::Vertex vxbkp;
   vxbkp.makePrivateStore();
 
-  if (pTau.vertexLink().isValid() && pTau.vertex()->vertexType() != xAOD::VxType::NoVtx) {
+  // FIXME: don't we want to use the beamspot in the offline reconstruction too, when there is no reconstructed primary vertex?
+  if (pTau.vertex()!=nullptr && pTau.vertex()->vertexType() != xAOD::VxType::NoVtx) {
     vxcand = pTau.vertex();
   }
   else if (inTrigger()) { // online: use vertex with x-y coordinates from the beamspot and the z from the leading track
@@ -289,7 +289,10 @@ StatusCode TauTrackFinder::executeTrackFinder(xAOD::TauJet& pTau, xAOD::TauTrack
   static const SG::AuxElement::Accessor<float> dec_d0SigTJVA("d0SigTJVA");
   static const SG::AuxElement::Accessor<float> dec_z0sinthetaSigTJVA("z0sinthetaSigTJVA");
 
-  for(auto *track : pTau.allTracks()) {      
+  for(const ElementLink<xAOD::TauTrackContainer>& trackLink : pTau.allTauTrackLinks())
+  {
+    assert (trackLink.getStorableObjectPointer() == &tauTrackCon);
+    xAOD::TauTrack* track = tauTrackCon[trackLink.index()];
     dec_d0TJVA(*track) = track->track()->d0();
     dec_z0sinthetaTJVA(*track) = track->z0sinThetaTJVA(pTau);
     dec_d0SigTJVA(*track) = -999.;
@@ -313,7 +316,7 @@ StatusCode TauTrackFinder::executeTrackFinder(xAOD::TauJet& pTau, xAOD::TauTrack
   // store information only in ExtraDetailsContainer
   if(!m_bypassExtrapolator)
     {
-      StatusCode sc = extrapolateToCaloSurface(pTau);
+      StatusCode sc = extrapolateToCaloSurface(pTau, tauTrackCon);
       if (sc.isFailure() && !sc.isRecoverable()) {
 	ATH_MSG_ERROR("couldn't extrapolate tracks to calo surface");
 	return StatusCode::FAILURE;
@@ -408,19 +411,21 @@ void TauTrackFinder::getTauTracksFromPV( const xAOD::TauJet& pTau,
 
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-StatusCode TauTrackFinder::extrapolateToCaloSurface(xAOD::TauJet& pTau) const {
-
+StatusCode TauTrackFinder::extrapolateToCaloSurface(xAOD::TauJet& pTau,
+                                                    xAOD::TauTrackContainer& tauTrackCon) const
+{
   Trk::TrackParametersIdHelper parsIdHelper;
 
   int trackIndex = -1;
   const Trk::CaloExtension * caloExtension = nullptr;
   std::unique_ptr<Trk::CaloExtension> uniqueExtension;
-  for( xAOD::TauTrack* tauTrack : pTau.allTracks() ) {
+  for(const ElementLink<xAOD::TauTrackContainer>& trackLink : pTau.allTauTrackLinks())
+  {
+    assert (trackLink.getStorableObjectPointer() == &tauTrackCon);
+    xAOD::TauTrack* tauTrack = tauTrackCon[trackLink.index()];
     const xAOD::TrackParticle *orgTrack = tauTrack->track();
     if( !orgTrack ) continue;
-    trackIndex = orgTrack->index();
-
-    
+    trackIndex = orgTrack->index();   
 
     // set default values
     float etaEM = -10.0;

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */ 
 
 #ifndef SCT_SILICONHVCONDALG
@@ -13,8 +13,6 @@
 #include "SCT_ConditionsData/SCT_DCSFloatCondData.h"
 #include "SCT_ConditionsTools/ISCT_DCSConditionsTool.h"
 
-#include "GaudiKernel/ICondSvc.h"
-
 class SCT_ID;
 
 class SCT_SiliconHVCondAlg : public AthReentrantAlgorithm
@@ -22,18 +20,16 @@ class SCT_SiliconHVCondAlg : public AthReentrantAlgorithm
  public:
   SCT_SiliconHVCondAlg(const std::string& name, ISvcLocator* pSvcLocator);
   virtual ~SCT_SiliconHVCondAlg() = default;
-  virtual StatusCode initialize() override;
-  virtual StatusCode execute(const EventContext& ctx) const override;
-  virtual StatusCode finalize() override;
-  /** Make this algorithm clonable. */
-  virtual bool isClonable() const override { return true; };
+  virtual StatusCode initialize() override final;
+  virtual StatusCode execute(const EventContext& ctx) const override final;
+  virtual StatusCode finalize() override final;
+  virtual bool isReEntrant() const override final { return false; }
 
  private:
   BooleanProperty m_useState{this, "UseState", true, "Flag to use state conditions folder"};
   SG::ReadCondHandleKey<SCT_DCSStatCondData> m_readKeyState{this, "ReadKeyState", "SCT_DCSStatCondData", "Key of input state conditions data"};
   SG::ReadCondHandleKey<SCT_DCSFloatCondData> m_readKeyHV{this, "ReadKeyHV", "SCT_DCSHVCondData", "Key of input HV conditions data"};
   SG::WriteCondHandleKey<SCT_DCSFloatCondData> m_writeKey{this, "WriteKey", "SCT_SiliconBiasVoltCondData", "Key of output bias voltage conditions data"};
-  ServiceHandle<ICondSvc> m_condSvc{this, "CondSvc", "CondSvc"};
   ToolHandle<ISCT_DCSConditionsTool> m_sctDCSTool{this, "DCSConditionsTool", "InDetSCT_DCSConditionsTool", "Tool to retrived SCT DCS information"};
   const SCT_ID* m_pHelper{nullptr};//!< ID helper for SCT
 };

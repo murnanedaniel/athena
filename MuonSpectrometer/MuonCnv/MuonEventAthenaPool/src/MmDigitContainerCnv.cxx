@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "MmDigitContainerCnv.h"
@@ -45,7 +45,7 @@ MM_DigitContainer_PERS*    MmDigitContainerCnv::createPersistent (MmDigitContain
 
 MmDigitContainer* MmDigitContainerCnv::createTransient() {
     MsgStream log(msgSvc(), "MmDigitContainerCnv" );
-    static pool::Guid   p1_guid("444DEE03-9A1D-44BA-8880-968C78EA51D1"); 
+    static const pool::Guid   p1_guid("444DEE03-9A1D-44BA-8880-968C78EA51D1"); 
     log<<MSG::INFO<<"createTransient(): main converter"<<endmsg;
     MmDigitContainer* p_collection(nullptr);
     if( compareClassGuid(p1_guid) ) {

@@ -32,6 +32,7 @@ using namespace ST;
 #include "EgammaAnalysisInterfaces/IAsgElectronEfficiencyCorrectionTool.h"
 #include "EgammaAnalysisInterfaces/IAsgElectronIsEMSelector.h"
 #include "EgammaAnalysisInterfaces/IAsgElectronLikelihoodTool.h"
+#include "EgammaAnalysisInterfaces/IAsgDeadHVCellRemovalTool.h"
 #include "EgammaAnalysisInterfaces/IElectronPhotonShowerShapeFudgeTool.h"
 #include "EgammaAnalysisInterfaces/IEGammaAmbiguityTool.h"
 #include "EgammaAnalysisInterfaces/IAsgPhotonEfficiencyCorrectionTool.h"
@@ -845,6 +846,16 @@ StatusCode SUSYObjDef_xAOD::SUSYToolsInit()
     } else  ATH_CHECK( m_photonSelIsEMBaseline.retrieve() );
   }
 
+  if (m_slices["ele"]||m_slices["pho"]) {
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    // Initialise DeadHVCellRemovalTool
+    // https://twiki.cern.ch/twiki/bin/viewauth/AtlasProtected/EGammaIdentificationRun2#Removal_of_Electron_Photon_clust
+
+    ATH_MSG_DEBUG("Setup AsgDeadHVCellRemovalTool/deadHVTool");
+    m_deadHVTool.setTypeAndName("AsgDeadHVCellRemovalTool/deadHVTool");
+    ATH_CHECK(m_deadHVTool.retrieve());
+  }
+
   if (m_slices["ele"]) {
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Initialise electron efficiency tool
@@ -859,6 +870,9 @@ StatusCode SUSYObjDef_xAOD::SUSYToolsInit()
     toolName = "AsgElectronEfficiencyCorrectionTool_reco";
     CONFIG_EG_EFF_TOOL_KEY(m_elecEfficiencySFTool_reco, toolName, "RecoKey", "Reconstruction");
   
+    //-- get KEYS supported by egamma SF tools
+    std::vector<std::string> eSF_keys = getElSFkeys(m_eleEffMapFilePath);
+
     if (m_eleId == "VeryLooseLLH" || m_eleId == "LooseLLH" || m_eleId == "Loose" || m_eleId == "Medium" || m_eleId == "Tight") {
       ATH_MSG_WARNING("Not configuring electron ID and trigger scale factors for " << m_eleId);
     }
@@ -882,33 +896,56 @@ StatusCode SUSYObjDef_xAOD::SUSYToolsInit()
             ATH_MSG_WARNING( "Will use correction file rather than central map file." );
          }
       }
-  
+        
       // electron iso
-      toolName = "AsgElectronEfficiencyCorrectionTool_iso_" + m_eleId + m_el_iso_fallback[m_eleIso_WP];
-  
+      std::string EleIso("");
+      if (std::find(eSF_keys.begin(), eSF_keys.end(), eleId+"_"+m_eleIso_WP) != eSF_keys.end()){
+        EleIso   = m_eleIso_WP;
+      } else if (std::find(eSF_keys.begin(), eSF_keys.end(), eleId+"_"+m_el_iso_fallback[m_eleIso_WP]) != eSF_keys.end()){
+        //--- Check to see if the only issue is an unknown isolation working point
+        EleIso = m_el_iso_fallback[m_eleIso_WP];
+        ATH_MSG_WARNING("(AsgElectronEfficiencyCorrectionTool_iso_*) Your selected electron Iso WP ("
+          << m_eleIso_WP
+          << ") does not have iso SFs defined. Falling back to "
+          << m_el_iso_fallback[m_eleIso_WP]
+          << " for SF calculations");
+      }
+      else{
+        ATH_MSG_ERROR("***  THE ELECTRON ISOLATION SF YOU SELECTED (" << m_eleIso_WP << ") GOT NO SUPPORT ***");
+        return StatusCode::FAILURE;
+      }
+
+      toolName = "AsgElectronEfficiencyCorrectionTool_iso_" + m_eleId + EleIso;
+      
       // if running with correction file list
-      if ( (!m_EG_corrFNList.empty()) && corrFNList.find(m_eleIso_WP)!=corrFNList.end() ) {                // overriding central map file
-        CONFIG_EG_EFF_TOOL( m_elecEfficiencySFTool_iso, toolName, corrFNList[m_eleIso_WP] );
+      if ( (!m_EG_corrFNList.empty()) && corrFNList.find(EleIso)!=corrFNList.end() ) {                // overriding central map file
+        CONFIG_EG_EFF_TOOL( m_elecEfficiencySFTool_iso, toolName, corrFNList[EleIso] );
       } 
       // can't do the iso tool via the macro, it needs two properties set
-      else {                                                                                               // default: use map file
+      else {                                                                                          // default: use map file
         if ( !m_elecEfficiencySFTool_iso.isUserConfigured() ) {
-          if ( !check_isOption(m_el_iso_fallback[m_eleIso_WP], m_el_iso_support) ) { //check if supported
-            ATH_MSG_WARNING( "(" << toolName << ") Your electron Iso WP: " << m_el_iso_fallback[m_eleIso_WP]
-              << " is no longer supported. This will almost certainly cause a crash now.");
+          if ( !check_isOption(EleIso, m_el_iso_support) ) { //check if supported
+            ATH_MSG_WARNING( "(" << toolName << ") Your electron Iso WP: " << EleIso<< " is no longer supported. This will almost certainly cause a crash now.");
           }
-  
+
           m_elecEfficiencySFTool_iso.setTypeAndName("AsgElectronEfficiencyCorrectionTool/"+toolName);
-  
+
           if ( m_EG_corrFNList.empty() ) {
-             ATH_CHECK( m_elecEfficiencySFTool_iso.setProperty("MapFilePath", m_eleEffMapFilePath) );
+            ATH_CHECK( m_elecEfficiencySFTool_iso.setProperty("MapFilePath", m_eleEffMapFilePath) );
           } else {
-             ATH_CHECK( m_elecEfficiencySFTool_iso.setProperty("CorrectionFileNameList", corrFNList) );
+            ATH_CHECK( m_elecEfficiencySFTool_iso.setProperty("CorrectionFileNameList", corrFNList) );
           }
           ATH_CHECK( m_elecEfficiencySFTool_iso.setProperty("IdKey", eleId) );
-          ATH_CHECK( m_elecEfficiencySFTool_iso.setProperty("IsoKey", m_el_iso_fallback[m_eleIso_WP]) );
-          if (!isData()) {
-            ATH_CHECK (m_elecEfficiencySFTool_iso.setProperty("ForceDataType", (int) data_type) );
+          ATH_CHECK( m_elecEfficiencySFTool_iso.setProperty("IsoKey", EleIso) );
+          if (!isData() && ((EleIso.find("TightTrackOnly_VarRad")!=std::string::npos)||
+                            (EleIso.find("TightTrackOnly_FixedRad")!=std::string::npos)||
+                            (EleIso.find("Tight_VarRad")!=std::string::npos)||
+                            (EleIso.find("Loose_VarRad")!=std::string::npos))) {
+            if (isAtlfast()) ATH_MSG_WARNING("(AsgElectronEfficiencyCorrectionTool/"+toolName+"). Your selected electron Iso WP (" + EleIso + ") don't have AFII SF. Falling back to FullSim");
+            ATH_CHECK( m_elecEfficiencySFTool_iso.setProperty("ForceDataType", (int) PATCore::ParticleDataType::Full) );
+          }
+          else if (!isData()){
+            ATH_CHECK( m_elecEfficiencySFTool_iso.setProperty("ForceDataType", (int) data_type) );
           }
           ATH_CHECK( m_elecEfficiencySFTool_iso.setProperty("CorrelationModel", m_EG_corrModel) );
           ATH_CHECK( m_elecEfficiencySFTool_iso.setProperty("OutputLevel", this->msg().level()) );
@@ -917,25 +954,42 @@ StatusCode SUSYObjDef_xAOD::SUSYToolsInit()
       }
      
       // electron iso high-pt
-      toolName = "AsgElectronEfficiencyCorrectionTool_isoHigPt_" + m_eleId + m_el_iso_fallback[m_eleIsoHighPt_WP];
+      std::string EleIsohighPt("");
+      if (std::find(eSF_keys.begin(), eSF_keys.end(), eleId+"_"+m_eleIsoHighPt_WP) != eSF_keys.end()){
+        EleIsohighPt   = m_eleIsoHighPt_WP;
+      } else if (std::find(eSF_keys.begin(), eSF_keys.end(), eleId+"_"+m_el_iso_fallback[m_eleIsoHighPt_WP]) != eSF_keys.end()){
+        //--- Check to see if the only issue is an unknown isolation working point
+        EleIsohighPt = m_el_iso_fallback[m_eleIsoHighPt_WP];
+        ATH_MSG_WARNING("(AsgElectronEfficiencyCorrectionTool_iso_*) Your selected high-pT electron Iso WP ("
+          << m_eleIsoHighPt_WP
+          << ") does not have iso SFs defined. Falling back to "
+          << m_el_iso_fallback[m_eleIsoHighPt_WP]
+          << " for SF calculations");
+      }
+      else{
+        ATH_MSG_ERROR("***  THE HIGH PT ELECTRON ISOLATION SF YOU SELECTED (" << m_eleIsoHighPt_WP << ") GOT NO SUPPORT");
+        return StatusCode::FAILURE;
+      }
+
+      toolName = "AsgElectronEfficiencyCorrectionTool_isoHigPt_" + m_eleId + EleIsohighPt;
+      
       // if running with correction file list
-      if ( (!m_EG_corrFNList.empty()) && corrFNList.find(m_eleIsoHighPt_WP)!=corrFNList.end() ) {                // overriding central map file
-        CONFIG_EG_EFF_TOOL( m_elecEfficiencySFTool_isoHighPt, toolName, corrFNList[m_eleIsoHighPt_WP] );
+      if ( (!m_EG_corrFNList.empty()) && corrFNList.find(EleIsohighPt)!=corrFNList.end() ) {                // overriding central map file
+        CONFIG_EG_EFF_TOOL( m_elecEfficiencySFTool_isoHighPt, toolName, corrFNList[EleIsohighPt] );
       } 
       // can't do the iso tool via the macro, it needs two properties set
       else {                                                                                                     // default: use map file
         if ( !m_elecEfficiencySFTool_isoHighPt.isUserConfigured() ) {
     
-          if ( !check_isOption(m_el_iso_fallback[m_eleIsoHighPt_WP], m_el_iso_support) ) { //check if supported
-            ATH_MSG_WARNING( "(" << toolName << ") Your electron high-pt Iso WP: " << m_el_iso_fallback[m_eleIsoHighPt_WP]
-              << " is no longer supported. This will almost certainly cause a crash now.");
+          if ( !check_isOption(EleIsohighPt, m_el_iso_support) ) { //check if supported
+            ATH_MSG_WARNING( "(" << toolName << ") Your electron high-pt Iso WP: " << EleIsohighPt << " is no longer supported. This will almost certainly cause a crash now.");
           }
     
           m_elecEfficiencySFTool_isoHighPt.setTypeAndName("AsgElectronEfficiencyCorrectionTool/"+toolName);
     
           ATH_CHECK( m_elecEfficiencySFTool_isoHighPt.setProperty("MapFilePath", m_eleEffMapFilePath) );
           ATH_CHECK( m_elecEfficiencySFTool_isoHighPt.setProperty("IdKey", eleId) );
-          ATH_CHECK( m_elecEfficiencySFTool_isoHighPt.setProperty("IsoKey", m_el_iso_fallback[m_eleIsoHighPt_WP]) );
+          ATH_CHECK( m_elecEfficiencySFTool_isoHighPt.setProperty("IsoKey", EleIsohighPt) );
           if (!isData()) {
             ATH_CHECK (m_elecEfficiencySFTool_isoHighPt.setProperty("ForceDataType", (int) data_type) );
           }
@@ -944,10 +998,7 @@ StatusCode SUSYObjDef_xAOD::SUSYToolsInit()
           ATH_CHECK( m_elecEfficiencySFTool_isoHighPt.initialize() );
         } else   ATH_CHECK( m_elecEfficiencySFTool_isoHighPt.initialize() );
       }
-      
-      //-- get KEYS supported by egamma SF tools
-      std::vector<std::string> eSF_keys = getElSFkeys(m_eleEffMapFilePath);
-  
+        
       // electron triggers - first SFs (but we need to massage the id string since all combinations are not supported)
   
       //single lepton
@@ -1090,12 +1141,23 @@ StatusCode SUSYObjDef_xAOD::SUSYToolsInit()
       tmpIDWP = "MediumLLH";
     }
     if (tmpIsoWP != "FCTight" && tmpIsoWP != "Gradient") {
-      ATH_MSG_WARNING("Your Electron Iso WP ("+tmpIsoWP+") is not supported for ECID SFs, falling back to Gradient for SF purposes");
-      tmpIsoWP = "Gradient";
+      ATH_MSG_WARNING("Your Electron Iso WP ("+tmpIsoWP+") is not supported for ECID SFs, falling back to FCTight for SF purposes");
+      tmpIsoWP = "FCTight";
     }
   
-    toolName = "AsgElectronEfficiencyCorrectionTool_chf_" + m_eleId + m_el_iso_fallback[m_eleIso_WP] + m_eleChID_WP;
-    CONFIG_EG_EFF_TOOL(m_elecEfficiencySFTool_chf, toolName, "ElectronEfficiencyCorrection/2015_2017/rel21.2/Consolidation_September2018_v1/additional/efficiencySF.ChargeID."+tmpIDWP+"_d0z0_v13_"+tmpIsoWP+"_ECIDSloose.root");
+    toolName = "AsgElectronEfficiencyCorrectionTool_chf_" + tmpIDWP + tmpIsoWP + m_eleChID_WP;
+    if( !m_elecEfficiencySFTool_chf.isUserConfigured() ) { 
+      m_elecEfficiencySFTool_chf.setTypeAndName("AsgElectronEfficiencyCorrectionTool/"+toolName); 
+      std::vector<std::string> corrFileNamechf = {"ElectronEfficiencyCorrection/2015_2017/rel21.2/Consolidation_September2018_v1/additional/efficiencySF.ChargeID."+tmpIDWP+"_d0z0_v13_"+tmpIsoWP+"_ECIDSloose.root"};
+      ATH_CHECK( m_elecEfficiencySFTool_chf.setProperty("CorrectionFileNameList", corrFileNamechf) ); 
+      if(!isData()){
+        ATH_CHECK( m_elecEfficiencySFTool_chf.setProperty("ForceDataType", (int) (data_type==PATCore::ParticleDataType::Fast)? PATCore::ParticleDataType::Full : data_type) );
+      }
+      ATH_CHECK( m_elecEfficiencySFTool_chf.setProperty("CorrelationModel", m_EG_corrModel) );
+      ATH_CHECK( m_elecEfficiencySFTool_chf.setProperty("OutputLevel", this->msg().level()) );
+      ATH_CHECK( m_elecEfficiencySFTool_chf.initialize() );
+    } else ATH_CHECK(m_elecEfficiencySFTool_chf.retrieve());
+
     m_runECIS = m_eleChID_WP.empty() ? false : true;
   
     // Electron charge mis-identification SFs
@@ -1440,44 +1502,12 @@ StatusCode SUSYObjDef_xAOD::SUSYToolsInit()
   ///////////////////////////////////////////////////////////////////////////////////////////
   // Initialise B-tagging tools
   
-    // Warnings for invalid timestamps, or timestamped containers with old CDI file & vice versa
-    int cdiYear = atoi(m_bTaggingCalibrationFilePath.substr(m_bTaggingCalibrationFilePath.find("13TeV/")+6,4).c_str());
-    // Regular Jets
-    if (m_useBtagging && (!m_BtagTimeStamp.empty() && !(m_BtagTimeStamp.compare("201810")==0||m_BtagTimeStamp.compare("201903")==0))) {
-      ATH_MSG_ERROR("Only 201810 & 201903 are valid BTag container timestamps. Current = " << m_BtagTimeStamp);
-      return StatusCode::FAILURE;
-    }
-    if (m_useBtagging && (!m_BtagTimeStamp.empty() && cdiYear<2019)) {
-      ATH_MSG_ERROR("Shouldn't use timestamped Jet collection (" << m_BtagTimeStamp << ") with older CDI file (" << m_bTaggingCalibrationFilePath << ")");
-      return StatusCode::FAILURE;
-    }
-    if (m_useBtagging && (m_BtagTimeStamp.empty() && cdiYear>2017)) {
-       ATH_MSG_ERROR("Should provide a BTag container timestamp (default = Btag.TimeStamp: 201810) to use with Jets and newer CDI files (" << m_bTaggingCalibrationFilePath << ")");
-       return StatusCode::FAILURE;
-    }
-    if (m_slices["tjet"]) {
-      // TrackJets
-      if (m_useBtagging_trkJet && (!m_BtagTimeStamp_trkJet.empty() && !(m_BtagTimeStamp_trkJet.compare("201810")==0||m_BtagTimeStamp_trkJet.compare("201903")==0))) {
-        ATH_MSG_ERROR("Only 201810 & 201903 are valid BTag container timestamps for TrackJets. Current = " << m_BtagTimeStamp_trkJet);
-        return StatusCode::FAILURE;
-      }
-      if (m_useBtagging_trkJet && (!m_BtagTimeStamp_trkJet.empty() && cdiYear<2020)) {
-        ATH_MSG_ERROR("Shouldn't use timestamped TrackJet collection (" << m_BtagTimeStamp_trkJet << ") with older CDI file (" << m_bTaggingCalibrationFilePath << ")");
-        return StatusCode::FAILURE;
-      }
-      if (m_useBtagging_trkJet && (m_BtagTimeStamp_trkJet.empty() && cdiYear>2019)) {
-         ATH_MSG_ERROR("Should provide a BTag container timestamp (default = Btag.TimeStamp_trkJet: 201903) to use with TrackJets and newer CDI files (" << m_bTaggingCalibrationFilePath << ")");
-         return StatusCode::FAILURE;
-      }
-    }
-
     // btagSelectionTool
     std::string jetcollBTag = jetcoll;
     if (jetcoll == "AntiKt4LCTopoJets") {
       ATH_MSG_WARNING("  *** HACK *** Treating LCTopoJets jets as EMTopo -- use at your own risk!");
       jetcollBTag = "AntiKt4EMTopoJets";
     }
-    if (!m_BtagTimeStamp.empty()) jetcollBTag += "_BTagging" + m_BtagTimeStamp;
   
     if (m_useBtagging && !m_btagSelTool.isUserConfigured() && !m_BtagWP.empty()) {
       if (jetcollBTag.find("AntiKt4EMTopoJets") == std::string::npos && jetcollBTag.find("AntiKt4EMPFlowJets")==std::string::npos) {
@@ -1523,7 +1553,6 @@ StatusCode SUSYObjDef_xAOD::SUSYToolsInit()
          m_useBtagging_trkJet = false;
          ATH_MSG_INFO("TrackJet collection set to None: disabling btagging for TrackJets.");
       }
-      if (!m_BtagTimeStamp_trkJet.empty()) BTagColl_TrkJet += "_BTagging"+m_BtagTimeStamp_trkJet;
 
       if (m_useBtagging_trkJet && !m_btagSelTool_trkJet.isUserConfigured() && !m_BtagWP_trkJet.empty()) {
         if (trkjetcoll.find("AntiKt2PV0TrackJets")==std::string::npos && trkjetcoll.find("AntiKtVR30Rmax4Rmin02TrackJets")==std::string::npos) {
@@ -1547,12 +1576,16 @@ StatusCode SUSYObjDef_xAOD::SUSYToolsInit()
     
   
     // Set MCshowerType for FTAG MC/MC SFs
-    std::string MCshowerID = "410470";                 // Powheg+Pythia8 (default)
-    if (m_showerType == 1) MCshowerID = "410558";      // Powheg+Herwig7
-    else if (m_showerType == 2) MCshowerID = "426131"; // Sherpa 2.1
-    else if (m_showerType == 3) MCshowerID = "410250"; // Sherpa 2.2
-    else if (m_showerType == 4) MCshowerID = "410464"; // aMC@NLO+Pythia8
-  
+    // https://twiki.cern.ch/twiki/bin/view/AtlasProtected/BTagCalibrationRecommendationsRelease21#MC_MC_Scale_Factors_for_Analysis
+    std::string MCshowerID = "410470";                 // Powheg+Pythia8 (default)  - PhPy8EG_A14
+    if (m_showerType == 1) MCshowerID = "410558";      // Powheg+Herwig 7.0.4       - PowhegHerwig7EvtGen_H7UE
+    else if (m_showerType == 2) MCshowerID = "426131"; // Sherpa 2.1                - Sherpa_CT10
+    else if (m_showerType == 3) MCshowerID = "410250"; // Sherpa 2.2.1 or 2.2.2     - Sherpa_221
+    else if (m_showerType == 4) MCshowerID = "410464"; // aMC@NLO+Pythia8           - aMcAtNloPy8EvtGen_MEN30NLO_A14N23LO
+    else if (m_showerType == 5) MCshowerID = "421152"; // Sherpa 2.2.8              - Sh_N30NNLO
+    else if (m_showerType == 6) MCshowerID = "700122"; // Sherpa 2.2.10             - Sh_2210
+
+
     // btagEfficiencyTool
     if (m_useBtagging && !m_btagEffTool.isUserConfigured() && !m_BtagWP.empty()) {
       if (jetcoll != "AntiKt4EMTopoJets" && jetcoll != "AntiKt4EMPFlowJets") {
@@ -1564,6 +1597,11 @@ StatusCode SUSYObjDef_xAOD::SUSYToolsInit()
       if (jetcollBTag == "AntiKt4EMPFlowJets" && MCshowerID == "426131") { // sherpa 2.1 isn't available
         ATH_MSG_WARNING ("MC/MC SFs for AntiKt4EMPFlowJets are not available yet! Falling back to AntiKt4EMTopoJets for the SFs.");
         jetcollBTag = "AntiKt4EMTopoJets";
+      } 
+
+      if (jetcollBTag == "AntiKt4EMTopoJets" && (MCshowerID == "421152" || MCshowerID == "700122")) { // Sherpa 2.2.8, 2.2.10 isn't available
+        ATH_MSG_WARNING ("MC/MC SFs for AntiKt4EMTopoJets are not available yet! Falling back to Sherpa 2.2.1 for the SFs.");
+        MCshowerID == "410250";
       }
 
       toolName = "BTagSF_" + jetcollBTag + m_BtagTagger + m_BtagWP;

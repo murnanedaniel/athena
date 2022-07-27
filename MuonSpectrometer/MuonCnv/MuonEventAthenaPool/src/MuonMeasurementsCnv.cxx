@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "GaudiKernel/MsgStream.h"
@@ -17,8 +17,8 @@ MuonMeasurementsCnv::MuonMeasurementsCnv(ISvcLocator* svcloc):
 void 
 MuonMeasurementsCnv::readObjectFromPool( const std::string& token )
 {
-  static pool::Guid p1_guid( "C4979DA5-4193-410B-9476-A51708C01CF7" );
-  static pool::Guid p2_guid( "87FC613F-390A-4AB0-9BBF-28CE788867D5" );
+  static const pool::Guid p1_guid( "C4979DA5-4193-410B-9476-A51708C01CF7" );
+  static const pool::Guid p2_guid( "87FC613F-390A-4AB0-9BBF-28CE788867D5" );
 
    // set the POOL token which will be used for reading from POOL
    setToken( token );

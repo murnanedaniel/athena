@@ -1,7 +1,7 @@
 // emacs, this is -*- C++ -*-
 
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////                                                        /////////// 
@@ -249,10 +249,10 @@ inline const Jet::tagstore_t Jet::jetTagInfoVector(void) const
   //  taginfos are filled for every event. Need to return a copy
   //  of the TagInfoStore with all zeros removed
   if ( bool(m_tagInfoStore) )
-    for ( tagstore_t::iterator itr = m_tagInfoStore->begin();
-  	  itr != m_tagInfoStore->end(); ++itr )
-      if ( bool(*itr) )
-  	store.push_back( (*itr) );
+    for (const taginfo_t* tag : std::as_const(*m_tagInfoStore)) {
+      if ( tag != nullptr )
+  	store.push_back( tag );
+    }
   return store;
 
 }
@@ -278,7 +278,7 @@ const TAGINFO* Jet::tagInfo(const mkey_t& key) const
 }
 
 template<class TAGINFO>
-void Jet::addInfo(const TAGINFO* tag) const
+void Jet::addInfo(const TAGINFO* tag)
 {
   this->setTagInfo( tag->infoType(), tag );
 }
@@ -332,7 +332,7 @@ inline void Jet::removeAssociation (const size_t index) const
 /////////////////////////////////////////
 /// constituent and jet signal states ///
 /////////////////////////////////////////
-inline void Jet::setConstituentSignalState( Jet::signalstate_t s ) const
+inline void Jet::setConstituentSignalState( Jet::signalstate_t s )
 {
   m_constituentSigState = s;
 }

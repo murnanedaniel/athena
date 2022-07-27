@@ -1,11 +1,10 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "HIEventShapeJetIteration.h"
 #include "xAODHIEvent/HIEventShape.h"
 #include "xAODHIEvent/HIEventShapeAuxContainer.h"
-#include "HIEventUtils/HIEventShapeMap.h"
 #include "HIEventUtils/HIEventShapeIndex.h"
 #include "HIEventUtils/HIEventShapeSummaryUtils.h"
 #include "xAODCore/ShallowCopy.h"
@@ -30,7 +29,7 @@ namespace
 } //annonymous namespace
 
 
-HIEventShapeJetIteration::HIEventShapeJetIteration(std::string name) : AsgTool(name)
+HIEventShapeJetIteration::HIEventShapeJetIteration(const std::string& name) : AsgTool(name)
 {
 }
 

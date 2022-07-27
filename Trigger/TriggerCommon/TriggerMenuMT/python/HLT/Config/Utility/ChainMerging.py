@@ -1,12 +1,14 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 from TriggerMenuMT.HLT.Config.Utility.MenuAlignmentTools import get_alignment_group_ordering as getAlignmentGroupOrdering
 from TriggerMenuMT.HLT.Config.MenuComponents import Chain, ChainStep, EmptyMenuSequence, RecoFragmentsPool
 
 from AthenaCommon.Logging import logging
 from AthenaConfiguration.AllConfigFlags import ConfigFlags
+from AthenaConfiguration.ComponentFactory import isRun3Cfg
 from DecisionHandling.DecisionHandlingConfig import ComboHypoCfg
 from TrigCompositeUtils.TrigCompositeUtils import legName
+from TriggerMenuMT.HLT.Config.ControlFlow.HLTCFTools import NoCAmigration
 
 from collections import OrderedDict
 from copy import deepcopy
@@ -14,11 +16,19 @@ import re
 
 log = logging.getLogger( __name__ )
 
-
 def mergeChainDefs(listOfChainDefs, chainDict):
-
     #chainDefList is a list of Chain() objects
     #one for each part in the chain
+    
+    # protect against serial merging in the signature code
+    if isRun3Cfg():
+        try:           
+            for chainPartConfig in listOfChainDefs:
+                if any ([ "_MissingCA" in step.name for step in chainPartConfig.steps]):
+                    raise NoCAmigration ('[mergeChainDefs] not possible for chain {0} due to missing configurations'.format(chainDict['chainName']))
+        except NoCAmigration as e:
+            log.warning(str(e))
+            return None 
 
     strategy = chainDict["mergingStrategy"]
     offset = chainDict["mergingOffset"]
@@ -90,7 +100,7 @@ def mergeParallel(chainDefList, offset, leg_numbering = []):
     chainName = ''
     l1Thresholds = []
     alignmentGroups = []
-   
+
     for cConfig in chainDefList:
         if chainName == '':
             chainName = cConfig.name
@@ -121,6 +131,7 @@ def mergeParallel(chainDefList, offset, leg_numbering = []):
     for step_index, steps in enumerate(orderedSteps):
         mySteps = list(steps)
         log.debug("[mergeParallel] Merging step counter %d", step_index+1)
+
         combStep = makeCombinedStep(mySteps, step_index+1, chainDefList, orderedSteps, combChainSteps, leg_numbering)
         combChainSteps.append(combStep)
                                   
@@ -143,8 +154,14 @@ def getEmptySeqName(stepName, chain_index, step_number, alignGroup):
     seqName = 'Empty'+ alignGroup +'Seq'+str(step_number)+ '_'+ stepName
     return seqName
 
-def getEmptyMenuSequence(flags, name):
+def EmptyMenuSequenceCfg(flags, name):
     return EmptyMenuSequence(name)
+
+def getEmptyMenuSequence(flags, name):
+    if isRun3Cfg():
+        return EmptyMenuSequenceCfg(flags, name)
+    else:
+        return RecoFragmentsPool.retrieve(EmptyMenuSequenceCfg, flags=flags, name=name)                
 
 def isFullScanRoI(inputL1Nav):
     fsRoIList = ['HLTNav_L1FSNOSEED','HLTNav_L1MET','HLTNav_L1J']
@@ -176,7 +193,7 @@ def noPrecedingStepsPostMerge(newsteps, ileg):
     return True
         
 def getCurrentAG(chainStep):
-
+    
     filled_seq_ag = []
     for iseq,seq in enumerate(chainStep.sequences):
         # In the case of dummy configs, they are all empty
@@ -194,7 +211,7 @@ def getCurrentAG(chainStep):
     if len(filled_seq_ag) == 0:
         log.error("[getCurrentAG] No non-empty sequences were found in %s", chainStep.sequences)
         log.error("[getCurrentAG] The chainstep is %s", chainStep)
-        raise Exception("[getCurrentAG] Cannot find the current alignment group for this chain")
+        raise Exception("[getCurrentAG] Cannot find the current alignment group for this chain")        
     elif len(set(filled_seq_ag)) > 1:
         log.error("[getCurrentAG] Found more than one alignment group for this step %s", filled_seq_ag)
         raise Exception("[getCurrentAG] Cannot find the current alignment group for this chain")
@@ -288,11 +305,12 @@ def serial_zip(allSteps, chainName, chainDefList, legOrdering):
                     emptySequences = []
                     for ileg in range(len(chainDefList[stepPlacement2].L1decisions)):                        
                         if isFullScanRoI(chainDefList[stepPlacement2].L1decisions[ileg]):
-                            log.debug("[serial_zip] adding FS empty sequence")
-                            emptySequences += [RecoFragmentsPool.retrieve(getEmptyMenuSequence, flags=ConfigFlags, name=seqNames[ileg]+"FS")]
+                            log.debug("[serial_zip] adding FS empty sequence")                            
+                            emptySequences += [getEmptyMenuSequence(flags=ConfigFlags, name=seqNames[ileg]+"FS")]
                         else:
                             log.debug("[serial_zip] adding non-FS empty sequence")
-                            emptySequences += [RecoFragmentsPool.retrieve(getEmptyMenuSequence, flags=ConfigFlags, name=seqNames[ileg])]
+                            emptySequences += [getEmptyMenuSequence(flags=ConfigFlags, name=seqNames[ileg])]
+
 
                     if doBonusDebug:
                         log.debug("[serial_zip] emptyChainDicts %s",emptyChainDicts)
@@ -377,7 +395,9 @@ def mergeSerial(chainDefList, chainDefListOrdering):
     return combinedChainDef
 
 def checkStepContent(parallel_steps):
-  
+    """
+    return True if any step contains a real Sequence
+    """
     for step in parallel_steps:
         if step is None:
             continue
@@ -402,9 +422,18 @@ def makeCombinedStep(parallel_steps, stepNumber, chainDefList, allSteps = [], cu
     hasNonEmptyStep = checkStepContent(parallel_steps)
   
     if not hasNonEmptyStep:
+        
+        if len(parallel_steps)>=len(chainDefList) and all(step is None for step in parallel_steps[len(chainDefList):]):
+            # We need to remove manually here the None steps exceeding the len of chainDefList. The right solution
+            # would be to make sure that these cases don't happen upstream, but I am not confident enough with this
+            # code to make such a large (and dangerous) change. But it would be nice to do that in future if possible..
+            parallel_steps=parallel_steps[:len(chainDefList)]
+            log.debug("[makeCombinedStep] removed empty steps exceeding chainDefList size. The new steps are now %s ", parallel_steps)
+
         for chain_index, step in enumerate(parallel_steps):
             # every step is empty but some might have empty sequences and some might not
-            if len(step.sequences) == 0:
+            if step is None or len(step.sequences) == 0:
+
                 new_stepDicts = deepcopy(chainDefList[chain_index].steps[-1].stepDicts)
                 currentStepName = 'Empty' + chainDefList[chain_index].alignmentGroups[0]+'Align'+str(stepNumber)+'_'+new_stepDicts[0]['chainParts'][0]['multiplicity']+new_stepDicts[0]['signature']
                 log.debug('[makeCombinedStep] step has no sequences, making empty step %s', currentStepName)
@@ -464,17 +493,17 @@ def makeCombinedStep(parallel_steps, stepNumber, chainDefList, allSteps = [], cu
             seqName = getEmptySeqName(new_stepDict['signature'], chain_index, stepNumber, chainDefList[0].alignmentGroups[0])
 
             if isFullScanRoI(chainDefList[chain_index].L1decisions[0]):
-                stepSeq.append(RecoFragmentsPool.retrieve(getEmptyMenuSequence, flags=ConfigFlags, name=seqName+"FS"))
+                stepSeq.append(getEmptyMenuSequence(flags=ConfigFlags, name=seqName+"FS"))                
                 currentStepName = 'Empty' + chainDefList[chain_index].alignmentGroups[0]+'Align'+str(stepNumber)+'_'+new_stepDict['chainParts'][0]['multiplicity']+new_stepDict['signature']+'FS'
             else:
-                stepSeq.append(RecoFragmentsPool.retrieve(getEmptyMenuSequence, flags=ConfigFlags, name=seqName))
+                stepSeq.append(getEmptyMenuSequence(flags=ConfigFlags, name=seqName))                
                 currentStepName = 'Empty' + chainDefList[chain_index].alignmentGroups[0]+'Align'+str(stepNumber)+'_'+new_stepDict['chainParts'][0]['multiplicity']+new_stepDict['signature']
 
             log.debug("[makeCombinedStep]  chain_index: %s, step name: %s,  empty sequence name: %s", chain_index, currentStepName, seqName)
 
             #stepNumber is indexed from 1, need the previous step indexed from 0, so do - 2
             prev_step_mult = -1
-            if stepNumber > 1:
+            if stepNumber > 1 and len(currentChainSteps[stepNumber-2].multiplicity) >0:
                 prev_step_mult = int(currentChainSteps[stepNumber-2].multiplicity[chain_index])
             else:
                 #get the step multiplicity from the step dict. This should be 
@@ -546,19 +575,21 @@ def zip_longest_parallel(AllSteps, multiplicity, fillvalue=None):
     from itertools import repeat
     
     iterators = [iter(it) for it in AllSteps]
-    num_active = len(iterators)
-    if not num_active:
+    inactives =set()
+    if len(iterators)==0:
         return
     while True:
         values = []
-        for i, it in enumerate(iterators):
+        for i, it in enumerate(iterators): #Here we loop over the different chain parts
             try:
                 value = next(it)
             except StopIteration:
-                num_active -= 1
-                if not num_active:
+                if i not in inactives:
+                    #We want to add the inactive iterator to the list of inactives iterators
+                    inactives.add(i)
+                if len(inactives)>=len(iterators):
+                    #We want to exit the while True if we reached the end of all iterators.
                     return
-                log.debug("multiplicity[i] %s",int(multiplicity[i]))
                 iterators[i] = repeat(fillvalue, int(multiplicity[i]))
                 value = fillvalue
             values.append(value)

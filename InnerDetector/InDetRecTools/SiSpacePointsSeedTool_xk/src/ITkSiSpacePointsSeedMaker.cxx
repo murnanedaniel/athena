@@ -214,6 +214,10 @@ void SiSpacePointsSeedMaker::newEvent(const EventContext &ctx, EventData &data, 
     /// related to the mysterious magic number, m_COF{134*.05*9}
     data.ipt2C = m_ipt2 * m_COF;
     data.COFK = m_COF * (data.K * data.K);
+    /// save magnetic field used for later
+    data.bField[0] = magField[0];
+    data.bField[1] = magField[1];
+    data.bField[2] = magField[2];
 
     /// set the spacepoint iterator to the beginning of the space-point list
     data.i_ITkSpacePointForSeed = data.l_ITkSpacePointForSeed.begin();
@@ -1477,6 +1481,7 @@ void SiSpacePointsSeedMaker::fillLists(EventData &data) const
       ++data.nsaz;
       // push our space point into the 2D binned array
       data.rfz_ITkSorted[twoDbin].push_back(SP);
+
       /// the conditional seems to always be true. The rfz_index vector stores
       /// the 2D bin for each SP in the radius-sorted map. This way,
       /// we obtain effectively a *3D binning* in r(via the r-sorted vector), phi and z (via the 2D index)
@@ -2037,6 +2042,7 @@ void SiSpacePointsSeedMaker::production3Sp(EventData &data) const
       return;
     }
   }
+
   /// Processed all seeds there are without aborting - no re-run needed!
   data.endlist = true;
 }
@@ -2143,7 +2149,6 @@ void SiSpacePointsSeedMaker::production3SpPPP(EventData &data,
         /// evaluate the radial distance,
         float Rt = (*iter_otherSP)->radius();
         float dR = Rt - R;
-        
 
         const float dz = (*iter_otherSP)->z() - Z;
         const float dZdR = dz / dR;
@@ -2450,16 +2455,6 @@ void SiSpacePointsSeedMaker::production3SpPPP(EventData &data,
           /// deviate from a straight line in r-z
           data.ITkSP[t]->setScorePenalty(std::abs((Tzb - Tzt) / (dr * sTzb2)));
           data.ITkSP[t]->setParam(d0);
-
-          float meanOneOverTanTheta = std::sqrt(meanOneOverTanThetaSquare);
-          if (meanOneOverTanTheta < 1e-8)
-            meanOneOverTanTheta = 1e-8;
-          if (BSquare < 1e-8)
-            BSquare = 1e-8;
-          if(data.ITkSP[t]->z()<0) meanOneOverTanTheta = -meanOneOverTanTheta;
-          float theta = std::atan(1. / std::sqrt(meanOneOverTanThetaSquare));
-          data.ITkSP[t]->setEta(-std::log(std::tan(0.5 * theta)));
-          data.ITkSP[t]->setPt(std::sqrt(onePlusAsquare / BSquare) / (1000 * data.K));
 
           /// record one possible seed candidate, sort by the curvature
           data.ITkCmSp.emplace_back(std::make_pair(B / std::sqrt(onePlusAsquare), data.ITkSP[t]));
@@ -2899,15 +2894,6 @@ void SiSpacePointsSeedMaker::production3SpSSS(EventData &data,
           data.ITkSP[t]->setParam(d0);
           float DR = std::sqrt( xt * xt + yt * yt + zt * zt ); // distance between top and central SP
           data.ITkSP[t]->setDR(DR);
-
-          if (meanOneOverTanTheta < 1e-8)
-            meanOneOverTanTheta = 1e-8;
-          if (BSquare < 1e-8)
-            BSquare = 1e-8;
-          if(data.ITkSP[t]->z()<0) meanOneOverTanTheta = -meanOneOverTanTheta;
-          float theta = std::atan(1. / meanOneOverTanTheta);
-          data.ITkSP[t]->setEta(-std::log(std::tan(0.5 * theta)));
-          data.ITkSP[t]->setPt(std::sqrt(onePlusAsquare / BSquare) / (1000 * data.K));
 
           /// record one possible seed candidate, sort by the curvature
           data.ITkCmSp.emplace_back(std::make_pair(B / std::sqrt(onePlusAsquare), data.ITkSP[t]));
@@ -3406,8 +3392,9 @@ const InDet::SiSpacePointsSeed *SiSpacePointsSeedMaker::next(const EventContext 
         if (data.i_ITkSeed == data.i_ITkSeedEnd)
           return nullptr;
       }
+
       /// iterate until we find a valid seed satisfying certain quality cuts in set3
-    } while (!(*data.i_ITkSeed++).set3(data.seedOutput));
+    } while (!(*data.i_ITkSeed++).set3(data.seedOutput, 1./(1000. * data.K)));
     /// then return this next seed candidate
     return &data.seedOutput;
   }
@@ -3745,7 +3732,7 @@ void SiSpacePointsSeedMaker::newOneSeedWithCurvaturesComparisonPPP(EventData &da
         SPmin = SPt;
       }
     } ///< end of loop over top SP candidates
-    if (SPmin && !data.nOneSeeds)
+    if (SPmin && !data.nOneSeedsQ)
       newOneSeed(data, SPb, SP0, SPmin, Zob, Qmin);
     data.ITkCmSp.clear();
   }

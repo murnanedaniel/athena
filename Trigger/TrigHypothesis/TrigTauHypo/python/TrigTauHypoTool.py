@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 
 from AthenaCommon.Logging import logging
@@ -10,7 +10,7 @@ from collections import namedtuple
 # Here we need a large repository of configuration values
 # The meaning of the configuration values is as follows:
 # ('Id working point', 'pt threshold': ['Maximum number of tracks[0]', 'etmincalib[1]', 'Id level[2]'])
-TauCuts = namedtuple('TauCuts','numTrackMax numTrackWideTrackMax EtCalibMin level')
+TauCuts = namedtuple('TauCuts','numTrackMax numWideTrackMax EtCalibMin level')
 thresholdsEF = {
     ('looseRNN', 20): TauCuts(3, 1, 20000.0, 1),
     ('looseRNN', 25): TauCuts(3, 1, 25000.0, 1),
@@ -20,6 +20,7 @@ thresholdsEF = {
     ('looseRNN', 80): TauCuts(3, 1, 80000.0, 1), 
     ('looseRNN', 160): TauCuts(3, 1, 160000.0, 1),
     ('looseRNN', 200): TauCuts(3, 1, 200000.0, 1),
+    ('mediumRNN', 0): TauCuts(3, 1, 0.0, 2),
     ('mediumRNN', 20): TauCuts(3, 1, 20000.0, 2),
     ('mediumRNN', 25): TauCuts(3, 1, 25000.0, 2),
     ('mediumRNN', 35): TauCuts(3, 1, 35000.0, 2),
@@ -48,6 +49,7 @@ thresholdsEF = {
     ('idperf',0)     : TauCuts(3,999, 0.,2),
     ('idperf',25)    : TauCuts(3,999,25000.,2),
     ('idperf',35)    : TauCuts(3,999,35000.,2),
+    ('idperf',80)    : TauCuts(3,999,80000.,2),
     ('idperf',160): TauCuts(3,999,160000.,2),    
     ('idperf',200): TauCuts(3,999,200000.,2)
     }    
@@ -93,7 +95,7 @@ def TrigEFTauMVHypoToolFromDict( chainDict ):
 
            # define quantities to be monitored
            monTool.defineHistogram("CutCounter", path='EXPERT',type='TH1I',title=';CutCounter; Entries', xbins=10, xmin=0.,xmax=10.) 
-           monTool.defineHistogram("ptAccepted", path='EXPERT',type='TH1F',title=';ptAccepted; Entries', xbins=50, xmin=0.,xmax=500.)
+           monTool.defineHistogram("ptAccepted", path='EXPERT',type='TH1F',title=';ptAccepted; Entries', xbins=80, xmin=0.,xmax=800.)
            monTool.defineHistogram("nTrackAccepted", path='EXPERT',type='TH1F',title=';nTrackAccepted; Entries', xbins=10, xmin=0.,xmax=10.)
            monTool.defineHistogram("nWideTrackAccepted", path='EXPERT',type='TH1F',title=';nWideTrackAccepted; Entries', xbins=10, xmin=0.,xmax=10.)       
            monTool.defineHistogram("nInputTaus", path='EXPERT',type='TH1F',title=';nInputTaus; Entries', xbins=10, xmin=0.,xmax=10.) 
@@ -109,13 +111,12 @@ def TrigEFTauMVHypoToolFromDict( chainDict ):
         # setup the Hypo parameter
         theThresh = thresholdsEF[(criteria, int(threshold))]
         currentHypo.numTrackMax = theThresh.numTrackMax
-        currentHypo.numTrackWideTrackMax = theThresh.numTrackWideTrackMax
+        currentHypo.numWideTrackMax = theThresh.numWideTrackMax
         currentHypo.EtCalibMin  = theThresh.EtCalibMin
         currentHypo.level       = theThresh.level
         currentHypo.method      = 1   
      
         if criteria in [ 'verylooseRNN', 'looseRNN', 'mediumRNN', 'tightRNN' ]:
-            currentHypo.highptidthr = 280000.
             currentHypo.method      = 1
         elif 'idperf' in criteria: 
             currentHypo.AcceptAll = True

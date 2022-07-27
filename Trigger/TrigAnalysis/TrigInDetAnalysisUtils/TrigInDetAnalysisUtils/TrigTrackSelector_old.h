@@ -5,7 +5,7 @@
  **     @author  mark sutton
  **     @date    Thu 10 Jan 2019 20:41:57 CET 
  **
- **     Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+ **     Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
  **/
 
 #ifndef TRIGTRACKSELECTOR_H
@@ -44,7 +44,6 @@
 #include "TrkTrack/TrackCollection.h"
 #include "TrkTrack/Track.h"
 #include "TrkTrackSummary/TrackSummary.h"
-#include "TrkTrackSummary/InDetTrackSummary.h"
 #include "TrkToolInterfaces/ITrackSummaryTool.h"
 #include "GaudiKernel/ToolHandle.h" 
 #include "TMath.h"
@@ -200,7 +199,7 @@ public:
       int nTrHits     = summary->get(Trk::numberOfTRTHighThresholdHits);
 
       int nSiHits     = nPixelHits + nSctHits;
-      bool expectBL   = summary->get(Trk:: expectBLayerHit);
+      bool expectBL   = false; // Not stored for Rec::TrackParticle
 
       const Trk::FitQuality *quality   = track->fitQuality();
       double chi2 = quality->chiSquared();
@@ -588,7 +587,7 @@ public:
 	int nStrawHits  = 0;
 	int nTrHits     = 0;
 	int nSiHits     = 0;
-	bool expectBL = false;
+	bool expectBL = false; // Not stored for Trk::Track
 	unsigned bitmap = 0;
 
 	if(summary==0){
@@ -601,7 +600,6 @@ public:
             nStrawHits  = summary->get(Trk::numberOfTRTHits);
             nTrHits     = summary->get(Trk::numberOfTRTHighThresholdHits);
 	    nSiHits     = nPixelHits + nSctHits;
-	    expectBL    = summary->get(Trk::expectBLayerHit);
 	    for ( int ih=0 ; ih<20 ; ih++ ) {
 	      if ( summary->isHit(Trk::DetectorType(ih)) ) bitmap |= ( 1<<hpmap[ih] ); 	
 	    }

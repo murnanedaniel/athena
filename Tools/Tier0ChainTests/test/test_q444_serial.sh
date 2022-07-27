@@ -3,13 +3,14 @@
 # art-description: RecoTrf
 # art-type: grid
 # art-include: master/Athena
+# art-include: 22.0/Athena
 # art-include: 22.0-mc20/Athena
 
 Reco_tf.py \
 --AMI=q444 \
 --maxEvents=100 \
 --steering doOverlay doRDO_TRIG \
---outputRDOFile=myRDO.pool.root --outputAODFile=myAOD.pool.root --outputESDFile=myESD.pool.root --outputHISTFile=myHIST.root \
+--outputRDOFile=myRDO.pool.root --outputAODFile=myAOD.pool.root --outputESDFile=myESD.pool.root \
 --imf False
 
 rc1=$?

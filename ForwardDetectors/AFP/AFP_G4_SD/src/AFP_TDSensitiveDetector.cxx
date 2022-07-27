@@ -1,12 +1,9 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // Class header
 #include "AFP_TDSensitiveDetector.h"
-
-// Athena headers
-#include "AFP_Geometry/AFP_constants.h"
 
 // Geant4 headers
 #include "G4TouchableHistory.hh"
@@ -24,8 +21,6 @@
 // STL header
 #include <sstream>
 
-#define TDMAXQEFF 0.15 //FIXME Try to avoid using preprocessor constants
-#define TDMAXCNT  4000 //FIXME Try to avoid using preprocessor constants
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -207,13 +202,13 @@ bool AFP_TDSensitiveDetector::ProcessHits(G4Step* pStep, G4TouchableHistory*)
       nQuarticID=szbuff[7]-0x30;
 
       // Cut on maximum number of generated photons/bar
-      if     (nStationID==0 && nQuarticID==0){ if (m_nNOfTDSimHits[0][nDetectorID] >= TDMAXCNT) return 1;}
-      else if(nStationID==0 && nQuarticID==1){ if (m_nNOfTDSimHits[1][nDetectorID] >= TDMAXCNT) return 1;}
-      else if(nStationID==3 && nQuarticID==0){ if (m_nNOfTDSimHits[2][nDetectorID] >= TDMAXCNT) return 1;}
-      else if(nStationID==3 && nQuarticID==1){ if (m_nNOfTDSimHits[3][nDetectorID] >= TDMAXCNT) return 1;}
+      if     (nStationID==0 && nQuarticID==0){ if (m_nNOfTDSimHits[0][nDetectorID] >= TDMaxCnt) return 1;}
+      else if(nStationID==0 && nQuarticID==1){ if (m_nNOfTDSimHits[1][nDetectorID] >= TDMaxCnt) return 1;}
+      else if(nStationID==3 && nQuarticID==0){ if (m_nNOfTDSimHits[2][nDetectorID] >= TDMaxCnt) return 1;}
+      else if(nStationID==3 && nQuarticID==1){ if (m_nNOfTDSimHits[3][nDetectorID] >= TDMaxCnt) return 1;}
 
       // Get the Touchable History:
-      G4TouchableHistory*  myTouch = (G4TouchableHistory*)(pPreStepPoint->GetTouchable());
+      const G4TouchableHistory* myTouch = static_cast<const G4TouchableHistory*>(pPreStepPoint->GetTouchable());
       // Calculate the local step position.
       // From a G4 FAQ:
       // http://geant4-hn.slac.stanford.edu:5090/HyperNews/public/get/geometry/17/1.html
@@ -374,7 +369,7 @@ bool AFP_TDSensitiveDetector::ProcessHits(G4Step* pStep, G4TouchableHistory*)
 
         // maximum PMT efficiency cut (15%) to to avoid crashes due to the too large memory consumption
         rand = G4UniformRand();
-        if (rand>TDMAXQEFF) continue;
+        if (rand>TDMaxQEff) continue;
         ///////////////////////////////////////////////////////////////////////////////////////////////
 
         NumPhotonsCuts++;
@@ -397,10 +392,10 @@ bool AFP_TDSensitiveDetector::ProcessHits(G4Step* pStep, G4TouchableHistory*)
         fWaveLength = 2.*M_PI*CLHEP::hbarc/sampledEnergy/(CLHEP::MeV*CLHEP::nm);
 
         // Cut on maximum number of generated photons/bar
-        if     (nStationID==0 && nQuarticID==0){ if (m_nNOfTDSimHits[0][nDetectorID] >= TDMAXCNT) return 1;}
-        else if(nStationID==0 && nQuarticID==1){ if (m_nNOfTDSimHits[1][nDetectorID] >= TDMAXCNT) return 1;}
-        else if(nStationID==3 && nQuarticID==0){ if (m_nNOfTDSimHits[2][nDetectorID] >= TDMAXCNT) return 1;}
-        else if(nStationID==3 && nQuarticID==1){ if (m_nNOfTDSimHits[3][nDetectorID] >= TDMAXCNT) return 1;}
+        if     (nStationID==0 && nQuarticID==0){ if (m_nNOfTDSimHits[0][nDetectorID] >= TDMaxCnt) return 1;}
+        else if(nStationID==0 && nQuarticID==1){ if (m_nNOfTDSimHits[1][nDetectorID] >= TDMaxCnt) return 1;}
+        else if(nStationID==3 && nQuarticID==0){ if (m_nNOfTDSimHits[2][nDetectorID] >= TDMaxCnt) return 1;}
+        else if(nStationID==3 && nQuarticID==1){ if (m_nNOfTDSimHits[3][nDetectorID] >= TDMaxCnt) return 1;}
 
         int nSensitiveElementID=-1;
         if(nQuarticID==0) { nSensitiveElementID=1; }

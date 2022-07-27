@@ -24,9 +24,9 @@
 """
 
 from TriggerMenuMT.HLT.Config.ControlFlow.HLTCFDot import stepCF_DataFlow_to_dot, stepCF_ControlFlow_to_dot, all_DataFlow_to_dot
-from TriggerMenuMT.HLT.Config.Validation.CFValidation import testHLTTree
-from TriggerMenuMT.HLT.Config.MenuComponents import CFSequence, RoRSequenceFilterNode, PassFilterNode
+from TriggerMenuMT.HLT.Config.ControlFlow.HLTCFComponents import CFSequence, RoRSequenceFilterNode, PassFilterNode
 from TriggerMenuMT.HLT.Config.ControlFlow.MenuComponentsNaming import CFNaming
+from TriggerMenuMT.HLT.Config.Validation.CFValidation import testHLTTree
 
 from AthenaCommon.CFElements import parOR, seqAND, getSequenceChildren, isSequence, compName, findSubSequence,findAlgorithm
 from AthenaCommon.AlgSequence import AlgSequence, dumpSequence
@@ -209,9 +209,8 @@ def makeHLTTree(flags, newJO=False, hltMenuConfig = None):
 
             # The LAr Noise Burst end-of-event sequence
             if 'larnoiseburst' in acceptedEventChainDict['chainParts'][0]['purpose']:
-                from TriggerMenuMT.HLT.CalibCosmicMon.CalibChainConfiguration import getLArNoiseBurstEndOfEvent
-                recoSeq, LArNBRoIs = getLArNoiseBurstEndOfEvent()
-                endOfEventRoIMaker.RoIs += [LArNBRoIs]
+                from TriggerMenuMT.HLT.CalibCosmicMon.CalibChainConfiguration import getLArNoiseBurstRecoSequence
+                recoSeq = getLArNoiseBurstRecoSequence()
                 acceptedEventSeq += conf2toConfigurable(recoSeq)
             # elif ... add other end of event sequences (with the corresponding chain) here if needed
 
@@ -234,7 +233,7 @@ def makeHLTTree(flags, newJO=False, hltMenuConfig = None):
     hltFinalizeSeq += conf2toConfigurable(edmAlg)
 
     if flags.Trigger.doOnlineNavigationCompactification:
-        onlineSlimAlg = getTrigNavSlimmingMTOnlineConfig()
+        onlineSlimAlg = getTrigNavSlimmingMTOnlineConfig(flags)
         hltFinalizeSeq += conf2toConfigurable(onlineSlimAlg)
 
     hltEndSeq += hltFinalizeSeq
@@ -329,7 +328,7 @@ def sequenceScanner( HLTNode ):
     final_step=_mapSequencesInSteps(HLTNode, 0, childInView=False)
 
     for alg, steps in _seqMapInStep.items():
-        if 'PassSequence' in alg: # do not count PassSequences, which is used many times
+        if 'PassSequence' in alg or 'HLTCaloClusterMakerFSRecoSequence' or 'HLTCaloCellMakerFSRecoSequence' in alg: # do not count PassSequences, which is used many times. Harcoding HLTCaloClusterMakerFSRecoSequence and HLTCaloCellMakerFSRecoSequence when using FullScanTopoCluster building for photon triggers with RoI='' (also for Jets and MET) following discussion in ATR-24722. To be fixed
             continue
         # Sequences in views can be in multiple steps
         nonViewSteps = sum([0 if isInViews else 1 for (stepIndex,isInViews) in steps])
@@ -423,10 +422,9 @@ def createDataFlow(chains, allDicts):
             else:
                 filterOutput =[ CFNaming.filterOutName(filterName, inputName) for inputName in filterInput ]
        
-            (foundFilter, foundCFSeq) = findCFSequences(filterName, CFseqList[nstep])
-            log.debug("Found %d CF sequences with filter name %s", foundFilter, filterName)        
-             # add error if more than one
-            if not foundFilter:
+            foundCFSeq = findCFSequences(filterName, CFseqList[nstep])
+            log.debug("Found %d CF sequences with filter name %s", len(foundCFSeq), filterName)
+            if not foundCFSeq:
                 sequenceFilter = buildFilter(filterName, filterInput, chainStep.isEmpty)
                 CFseq = CFSequence( ChainStep=chainStep, FilterAlg=sequenceFilter)
                 CFseq.connect(filterOutput)
@@ -435,7 +433,7 @@ def createDataFlow(chains, allDicts):
                 lastCFseq=CFseq
             else:
                 if len(foundCFSeq) > 1:
-                    log.error("Found more than one seuqences containig this filter %s", filterName)
+                    log.error("Found more than one sequence containing filter %s", filterName)
                 lastCFseq=foundCFSeq[0]
                 sequenceFilter=lastCFseq.filter
                 [ sequenceFilter.addInput(inputName) for inputName in filterInput ]
@@ -517,21 +515,13 @@ def createControlFlow(flags, HLTNode, CFseqList):
     return
 
 
-
-
 def findCFSequences(filter_name, cfseqList):
       """
       Searches for a filter, with given name, in the CF sequence list of this step
       """
-      log.debug( "findCFSequences: filter base name %s", filter_name )
-
       foundFilters = [cfseq for cfseq in cfseqList if filter_name == cfseq.filter.Alg.name()]
-      log.debug("found %d filters with base name %s", len( foundFilters ), filter_name)
 
-      found=len(foundFilters)
-      if found:
-          return (found, foundFilters)
-      return (found, None)
+      return foundFilters
 
 
 def buildFilter(filter_name,  filter_input, empty):

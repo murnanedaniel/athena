@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef TRKALIGNGENDRESSERS_ALIGN_TRACK_DRESSER_H
@@ -36,24 +36,24 @@ namespace Trk {
     AlignTrackDresser(const std::string & type, const std::string & name, const IInterface * parent);
     virtual ~AlignTrackDresser();
 
-    StatusCode initialize();
-    StatusCode finalize();
+    virtual StatusCode initialize() override;
+    virtual StatusCode finalize() override;
     
     /** dresses alignTrack with derivatives and other information */
-    bool dressAlignTrack(AlignTrack * alignTrack);
+    virtual bool dressAlignTrack(AlignTrack * alignTrack) override;
 
     /** sets residuals for TSOS on alignTrack */
     void setResiduals(AlignTrack * alignTrack) const;
 
     /** sets the output stream for the logfile */
-    virtual void setLogStream(std::ostream * os);
+    virtual void setLogStream(std::ostream * os) override;
 
   private:
 
     // private variables
     ToolHandle <IDerivCalcTool>  m_derivCalcTool; //!< tool for calculating derivatives of residuals wrt. alignment parameters
 
-    mutable unsigned int m_numBadCovWMatrix; //!< number of tracks with invalid weight matrix from the deriv.calc.tool
+    unsigned int m_numBadCovWMatrix; //!< number of tracks with invalid weight matrix from the deriv.calc.tool
 
   }; // end class
 

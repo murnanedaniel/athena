@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include <fstream>
@@ -563,7 +563,7 @@ void TauAnalysisTools::truthHadrons(const xAOD::TauJet* xTau, std::vector<const 
 }
 
 //______________________________________________________________________________
-e_TruthMatchedParticleType TauAnalysisTools::getTruthParticleType(const xAOD::TauJet& xTau)
+TruthMatchedParticleType TauAnalysisTools::getTruthParticleType(const xAOD::TauJet& xTau)
 {
   typedef ElementLink< xAOD::TruthParticleContainer > Link_t;
   if (!xTau.isAvailable< Link_t >("truthParticleLink"))
@@ -596,32 +596,16 @@ e_TruthMatchedParticleType TauAnalysisTools::getTruthParticleType(const xAOD::Ta
   return Unknown;
 }
 
-e_TruthMatchedParticleType TauAnalysisTools::getTruthParticleType(const xAOD::DiTauJet& xDiTau)
+TruthMatchedParticleType TauAnalysisTools::getTruthParticleType(const xAOD::DiTauJet& xDiTau)
 {
   if (!xDiTau.isAvailable<char>("IsTruthHadronic"))
     Error("TauAnalysisTools::getTruthParticleType", "No truth match information available. Please run DiTauTruthMatchingTool first");
   static const SG::AuxElement::ConstAccessor<char> accIsTruthHadronic("IsTruthHadronic");
 
-  e_TruthMatchedParticleType eTruthMatchedParticleType = Unknown;
+  TruthMatchedParticleType eTruthMatchedParticleType = Unknown;
 
   if (accIsTruthHadronic(xDiTau))
     eTruthMatchedParticleType = TruthHadronicDiTau;
 
   return eTruthMatchedParticleType;
-}
-// This double is needed to save the average/actual mu for the y-axis in CommonEfficiencyTool.
-// The new trigger systematics (from tag 00-03-14 onwards) use mu dependent values.
-// The functions average_mu() and set_mu() are also needed to support this.
-double l_Mu;
-
-//______________________________________________________________________________
-double TauAnalysisTools::average_mu(const xAOD::TauJet& /*xTau*/)
-{
-  return l_Mu;
-}
-
-//______________________________________________________________________________
-void TauAnalysisTools::set_mu(unsigned int mu)
-{
-  l_Mu=mu;
 }

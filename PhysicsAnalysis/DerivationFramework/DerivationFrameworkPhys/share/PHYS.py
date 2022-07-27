@@ -71,13 +71,14 @@ thinningTools.append(PHYSMuonTPThinningTool)
 # TauJets thinning
 # Disabled for 1st production in 2021, to allow use by tau CP group
 #tau_thinning_expression = "(TauJets.ptFinalCalib >= 13.*GeV) && (TauJets.nTracks>=1) && (TauJets.nTracks<=3) && (TauJets.RNNJetScoreSigTrans>0.01)"
-#from DerivationFrameworkTools.DerivationFrameworkToolsConf import DerivationFramework__GenericObjectThinning
-#PHYSTauJetsThinningTool = DerivationFramework__GenericObjectThinning(name            = "PHYSTauJetsThinningTool",
-#                                                                     StreamName      = PHYSStream.Name,
-#                                                                     ContainerName   = "TauJets",
-#                                                                     SelectionString = tau_thinning_expression)
-#ToolSvc += PHYSTauJetsThinningTool
-#thinningTools.append(PHYSTauJetsThinningTool)
+tau_thinning_expression = "(TauJets.ptFinalCalib >= 0)"
+from DerivationFrameworkTools.DerivationFrameworkToolsConf import DerivationFramework__GenericObjectThinning
+PHYSTauJetsThinningTool = DerivationFramework__GenericObjectThinning(name            = "PHYSTauJetsThinningTool",
+                                                                    StreamName      = PHYSStream.Name,
+                                                                    ContainerName   = "TauJets",
+                                                                    SelectionString = tau_thinning_expression)
+ToolSvc += PHYSTauJetsThinningTool
+thinningTools.append(PHYSTauJetsThinningTool)
 
 # Only keep tau tracks (and associated ID tracks) classified as charged tracks
 from DerivationFrameworkInDet.DerivationFrameworkInDetConf import DerivationFramework__TauTrackParticleThinning
@@ -85,11 +86,24 @@ PHYSTauTPThinningTool = DerivationFramework__TauTrackParticleThinning(name      
                                                                       StreamName             = PHYSStream.Name,
                                                                       TauKey                 = "TauJets",
                                                                       InDetTrackParticlesKey = "InDetTrackParticles",
-#                                                                      SelectionString        = tau_thinning_expression,
+                                                                      SelectionString        = tau_thinning_expression,
                                                                       DoTauTracksThinning    = True,
                                                                       TauTracksKey           = "TauTracks")
 ToolSvc += PHYSTauTPThinningTool
 thinningTools.append(PHYSTauTPThinningTool)
+
+# TauJets_muonRM thinning
+tau_murm_thinning_expression = tau_thinning_expression.replace('TauJets', 'TauJets_MuonRM') #essnetially disable the thinning
+from DerivationFrameworkInDet.DerivationFrameworkInDetConf import DerivationFramework__TauJets_LepRMParticleThinning
+PHYSTauJets_MuonRMThinningTool = DerivationFramework__TauJets_LepRMParticleThinning(name                   = "PHYSTauJets_MuonRMThinningTool",
+                                                                                    StreamName             = PHYSStream.Name,
+                                                                                    originalTauKey         = "TauJets",
+                                                                                    LepRMTauKey            = "TauJets_MuonRM",
+                                                                                    InDetTrackParticlesKey = "InDetTrackParticles",
+                                                                                    TauTracksKey           = "TauTracks_MuonRM",
+                                                                                    SelectionString        = tau_murm_thinning_expression)
+ToolSvc += PHYSTauJets_MuonRMThinningTool
+thinningTools.append(PHYSTauJets_MuonRMThinningTool)
 
 # ID tracks associated with high-pt di-tau
 from DerivationFrameworkInDet.DerivationFrameworkInDetConf import DerivationFramework__DiTauTrackParticleThinning
@@ -148,7 +162,9 @@ PHYSSlimmingHelper.SmartCollections = ["EventInfo",
                                        "TauJets",
                                        "DiTauJets",
                                        "DiTauJetsLowPt",
+                                       "TauJets_MuonRM",
                                        "AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets",
+                                       "AntiKt10UFOCSSKSoftDropBeta100Zcut10Jets",
                                        "AntiKtVR30Rmax4Rmin02PV0TrackJets",
                                       ]
 
@@ -198,20 +214,18 @@ if DerivationFrameworkIsMonteCarlo:
                                             'TruthHFWithDecayParticles':'xAOD::TruthParticleContainer','TruthHFWithDecayParticlesAux':'xAOD::TruthParticleAuxContainer',
                                             'TruthHFWithDecayVertices':'xAOD::TruthVertexContainer','TruthHFWithDecayVerticesAux':'xAOD::TruthVertexAuxContainer',
                                             'TruthCharm':'xAOD::TruthParticleContainer','TruthCharmAux':'xAOD::TruthParticleAuxContainer',
-                                            'TruthPrimaryVertices':'xAOD::TruthVertexContainer','TruthPrimaryVerticesAux':'xAOD::TruthVertexAuxContainer',
-                                            'AntiKt10TruthTrimmedPtFrac5SmallR20Jets':'xAOD::JetContainer', 'AntiKt10TruthTrimmedPtFrac5SmallR20JetsAux':'xAOD::JetAuxContainer'
+                                            'TruthPrimaryVertices':'xAOD::TruthVertexContainer','TruthPrimaryVerticesAux':'xAOD::TruthVertexAuxContainer'
                                            }
 
    from DerivationFrameworkMCTruth.MCTruthCommon import addTruth3ContentToSlimmerTool
    addTruth3ContentToSlimmerTool(PHYSSlimmingHelper)
    PHYSSlimmingHelper.AllVariables += ['TruthHFWithDecayParticles','TruthHFWithDecayVertices','TruthCharm','TruthPileupParticles','InTimeAntiKt4TruthJets','OutOfTimeAntiKt4TruthJets']
 
-PHYSSlimmingHelper.ExtraVariables += ["AntiKt10TruthTrimmedPtFrac5SmallR20Jets.Tau1_wta.Tau2_wta.Tau3_wta.D2.GhostBHadronsFinalCount",
-                                      "Electrons.TruthLink",
+PHYSSlimmingHelper.ExtraVariables += ["Electrons.TruthLink",
                                       "Muons.TruthLink",
                                       "Photons.TruthLink",
-                                      "AntiKt4EMTopoJets.DFCommonJets_QGTagger_truthjet_nCharged.DFCommonJets_QGTagger_truthjet_pt.DFCommonJets_QGTagger_truthjet_eta.DFCommonJets_QGTagger_NTracks.DFCommonJets_QGTagger_TracksWidth.DFCommonJets_QGTagger_TracksC1.PartonTruthLabelID.ConeExclBHadronsFinal.ConeExclCHadronsFinal.GhostBHadronsFinal.GhostCHadronsFinal.GhostBHadronsFinalCount.GhostBHadronsFinalPt.GhostCHadronsFinalCount.GhostCHadronsFinalPt",
-                                      "AntiKt4EMPFlowJets.DFCommonJets_QGTagger_truthjet_nCharged.DFCommonJets_QGTagger_truthjet_pt.DFCommonJets_QGTagger_truthjet_eta.DFCommonJets_QGTagger_NTracks.DFCommonJets_QGTagger_TracksWidth.DFCommonJets_QGTagger_TracksC1.PartonTruthLabelID.DFCommonJets_fJvt.ConeExclBHadronsFinal.ConeExclCHadronsFinal.GhostBHadronsFinal.GhostCHadronsFinal.GhostBHadronsFinalCount.GhostBHadronsFinalPt.GhostCHadronsFinalCount.GhostCHadronsFinalPt",
+                                      "AntiKt4EMTopoJets.DFCommonJets_QGTagger_truthjet_nCharged.DFCommonJets_QGTagger_truthjet_pt.DFCommonJets_QGTagger_truthjet_eta.DFCommonJets_QGTagger_NTracks.DFCommonJets_QGTagger_TracksWidth.DFCommonJets_QGTagger_TracksC1.ConeExclBHadronsFinal.ConeExclCHadronsFinal.GhostBHadronsFinal.GhostCHadronsFinal.GhostBHadronsFinalCount.GhostBHadronsFinalPt.GhostCHadronsFinalCount.GhostCHadronsFinalPt",
+                                      "AntiKt4EMPFlowJets.DFCommonJets_QGTagger_truthjet_nCharged.DFCommonJets_QGTagger_truthjet_pt.DFCommonJets_QGTagger_truthjet_eta.DFCommonJets_QGTagger_NTracks.DFCommonJets_QGTagger_TracksWidth.DFCommonJets_QGTagger_TracksC1.ConeExclBHadronsFinal.ConeExclCHadronsFinal.GhostBHadronsFinal.GhostCHadronsFinal.GhostBHadronsFinalCount.GhostBHadronsFinalPt.GhostCHadronsFinalCount.GhostCHadronsFinalPt",
                                       "TruthPrimaryVertices.t.x.y.z",
                                       "InDetTrackParticles.TTVA_AMVFVertices.TTVA_AMVFWeights.eProbabilityHT.numberOfTRTHits.numberOfTRTOutliers",
                                       "EventInfo.hardScatterVertexLink.timeStampNSOffset",

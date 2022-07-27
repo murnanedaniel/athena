@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef G4USERACTIONS_G4UA_LOOPERKILLER_H
@@ -8,7 +8,6 @@
 #include "GaudiKernel/ServiceHandle.h"
 
 // Infrastructure includes
-#include "AthenaKernel/MsgStreamMember.h"
 #include "G4UserSteppingAction.hh"
 #include "AthenaBaseComps/AthMessaging.h"
 
@@ -53,9 +52,9 @@ namespace G4UA
 
       typedef ServiceHandle<StoreGateSvc> StoreGateSvc_t;
       /// Pointer to StoreGate (event store by default)
-      mutable StoreGateSvc_t m_evtStore;
+      StoreGateSvc_t m_evtStore;
       /// Pointer to StoreGate (detector store by default)
-      mutable StoreGateSvc_t m_detStore;
+      StoreGateSvc_t m_detStore;
 
       /// My configuration options
       Config m_config;

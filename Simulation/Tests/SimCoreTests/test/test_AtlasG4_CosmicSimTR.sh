@@ -2,6 +2,7 @@
 #
 # art-description: Run cosmics simulation outside ISF, using TrackRecords as input, using 2015 geometry and conditions
 # art-type: grid
+# art-architecture:  '#x86_64-intel'
 # art-include: master/Athena
 # art-output: *.HITS.pool.root
 # art-output: log.*
@@ -42,7 +43,7 @@ AtlasG4_tf.py \
 --postInclude 'PyJobTransforms/UseFrontier.py' \
 --truthStrategy 'MC15aPlus' \
 --imf False \
--athenaopts '"--config-only=ConfigSimCG.pkl"'
+--athenaopts '"--config-only=ConfigSimCG.pkl"'
 
 AtlasG4_tf.py \
 --inputEVNT_TRFile '/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/SimCoreTests/Cosmics.TR.pool.root' \

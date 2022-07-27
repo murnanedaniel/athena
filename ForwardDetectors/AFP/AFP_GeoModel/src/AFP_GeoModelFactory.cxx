@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "AFP_GeoModelFactory.h"
@@ -23,6 +23,7 @@
 #include "GeoModelUtilities/GeoMaterialPropertiesTable.h"
 #include "GeoModelUtilities/GeoBorderSurfaceContainer.h"
 #include "AFP_Geometry/AFP_Geometry.h"
+#include "AFP_Geometry/AFP_constants.h"
 
 #include "GeoPrimitives/CLHEPtoEigenConverter.h"
 
@@ -41,7 +42,7 @@ using namespace Genfun;
 using namespace CLHEP;
 
 AFP_GeoModelFactory::AFP_GeoModelFactory(StoreGateSvc *detStore, AFP_Geometry* pGeometry)
-    :m_pDetectorManager(NULL), m_pDetectorStore(detStore)
+    :m_pDetectorManager(NULL), m_pDetectorStore(detStore), m_addSeparationWindow(false)
 {
     pGeometry->getCfgParams(&m_CfgParams);
     m_pGeometry=pGeometry;
@@ -237,7 +238,7 @@ void AFP_GeoModelFactory::create(GeoPhysVol *world)
 
     // Initialization of Surface Container for TD Surface(s)
     GeoBorderSurfaceContainer* pBSContainer = new GeoBorderSurfaceContainer();
-    pBSContainer->reserve(m_AfpConstants.ToF_TrainsCnt*m_AfpConstants.ToF_ColumnsCnt);
+    pBSContainer->reserve(AFP_CONSTANTS::ToF_TrainsCnt*AFP_CONSTANTS::ToF_ColumnsCnt);
 
     //AFP00 (SIDE A (+z)) ------------------------------------------------------------------------------------------------------------------------------------------------------
 

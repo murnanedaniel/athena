@@ -87,6 +87,8 @@ addTool("MuonCombinedRecExample.MuonCombinedTools.MuonCombinedInDetDetailedTrack
 addTool("MuonCombinedRecExample.MuonCombinedTools.MuonInDetForwardCandidateTool","MuonInDetForwardCandidateTool")
 addTool("MuonCombinedRecExample.MuonCombinedTools.MuonCombinedParticleCreator","MuonCombinedParticleCreator")
 addTool("MuonCombinedRecExample.MuonCombinedTools.MuonCaloParticleCreator","MuonCaloParticleCreator")
+
+addTool("MuonCombinedRecExample.MuonCombinedTools.MuonSelectionTool","MuonRecoSelTool")
 addTool("MuonCombinedRecExample.MuonCombinedTools.MuonCreatorTool","MuonCreatorTool")
 addTool("MuonCombinedRecExample.MuonCombinedTools.MuonCreatorTool","StauCreatorTool",BuildStauContainer=True)
 addTool("MuonCombinedRecExample.MuonCombinedTools.MuonCreatorTool_LRT","MuonCreatorTool_LRT")
@@ -141,4 +143,12 @@ addTool("MuonCombinedRecExample.MuonCombinedFitTools.CombinedTrackBuilderFit_EME
 addTool("MuonCombinedRecExample.MuonCombinedFitTools.MuonSegmentRegionRecoveryTool_EMEO","MuonSegmentRegionRecoveryTool_EMEO")
 addTool("MuonCombinedRecExample.MuonCombinedFitTools.CombinedMuonTrackBuilder_EMEO","CombinedMuonTrackBuilder_EMEO")
 addTool("MuonCombinedRecExample.MuonCombinedTools.MuonCandidateTool_EMEO", "MuonCandidateTool_EMEO")
+addTool("MuonCombinedRecExample.MuonCombinedTools.MuonCombinedFitTagTool_EMEO", "MuonCombinedFitTagTool_EMEO")
+addTool("MuonCombinedRecExample.MuonCombinedTools.MuonCombinedTool_EMEO", "MuonCombinedTool_EMEO")
+
 addAlgorithm("MuonCombinedRecExample.MuonCombinedAlgs.MuonCombinedMuonCandidateAlg_EMEO","MuonCombinedMuonCandidateAlg_EMEO")
+addAlgorithm("MuonCombinedRecExample.MuonCombinedAlgs.MuonCombinedAlg_EMEO","MuonCombinedAlg_EMEO")
+addAlgorithm("MuonCombinedRecExample.MuonCombinedAlgs.MuonSegContainerMergerAlg","MuonSegContainerMergerAlg")
+
+
+

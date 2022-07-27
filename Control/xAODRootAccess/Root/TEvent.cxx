@@ -1,4 +1,4 @@
-// Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+// Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 // System include(s):
 #include <cassert>
@@ -118,8 +118,8 @@ namespace xAOD {
    // Initialise the static data:
    //
    const ::Int_t TEvent::CACHE_SIZE = -1;
-   const char* TEvent::EVENT_TREE_NAME    = "CollectionTree";
-   const char* TEvent::METADATA_TREE_NAME = "MetaData";
+   const char* const TEvent::EVENT_TREE_NAME    = "CollectionTree";
+   const char* const TEvent::METADATA_TREE_NAME = "MetaData";
 
    /// Helper variable
    static const TEvent::EAuxMode DEFAULT_ACCESS_MODE = TEvent::kClassAccess;
@@ -1903,7 +1903,7 @@ namespace xAOD {
             static const std::type_info& baseTi = typeid( SG::AuxVectorBase );
             static const std::string baseName =
                SG::normalizedTypeinfoName( baseTi );
-            static ::TClass* baseCl = ::TClass::GetClass( baseName.c_str() );
+            static ::TClass* const baseCl = ::TClass::GetClass( baseName.c_str() );
             if( ! baseCl ) {
                ::Error( "xAOD::TEvent::initStats",
                         XAOD_MESSAGE( "Couldn't get dictionary for type "
@@ -2726,10 +2726,11 @@ namespace xAOD {
          if( ! omgr ) {
             ::Fatal( "xAOD::TEvent::connectAux",
                      XAOD_MESSAGE( "There's a logic error in the code" ) );
+            return StatusCode::FAILURE;
          }
 
          // Check if we can switch out the internal store of this object:
-         static const TClass* holderClass =
+         static const TClass* const holderClass =
             TClass::GetClass( typeid( SG::IAuxStoreHolder ) );
          if( ! omgr->holder()->getClass()->InheritsFrom( holderClass ) ) {
             // Nope... So let's just end the journey here.
@@ -2837,10 +2838,11 @@ namespace xAOD {
          if( ! omgr ) {
             ::Fatal( "xAOD::TEvent::connectMetaAux",
                      XAOD_MESSAGE( "There's a logic error in the code" ) );
+            return StatusCode::FAILURE;
          }
 
          // Check if we can switch out the internal store of this object:
-         static const TClass* holderClass =
+         static const TClass* const holderClass =
             TClass::GetClass( typeid( SG::IAuxStoreHolder ) );
          if( ! omgr->holder()->getClass()->InheritsFrom( holderClass ) ) {
             // Nope... So let's just end the journey here.
@@ -2942,7 +2944,7 @@ namespace xAOD {
       }
 
       // Check if we can switch out the internal store of this object:
-      static const TClass* holderClass =
+      static const TClass* const holderClass =
          TClass::GetClass( typeid( SG::IAuxStoreHolder ) );
       if( ! mgr.holder()->getClass()->InheritsFrom( holderClass ) ) {
          // Nope... So let's just end the journey here.
@@ -2956,6 +2958,7 @@ namespace xAOD {
       if( ! storeHolder ) {
          ::Fatal( "xAOD::TEvent::setUpDynamicStore",
                   XAOD_MESSAGE( "There's a logic error in the code" ) );
+         return StatusCode::FAILURE;
       }
 
       // Create a TAuxStore instance that will read the dynamic variables
@@ -3421,9 +3424,9 @@ namespace xAOD {
 
       // The classes whose children can have an auxiliary store attached
       // to them:
-      static const TClass* dvClass =
+      static const TClass* const dvClass =
          ::TClass::GetClass( typeid( SG::AuxVectorBase ) );
-      static const TClass* aeClass =
+      static const TClass* const aeClass =
          ::TClass::GetClass( typeid( SG::AuxElement ) );
 
       // Do the check:
@@ -3441,9 +3444,9 @@ namespace xAOD {
    ::Bool_t TEvent::isAuxStore( const TObjectManager& mgr ) {
 
       // The classes whose children are considered auxiliary stores:
-      static const TClass* storeClass =
+      static const TClass* const storeClass =
          ::TClass::GetClass( typeid( SG::IConstAuxStore ) );
-      static const TClass* storeHolderClass =
+      static const TClass* const storeHolderClass =
          ::TClass::GetClass( typeid( SG::IAuxStoreHolder ) );
 
       // Do the check:
@@ -3465,9 +3468,9 @@ namespace xAOD {
 
       // The classes whose children can have an auxiliary store attached
       // to them:
-      static const TClass* dvClass =
+      static const TClass* const dvClass =
          TClass::GetClass( typeid( SG::AuxVectorBase ) );
-      static const TClass* aeClass =
+      static const TClass* const aeClass =
          TClass::GetClass( typeid( SG::AuxElement ) );
 
       // Do the check:

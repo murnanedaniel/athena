@@ -8,7 +8,7 @@
 #ifndef SELECTION_HELPERS__SELECTION_ACCESSOR_LIST_H
 #define SELECTION_HELPERS__SELECTION_ACCESSOR_LIST_H
 
-#include <SelectionHelpers/ISelectionAccessor.h>
+#include <SelectionHelpers/ISelectionReadAccessor.h>
 
 #include <memory>
 #include <vector>
@@ -18,33 +18,38 @@ namespace CP
   /// \brief the \ref SelectionAccesor for list of selection
   /// decorations
 
-  class SelectionAccessorList final : public ISelectionAccessor
+  class SelectionAccessorList final : public ISelectionReadAccessor
   {
     //
     // public interface
     //
 
   public:
-    SelectionAccessorList (std::vector<std::unique_ptr<ISelectionAccessor> > val_list);
+    SelectionAccessorList (std::vector<std::unique_ptr<ISelectionReadAccessor> > val_list);
 
   public:
     virtual SelectionType
-    getBits (const SG::AuxElement& element) const override;
-
-  public:
-    virtual void setBits (const SG::AuxElement& element,
-                          SelectionType selection) const override;
+    getBits (const SG::AuxElement& element,
+             const CP::SystematicSet *sys) const override;
 
   public:
     virtual bool
-    getBool (const SG::AuxElement& element) const override;
-
-  public:
-    virtual void setBool (const SG::AuxElement& element,
-                          bool selection) const override;
+    getBool (const SG::AuxElement& element,
+             const CP::SystematicSet *sys) const override;
 
   public:
     virtual std::string label () const override;
+
+  public:
+    virtual CP::SystematicSet
+    getInputAffecting (const ISystematicsSvc& svc,
+                       const std::string& objectName) const override;
+
+  public:
+    virtual StatusCode
+    fillSystematics (const ISystematicsSvc& svc,
+                     const std::vector<CP::SystematicSet>& sysList,
+                     const std::string& objectName) override;
 
 
     //
@@ -53,7 +58,7 @@ namespace CP
 
     /// \brief the list of selection accessors I rely on
   private:
-    std::vector<std::unique_ptr<ISelectionAccessor> > m_list;
+    std::vector<std::unique_ptr<ISelectionReadAccessor> > m_list;
 
     /// \brief the label of the accessor
   private:

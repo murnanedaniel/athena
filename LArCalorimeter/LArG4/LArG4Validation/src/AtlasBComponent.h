@@ -1,24 +1,24 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "CLHEP/GenericFunctions/AbsFunction.hh"
+#include "CxxUtils/checker_macros.h"
 
 // Real magnetic field svc
-#include "MagFieldInterfaces/IMagFieldSvc.h"
-#include "GaudiKernel/ServiceHandle.h"
- 
+#include "MagFieldConditions/AtlasFieldCacheCondObj.h"
+
 // This class is an adaptor:
 namespace Genfun {
   
   class AtlasBComponent: public AbsFunction {
-    
+
     FUNCTION_OBJECT_DEF(AtlasBComponent)
       
       public:
     
     // Constructor:
-    AtlasBComponent(unsigned int index);
+    AtlasBComponent(unsigned int index, MagField::AtlasFieldCache* fieldCache);
    
     // Destructor:
     virtual ~AtlasBComponent();
@@ -39,8 +39,14 @@ namespace Genfun {
     // Don't allow assignment (avoid coverity warning).
     AtlasBComponent& operator= (const AtlasBComponent&);
 
-    // Mag field accessor
-    ServiceHandle<MagField::IMagFieldSvc>   m_magFieldSvc;
+    /* Mag field accessor.
+     *
+     * For this to be thread-safe the caller needs to have a local instance
+     * of AtlasFieldCache as the cache is being mutated by operator(). We have
+     * no way of knowing if this is the case, but this class is used only in
+     * one place.
+     */
+    MagField::AtlasFieldCache* m_fieldCache ATLAS_THREAD_SAFE{};
 
   };   
 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 
@@ -82,7 +82,7 @@ static const double DYc=2771.6*tan(Alfa/2);
 
 void
 createSectorEnvelopes2FromDB (GeoFullPhysVol* envelope,
-                              const StoredMaterialManager& materialManager,
+                              StoredMaterialManager& materialManager,
                               std::map<std::string, unsigned int>& trdMap,
                               IRDBRecordset& BarrelDMTrds,
                               std::map<std::string, unsigned int>& trapMap,
@@ -357,7 +357,7 @@ createBaseEnvelopesFromDB (GeoFullPhysVol* envelope,
 void createFromDB (GeoFullPhysVol* envelope,
                    IRDBAccessSvc* rdbAccess,
                    IGeoModelSvc* geoModel,
-                   const StoredMaterialManager& materialManager)
+                   StoredMaterialManager& materialManager)
 {
   // Use Geometry Database
   DecodeVersionKey keyLAr(geoModel,"LAr");
@@ -369,25 +369,25 @@ void createFromDB (GeoFullPhysVol* envelope,
   std::map<std::string, unsigned int> tubeMap;
   for (unsigned int i=0; i<BarrelDMTubes->size(); i++)
   {
-    std::string key = (*BarrelDMTubes)[i]->getString("TUBENAME");
+    const std::string& key = (*BarrelDMTubes)[i]->getString("TUBENAME");
     tubeMap[key] = i;
   }
   std::map<std::string, unsigned int> boxMap;
   for (unsigned int j=0; j<BarrelDMBoxes->size(); j++)
   {
-    std::string key = (*BarrelDMBoxes)[j]->getString("BOXNAME");
+    const std::string& key = (*BarrelDMBoxes)[j]->getString("BOXNAME");
     boxMap[key] = j;
   }
   std::map<std::string, unsigned int> trdMap;
   for (unsigned int k=0; k<BarrelDMTrds->size(); k++)
   {
-    std::string key = (*BarrelDMTrds)[k]->getString("TRDNAME");
+    const std::string& key = (*BarrelDMTrds)[k]->getString("TRDNAME");
     trdMap[key] = k;
   }
   std::map<std::string, unsigned int> trapMap;
   for (unsigned int l=0; l<BarrelDMTraps->size(); l++)
   {
-    std::string key = (*BarrelDMTraps)[l]->getString("TRAPNAME");
+    const std::string& key = (*BarrelDMTraps)[l]->getString("TRAPNAME");
     trapMap[key] = l;
   }
 
@@ -926,7 +926,7 @@ void LArGeo::BarrelDMConstruction::create(GeoFullPhysVol* envelope)
 
   DecodeVersionKey larVersionKey(geoModel, "LAr");
 
-  const StoredMaterialManager* materialManager = nullptr;
+  StoredMaterialManager* materialManager = nullptr;
   if (StatusCode::SUCCESS != detStore->retrieve(materialManager, std::string("MATERIALS"))) {
     throw std::runtime_error("Error in BarrelDMConstruction, stored MaterialManager is not found.");
 

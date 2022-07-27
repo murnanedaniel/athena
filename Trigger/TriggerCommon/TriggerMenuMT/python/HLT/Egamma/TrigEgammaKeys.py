@@ -1,6 +1,6 @@
 #  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
 
-__author__ = "Fernando Monticelli, Debottam Gupta, Joao Victor Pinto"
+__author__ = "Fernando Monticelli, Debottam Bakshi Gupta, Joao Victor Pinto"
 __doc__    = "ConfigSettings"
 __all__    = [ "getTrigEgammaKeys" ]
 
@@ -29,14 +29,15 @@ class TrigEgammaKeysBase(object):
         """Static class to collect all string manipulation in precision calo sequences """
         self.precisionCaloTopoCollection                = 'HLT_egammaTopoCluster'
         self.precisionCaloEgammaRecCollection           = 'HLT_precisionCaloEgammaRecCollection'
-        self.precisionElectronCaloClusterContainer     = recordable("HLT_CaloEMClusters_Electron") if not ion else recordable("HLT_HICaloEMClusters") 
-        self.precisionPhotonCaloClusterContainer       = recordable("HLT_CaloEMClusters_Photon") if not ion else recordable("HLT_HICaloEMClusters")
+        self.precisionElectronCaloClusterContainer      = recordable("HLT_CaloEMClusters_Electron") if not ion else recordable("HLT_HICaloEMClusters") 
+        self.precisionPhotonCaloClusterContainer        = recordable("HLT_CaloEMClusters_Photon") if not ion else recordable("HLT_HICaloEMClusters")
         self.precisionTopoClusterContainer              = recordable("HLT_TopoCaloClustersRoI") if not ion else recordable("HLT_TopoCaloClustersHIRoI") 
         self.precisionEgammaRecCollection               = 'HLT_egammaRecCollection'
-        self.precisionEMClusterContainer                = recordable('HLT_TrigEMClusters')
+        self.precisionPhotonEMClusterContainer          = recordable('HLT_TrigEMClusters_Photons')
+        self.precisionElectronEMClusterContainer        = recordable('HLT_TrigEMClusters_Electrons')
 
         """Static class to collect all string manipulation in precision photon sequences """
-        self.precisionPhotonSuperClusterRecCollection      = 'HLT_PhotonSuperRecCollection'
+        self.precisionPhotonSuperClusterRecCollection   = 'HLT_PhotonSuperRecCollection'
         self.precisionPhotonSuperClusterCollection      = 'HLT_PhotonSuperClusters'
         self.precisionPhotonContainer                   = recordable('HLT_egamma_Photons')
 
@@ -76,6 +77,7 @@ class TrigEgammaKeys_LRT(TrigEgammaKeysBase):
         
         self.fastElectronRoIContainer               = recordable("HLT_Roi_FastElectron_LRT")
         self.fastElectronContainer                  = recordable('HLT_FastElectrons_LRT')
+        self.precisionElectronEMClusterContainer    = recordable('HLT_TrigEMClusters_Electrons_LRT')
         self.precisionElectronCaloClusterContainer  = recordable("HLT_CaloEMClusters_LRT")
         self.precisionElectronContainer             = recordable('HLT_egamma_Electrons_LRT')
         self._IDTrigConfig                          = getInDetTrigConfig('electronLRT')
@@ -86,11 +88,25 @@ class TrigEgammaKeys_GSF(TrigEgammaKeysBase):
     # This class contians modified base configuration class for GSF electron trigger chains
     def __init__(self, ion):
         TrigEgammaKeysBase.__init__(self, ion)
+        self.precisionElectronEMClusterContainer    = recordable('HLT_TrigEMClusters_Electrons_GSF')
         
         # from HLT_IDTrack_Electron to HLT_IDTrack_Electron by refit alg
         self.precisionElectronTrkCollectionGSF          = 'HLT_IDTrkTrack_Electron_GSF'
         self.precisionElectronTrackParticleContainerGSF = recordable('HLT_IDTrack_Electron_GSF')
         self.precisionElectronContainer                 = recordable('HLT_egamma_Electrons_GSF')
+
+class TrigEgammaKeys_LRTGSF(TrigEgammaKeysBase):
+    # This class contians modified base configuration class for LRT_GSF electron trigger chains
+    def __init__(self, ion):
+        TrigEgammaKeysBase.__init__(self, ion)
+        self.precisionElectronEMClusterContainer    = recordable('HLT_TrigEMClusters_Electrons_LRTGSF')
+        
+        # from HLT_IDTrack_Electron to HLT_IDTrack_Electron by refit alg
+        self.precisionElectronTrkCollectionGSF          = 'HLT_IDTrkTrack_Electron_LRTGSF'
+        self.precisionElectronTrackParticleContainerGSF = recordable('HLT_IDTrack_Electron_LRTGSF')
+        self.precisionElectronCaloClusterContainer      = recordable("HLT_CaloEMClusters_LRT")
+        self.precisionElectronContainer                 = recordable('HLT_egamma_Electrons_LRTGSF')
+        self._IDTrigConfig                              = getInDetTrigConfig('electronLRT')
 
 
 #
@@ -100,15 +116,14 @@ def getTrigEgammaKeys(name='', ion=False):
 
     _d = {
         # Dictionary that maps a string to a configuration setting for electron and photon chains
-        ''      : TrigEgammaKeysBase(ion),
-        '_LRT'  : TrigEgammaKeys_LRT(ion),
-        '_GSF'  : TrigEgammaKeys_GSF(ion),
+        ''         : TrigEgammaKeysBase(ion),
+        '_LRT'     : TrigEgammaKeys_LRT(ion),
+        '_GSF'     : TrigEgammaKeys_GSF(ion),
+        '_LRTGSF' : TrigEgammaKeys_LRTGSF(ion),
         }
 
     if name in _d.keys():
         return _d[name]
     else:
         raise Exception('getTrigEgammaKeys() called with non valid name : ' + name + ' valid names are:' + str(_d.keys()) )
-
-
 

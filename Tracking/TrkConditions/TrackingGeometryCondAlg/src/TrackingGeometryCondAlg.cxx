@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+ *   Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
  */
 
 
@@ -21,10 +21,6 @@ StatusCode Trk::TrackingGeometryCondAlg::initialize()
 
   // Write Handle
   ATH_CHECK(m_trackingGeometryWriteKey.initialize());
-  // CondSvc
-  ATH_CHECK(m_condSvc.retrieve());
-  // Register write handle
-  ATH_CHECK(m_condSvc->regHandle(this, m_trackingGeometryWriteKey));
   // Retrieve tools
   ATH_CHECK(m_trackingGeometryBuilder.retrieve());
   if (m_geometryProcessors.retrieve().isFailure()){
@@ -43,14 +39,11 @@ StatusCode Trk::TrackingGeometryCondAlg::execute(){
     return StatusCode::SUCCESS;
   }
 
-  //Create dummy IOV range covering 0 - inf
-  EventIDRange range = IOVInfiniteRange::infiniteMixed();
+  // Start with infinite range and let the TG builder narrow it down.
+  writeHandle.addDependency (IOVInfiniteRange::infiniteMixed());
 
-  std::pair<EventIDRange, const Trk::TrackingGeometry*> trackingGeometryPair =
-    m_trackingGeometryBuilder->trackingGeometry(
-      ctx, std::pair<EventIDRange, const Trk::TrackingVolume*>(range, nullptr));
-  // cast constness away for StoreGate
-  Trk::TrackingGeometry* trackingGeometry = const_cast<Trk::TrackingGeometry*>(trackingGeometryPair.second);
+  std::unique_ptr<Trk::TrackingGeometry> trackingGeometry =
+    m_trackingGeometryBuilder->trackingGeometry(ctx, nullptr, writeHandle);
 
   // loop over the recursive geometry processors
   auto gpIter = m_geometryProcessors.begin();
@@ -64,7 +57,8 @@ StatusCode Trk::TrackingGeometryCondAlg::execute(){
                       << (*gpIter));
     }
   }
-  ATH_CHECK(writeHandle.record(trackingGeometryPair.first, trackingGeometry));
-
+  if (m_dumpGeo) trackingGeometry->dump(msgStream(), "TrackingGeometryCondAlg");
+  ATH_CHECK(writeHandle.record(std::move(trackingGeometry)));
+  
   return StatusCode::SUCCESS;
 }

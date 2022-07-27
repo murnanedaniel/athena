@@ -1,7 +1,7 @@
 ///////////////////////// -*- C++ -*- /////////////////////////////
 
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // JetCalibrationTool.cxx 
@@ -98,10 +98,7 @@ StatusCode JetCalibrationTool::initialize() {
 
   // Rho key specified in the config file?
   std::string rhoKey_config = m_globalConfig->GetValue("RhoKey", "None");
-
-  // Get name of vertex container
-  m_vertexContainerName = m_globalConfig->GetValue("VertexContainerName","PrimaryVertices");
-  
+ 
   bool requireRhoInput = false;
 
   //Make sure the residual correction is turned on if requested
@@ -341,7 +338,7 @@ StatusCode JetCalibrationTool::initializeEvent(JetEventInfo& jetEventInfo) const
   }
 
   // static accessor for PV index access
-  static SG::AuxElement::ConstAccessor<int> PVIndexAccessor("PVIndex");
+  static const SG::AuxElement::ConstAccessor<int> PVIndexAccessor("PVIndex");
   
   ATH_MSG_VERBOSE("Initializing event.");
 
@@ -403,7 +400,7 @@ StatusCode JetCalibrationTool::initializeEvent(JetEventInfo& jetEventInfo) const
   // Retrieve EventInfo object, which now has multiple uses
   if ( m_doResidual || m_doGSC || m_doBcid || m_timeDependentCalib) {
     const xAOD::EventInfo * eventObj = 0;
-    static unsigned int eventInfoWarnings = 0;
+    static std::atomic<unsigned int> eventInfoWarnings = 0;
     SG::ReadHandle<xAOD::EventInfo> rhEvtInfo(m_evtInfoKey);
     if ( rhEvtInfo.isValid() ) {
       eventObj = rhEvtInfo.cptr();
@@ -482,7 +479,7 @@ StatusCode JetCalibrationTool::initializeEvent(JetEventInfo& jetEventInfo) const
       // Validate value of non-standard PV index usage
       if (m_doGSC && jetEventInfo.PVIndex())
       {
-        static unsigned int vertexIndexWarnings = 0;
+        static std::atomic<unsigned int> vertexIndexWarnings = 0;
         if (jetEventInfo.PVIndex() < 0 || static_cast<size_t>(jetEventInfo.PVIndex()) >= vertices->size())
         {
           ++vertexIndexWarnings;

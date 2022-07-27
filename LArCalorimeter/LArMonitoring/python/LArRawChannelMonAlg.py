@@ -10,7 +10,6 @@ settings taken from LArMonTools/LArRawChannelMonTool_joboptions.py
 """
 
 from LArMonitoring.GlobalVariables import lArDQGlobals
-from LArMonTools.LArMonFlags import LArMonFlags
 from GaudiKernel.SystemOfUnits import MeV, GeV
 
 _USE_LEGACY_BINNING_IN_ENDCAPS = True
@@ -20,17 +19,24 @@ def LArRawChannelMonConfigOld(inputFlags):
     from AthenaMonitoring import AthMonitorCfgHelperOld
     from AthenaMonitoring.DQMonFlags import DQMonFlags
     from AthenaCommon.BeamFlags import jobproperties
-    from CaloTools.CaloNoiseCondAlg import CaloNoiseCondAlg
-    from AthenaMonitoring.AtlasReadyFilterTool import GetAtlasReadyFilterTool
     from LArMonitoring.LArMonitoringConf import LArRawChannelMonAlg
     cosmics = jobproperties.Beam.beamType() == 'cosmics'
     stream = _get_stream(DQMonFlags)
+    from LArMonTools.LarMonFlags import LArMonFlags
+    signal = LArMonFlags.doLArRawMonitorSignal()
     helper = AthMonitorCfgHelperOld(inputFlags, 'LArRawChannelMonAlgOldCfg')
     alg = LArRawChannelMonConfigCore(
         helper, instance=LArRawChannelMonAlg, inputFlags=inputFlags,
-        cosmics=cosmics, stream=stream)
-    CaloNoiseCondAlg(noisetype=alg.NoiseKey)
-    alg.AtlasReadyFilterTool = GetAtlasReadyFilterTool()
+        cosmics=cosmics, stream=stream, doSignal=signal)
+    from AthenaCommon.AthenaCommonFlags import athenaCommonFlags
+    if not athenaCommonFlags.isOnline():
+       from AthenaCommon.AlgSequence import AthSequencer
+       #if not hasattr (condSeq,"Calo_"+alg.NoiseKey+"Alg"):
+       if len([_ for _ in AthSequencer("AthCondSeq") if _.getName()=="Calo_"+str(alg.NoiseKey)+"Alg"]) == 0:
+          from CaloTools.CaloNoiseCondAlg import CaloNoiseCondAlg
+          CaloNoiseCondAlg(noisetype=alg.NoiseKey.Path)
+       from AthenaMonitoring.AtlasReadyFilterTool import GetAtlasReadyFilterTool
+       alg.AtlasReadyFilterTool = [GetAtlasReadyFilterTool()]
     return helper.result()
 
 
@@ -43,11 +49,12 @@ def LArRawChannelMonConfig(inputFlags):
     from AthenaConfiguration.Enums import BeamType
     cosmics = (inputFlags.Beam.Type is BeamType.Cosmics)
     stream = _get_stream(inputFlags.DQ)
+    signal = inputFlags.LArMon.doLArRawMonitorSignal
     helper = AthMonitorCfgHelper(inputFlags, 'LArRawChannelMonAlgCfg')
     alg = LArRawChannelMonConfigCore(
         helper, instance=CompFactory.LArRawChannelMonAlg,
-        inputFlags=inputFlags, cosmics=cosmics, stream=stream)
-    noise_alg = CaloNoiseCondAlgCfg(inputFlags, noisetype=alg.NoiseKey)
+        inputFlags=inputFlags, cosmics=cosmics, stream=stream, doSignal=signal)
+    noise_alg = CaloNoiseCondAlgCfg(inputFlags, noisetype=alg.NoiseKey.Path)
     accumulator = ComponentAccumulator()
     accumulator.merge(noise_alg)
     alg.AtlasReadyFilterTool.append(
@@ -56,7 +63,7 @@ def LArRawChannelMonConfig(inputFlags):
     return accumulator
 
 
-def LArRawChannelMonConfigCore(helper, instance, inputFlags, cosmics, stream):
+def LArRawChannelMonConfigCore(helper, instance, inputFlags, cosmics, stream, doSignal):
     alg = helper.addAlgorithm(instance, 'LArRawChannelMonAlg')
     alg.occupancy_thresholds = [
         100 * MeV,  # EMBA
@@ -72,6 +79,7 @@ def LArRawChannelMonConfigCore(helper, instance, inputFlags, cosmics, stream):
     alg.pos_noise_thresholds = [3] * 8
     alg.neg_noise_thresholds = [3] * 8
     alg.bcid_signal_threshold = 500. * MeV
+
     alg.time_threshold = 5
     alg.quality_threshold = 65530
     alg.noise_threshold = 3
@@ -94,11 +102,11 @@ def LArRawChannelMonConfigCore(helper, instance, inputFlags, cosmics, stream):
         alg.monitor_negative_noise = True
     else:
         alg.NoiseKey = 'totalNoise'
-        alg.monitor_signal = LArMonFlags.doLArRawMonitorSignal()
-        alg.monitor_positive_noise = LArMonFlags.doLArRawMonitorSignal()
-        alg.monitor_negative_noise = LArMonFlags.doLArRawMonitorSignal()
+        alg.monitor_signal = doSignal
+        alg.monitor_positive_noise = doSignal
+        alg.monitor_negative_noise = doSignal
     alg.monitor_time = False
-    alg.monitor_quality = LArMonFlags.doLArRawMonitorSignal()
+    alg.monitor_quality = doSignal
     alg.monitor_burst = True
     if stream in ('express', 'RNDM'):
         alg.noise_streams = ['RNDM']
@@ -319,8 +327,6 @@ if __name__=='__main__':
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
     from AthenaCommon.Logging import log
     from AthenaCommon.Constants import WARNING
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior = 1
     log.setLevel(WARNING)
 
     from LArMonitoring.LArMonConfigFlags import createLArMonConfigFlags
@@ -333,17 +339,15 @@ if __name__=='__main__':
     ConfigFlags.DQ.enableLumiAccess = False
     ConfigFlags.DQ.useTrigger = False
     ConfigFlags.Beam.Type = BeamType.Collisions
-    #ConfigFlags.IOVDb.GlobalTag = 'CONDBR2-BLKPA-RUN2-09'
     ConfigFlags.lock()
 
     from CaloRec.CaloRecoConfig import CaloRecoCfg
     cfg = CaloRecoCfg(ConfigFlags)
     acc = LArRawChannelMonConfig(ConfigFlags)
     cfg.merge(acc)
-    #cfg.printConfig()
-    #ConfigFlags.dump()
     f = open("LArRawChannelMon.pkl", "wb")
     cfg.store(f)
     f.close()
 
+    #in case you need directly run uncomment:
     #cfg.run(100,OutputLevel=WARNING)

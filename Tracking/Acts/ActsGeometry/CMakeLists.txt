@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # Declare the package name:
 atlas_subdir( ActsGeometry )
@@ -30,7 +30,6 @@ atlas_add_library( ActsGeometryLib
                    AthenaBaseComps
                    AthenaKernel
                    CaloDetDescrLib
-                   EventInfo
                    GaudiKernel
                    GeoModelUtilities
                    GeoPrimitives
@@ -64,7 +63,6 @@ atlas_add_component( ActsGeometry
                      src/ActsMaterialStepConverterTool.cxx
                      src/ActsMaterialJsonWriterTool.cxx
                      src/ActsMaterialTrackWriterSvc.cxx
-                     #src/GeomShiftCondAlg.cxx
                      src/ActsAlignmentCondAlg.cxx
                      src/NominalAlignmentCondAlg.cxx
                      src/ActsTrackingGeometryTool.cxx
@@ -82,6 +80,7 @@ atlas_add_component( ActsGeometry
                      AthenaBaseComps
                      AthenaKernel
                      CaloDetDescrLib
+                     CxxUtils
                      EventInfo
                      GaudiKernel
                      StoreGateLib
@@ -97,5 +96,6 @@ atlas_add_component( ActsGeometry
                      TrkFitterInterfaces)
 
 # Install files from the package:
-atlas_install_joboptions( share/*.py )
+atlas_install_joboptions( share/*.py POST_BUILD_CMD ${ATLAS_FLAKE8} )
 atlas_install_python_modules( python/*.py POST_BUILD_CMD ${ATLAS_FLAKE8} )
+atlas_install_scripts( test/*.py POST_BUILD_CMD ${ATLAS_FLAKE8} )

@@ -14,7 +14,7 @@ from TrigConfHLTUtils.HLTUtils import string2hash
 from AthenaCommon.Logging import logging
 import re
 
-import collections
+import collections.abc
 
 log = logging.getLogger( __name__ )
 
@@ -164,6 +164,44 @@ def verifyExplicitL1Thresholds(chainname,chainparts,L1thresholds):
             counter += 1
     assert counter>0, f"Did not find explicit L1 seeds in chain parts for {chainname}!"
 
+from ...Menu.SignatureDicts import getSignatureInformation, JetRecoKeys
+from ...Jet.JetRecoCommon import etaRangeAbbrev
+from copy import deepcopy
+
+def unifyJetRecoParts(chainParts):
+    """
+    Postprocess the jet chainParts to set all the reco config consistently
+    For formatting reasons, we extract these from the last jet chainPart
+    then propagate to all jet chainParts.
+    Any inconsistencies in non-default options are considered a malformed chain
+    Technically we can't tell if the default was explicitly set, though.
+    """
+
+    jetDefaults, _ = getSignatureInformation('Jet')
+    # Extract the jet chainParts, and get the reco specs from the last one
+    _jetRecoKeys = JetRecoKeys
+    jetChainParts = [cPart for cPart in chainParts if cPart['signature'] in ['Jet','Bjet']]
+    jetRecoDict = {k:jetChainParts[-1][k] for k in _jetRecoKeys}
+
+    # Check consistency of the preceding jet parts
+    for p in jetChainParts[:-1]:
+        for k in _jetRecoKeys:
+            # Assume that keys are all defined
+            if p[k] != jetDefaults[k]: # OK if the spec is default
+                log.error('Inconsistent jet reco setting for %s in chainPart %s', k, p['chainPartName'])
+                log.error('Jet chainParts: %s', jetChainParts)
+                raise RuntimeError('Jet reco should be specified only in the last jet chainPart')
+
+    # Substitute the reco settings consistently and return
+    newChainParts = []
+    for cPart in chainParts:
+        newCPart = deepcopy(cPart)
+        if newCPart['signature'] in ['Jet','Bjet']:
+            for k in _jetRecoKeys:
+                newCPart[k] = jetRecoDict[k]
+        newChainParts.append(newCPart)
+
+    return newChainParts
 
 def analyseChainName(chainName, L1thresholds, L1item):
     """
@@ -175,7 +213,6 @@ def analyseChainName(chainName, L1thresholds, L1item):
 
     # ---- dictionary with all chain properties ----
     from TriggerMenuMT.HLT.Menu.SignatureDicts import ChainDictTemplate
-    from copy import deepcopy
     genchainDict = deepcopy(ChainDictTemplate)
     genchainDict['chainName'] = chainName
 
@@ -280,7 +317,6 @@ def analyseChainName(chainName, L1thresholds, L1item):
         if m:
             log.debug("Pattern found in this string: %s", cpart)
             groupdict = m.groupdict()
-            # Check whether the extra contains a special keyword
 
             multiChainIndices = [i for i in range(len(hltChainNameShort)) if ( hltChainNameShort.startswith(cpart, i) ) ]
             log.debug("MultiChainIndices: %s", multiChainIndices)
@@ -387,13 +423,16 @@ def analyseChainName(chainName, L1thresholds, L1item):
 
         # --- check for duplicate strings in chain part name ---
         duplicateParts = ([item for item, count in collections.Counter(parts).items() if count > 1])
-        log.debug("[analyseChainName] chainpartsNoL1 %s contains duplicate strins %s", chainpartsNoL1, duplicateParts)
+        log.debug("[analyseChainName] chainpartsNoL1 %s contains duplicate strings %s", chainpartsNoL1, duplicateParts)
         if duplicateParts:
             log.error("[analyseChainName] chain %s has duplicate strings %s, please fix!!", chainName, duplicateParts)
             raise RuntimeError("[analyseChainName] Check the chain name, there are duplicate configurations: %s", duplicateParts)
 
         chainProperties['trigType']=mdicts[chainindex]['trigType']
-        chainProperties['extra']=mdicts[chainindex]['extra']
+        if 'extra' in chainProperties:
+            raise RuntimeError("[analyseChainName] Overwrote 'extra' value, only one supported!")
+        else:
+            chainProperties['extra']=mdicts[chainindex]['extra']
         multiplicity = mdicts[chainindex]['multiplicity'] if not mdicts[chainindex]['multiplicity'] == '' else '1'
         chainProperties['multiplicity'] = multiplicity
         chainProperties['threshold']=mdicts[chainindex]['threshold']
@@ -429,7 +468,6 @@ def analyseChainName(chainName, L1thresholds, L1item):
                     chainProperties['alignmentGroup'] = getAlignmentGroupFromPattern('Bphysics',chainProperties['extra'])
 
         # ---- import the relevant dictionaries for each part of the chain ----
-        from TriggerMenuMT.HLT.Menu.SignatureDicts import getSignatureInformation
         SignatureDefaultValues, allowedSignaturePropertiesAndValues = getSignatureInformation(chainProperties['signature'])
         log.debug('SignatureDefaultValues: %s', SignatureDefaultValues)
         allDefaults = list(SignatureDefaultValues.values())
@@ -461,22 +499,52 @@ def analyseChainName(chainName, L1thresholds, L1item):
                         chainProperties[prop] = part
                     matchedparts.append(part)
 
-        # ----- at this point we can figure out if the chain is a bJet chain and update defaults accordingly
-        if chainProperties['signature']=='Jet' and chainProperties['bTag'] != '':
-            log.debug('Setting b-jet chain defaults')
-            # b-jet chain, so we now use the bJet defaults if they have not already been overriden
-            bJetDefaultValues, allowedbJetPropertiesAndValues = getSignatureInformation('Bjet')
-            for prop, value in bJetDefaultValues.items():
-                propSet=False
-                for value in allowedbJetPropertiesAndValues[prop]:
-                    if value in matchedparts:
-                        propSet=True
-                        break
+        # Jet-specific operations
+        if chainProperties['signature']=='Jet':
 
-                # if the property was not set already, then set if according to the b-jet defaults
-                if propSet is False:
-                    log.debug('Changing %s from %s to %s', prop, str(chainProperties[prop]), str(bJetDefaultValues[prop]))
-                    chainProperties[prop] = bJetDefaultValues[prop]
+        # ----- at this point we can figure out if the chain is a bJet chain and update defaults accordingly
+            if chainProperties['bTag'] != '':
+                log.debug('Setting b-jet chain defaults')
+                # b-jet chain, so we now use the bJet defaults if they have not already been overriden
+                bJetDefaultValues, allowedbJetPropertiesAndValues = getSignatureInformation('Bjet')
+                for prop, value in bJetDefaultValues.items():
+                    propSet=False
+                    for value in allowedbJetPropertiesAndValues[prop]:
+                        if value in matchedparts:
+                            propSet=True
+                            break
+
+                    # if the property was not set already, then set if according to the b-jet defaults
+                    if propSet is False:
+                        log.debug('Changing %s from %s to %s', prop, str(chainProperties[prop]), str(bJetDefaultValues[prop]))
+                        chainProperties[prop] = bJetDefaultValues[prop]
+
+
+            if chainProperties['signature'] == 'Jet' and chainProperties['beamspotChain'] != '':
+                log.debug('Setting beamspot chain defaults')
+                BeamspotDefaultValues, allowedBeamspotPropertiesAndValues = getSignatureInformation('Beamspot_Jet')
+                
+                for prop, value in BeamspotDefaultValues.items():
+                    propSet=False
+                    for value in allowedBeamspotPropertiesAndValues[prop]:
+                        if value in matchedparts:
+                            propSet=True
+                            break
+
+                    # if the property was not set already, then set if according to the b-jet defaults
+                    if propSet is False:
+                        log.debug('Changing %s from %s to %s', prop, str(chainProperties[prop]), str(BeamspotDefaultValues[prop]))
+                        chainProperties[prop] = BeamspotDefaultValues[prop]
+                        
+
+            # Substitute after b-jet defaults have been set otherwise they will be overridden
+            if chainProperties['extra']:
+                # Atypical handling here: jets translate the 1 char suffix to an eta range
+                try:
+                    etarange = etaRangeAbbrev[chainProperties['extra']]
+                    chainProperties['etaRange'] = etarange
+                except KeyError:
+                    raise RuntimeError(f"Invalid jet 'extra' value {chainProperties['extra']} in {chainProperties['chainPartName']}. Only [a,c,f] allowed")
 
         # ---- checking the parts that haven't been matched yet ----
         log.debug("matched parts %s", matchedparts)
@@ -534,8 +602,14 @@ def analyseChainName(chainName, L1thresholds, L1item):
         genchainDict['signatures'] += [cPart['signature']]
         genchainDict['alignmentGroups'] += [cPart['alignmentGroup']]
 
+    # Postprocess chains with multiple jet chainParts 
+    # to set them consistently from only one specification
+    if len(genchainDict['chainParts'])>1:
+        if 'Jet' in genchainDict['signatures'] or 'Bjet' in genchainDict['signatures']:
+            genchainDict['chainParts'] = unifyJetRecoParts(genchainDict['chainParts'])
+        
     #genchainDict['signature'] = allChainProperties[0]['signature']
-   
+
     return genchainDict
 
 
@@ -601,9 +675,11 @@ def dictFromChainName(chainInfo):
     log.debug("Analysing chain with name: %s", chainName)
     chainDict = analyseChainName(chainName,  l1Thresholds, L1item)
     log.debug('ChainProperties: %s', chainDict)
-
+    
     from TriggerMenuMT.HLT.CommonSequences.EventBuildingSequences import isRoIBasedPEB
-    _isRoIBasedPEB = isRoIBasedPEB(chainDict['eventBuildType'])
+    # TODO: pass flags by argument instead of import, or find a way to determine PEB type without initialising a temporary PEB tool (which needs flags)
+    from AthenaConfiguration.AllConfigFlags import ConfigFlags
+    _isRoIBasedPEB = isRoIBasedPEB(ConfigFlags, chainDict['eventBuildType'])
 
     for chainPart in chainDict['chainParts']:
         # fill the sigFolder and subSigs folder
@@ -618,13 +694,11 @@ def dictFromChainName(chainInfo):
         thisExtra = chainPart['extra']
         thisL1 = chainPart['L1threshold']
         thisChainPartName = chainPart['chainPartName']
-        #incorrectL1=False
 
         if thisSignature in ['Muon','Bphysics']:
             if 'MuonnoL1' in thisAlignGroup or 'lateMu' in thisExtra:
                 if 'FSNOSEED' not in thisL1:
                     log.error("Muon noL1 and lateMu chain should be seeded from FSNOSEED. Check %s seeded from %s (defined L1: %s), signature %s",chainDict['chainName'],thisL1,l1Thresholds,thisSignature)
-                    #incorrectL1=True
             else:
                 if 'MU' not in thisL1:
                     log.error("Standard muon and Bphysics chain should be seeded from L1_MU. Check %s seeded from %s (defined L1: %s), signature %s",chainDict['chainName'],thisL1,l1Thresholds,thisSignature)
@@ -635,7 +709,7 @@ def dictFromChainName(chainInfo):
                 log.error("Standard egamma chains should be seeded from L1_EM. Check %s seeded from %s (defined L1: %s),  signature %s",chainDict['chainName'],thisL1,l1Thresholds,thisSignature)
                 #incorrectL1=True
 
-        if thisSignature in 'Tau':
+        if thisSignature in ['Tau']:
             if 'TAU' not in thisL1:
                 log.error("Standard tau chains should be seeded from L1_TAU. Check %s seeded from %s (defined L1: %s), signature %s",chainDict['chainName'],thisL1,l1Thresholds,thisSignature)
                 #incorrectL1=True

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022  CERN for the benefit of the ATLAS collaboration
 */
 
 // **********************************************************************
@@ -8,9 +8,7 @@
 
 #include "dqm_algorithms/MDTCluster.h"
 
-#include <cmath>
-#include <iostream>
-#include <map>
+
 
 #include <TClass.h>
 #include <TH1.h>
@@ -26,7 +24,9 @@
 #include "dqm_core/Result.h"
 #include "dqm_algorithms/tools/AlgorithmHelper.h"
 #include "ers/ers.h"
-
+#include <cmath>
+#include <iostream>
+#include <map>
 static dqm_algorithms::MDTCluster staticInstance;
 
 
@@ -93,13 +93,13 @@ MDTCluster::execute( const std::string& name, const TObject& object, const dqm_c
     ref = static_cast<TH1 *>( config.getReference() );
   }
   catch ( dqm_core::Exception & ex ) {
-    throw dqm_core::BadRefHist(ERS_HERE,name," Could not retreive reference");
+    throw dqm_core::BadRefHist(ERS_HERE,name," Could not retrieve reference");
   }
   if (hist->GetDimension() != ref->GetDimension() ) {
     throw dqm_core::BadRefHist( ERS_HERE, name, "Reference VS histo: Different dimension!" );
   } 
   if (hist->GetNbinsX() != ref->GetNbinsX() ) {
-    throw dqm_core::BadRefHist( ERS_HERE, name, "Reference VS histo: Different bin numbre in X axis!" );
+    throw dqm_core::BadRefHist( ERS_HERE, name, "Reference VS histo: Different bin number in X axis!" );
   } 
     
  //Check of statistics
@@ -156,51 +156,44 @@ MDTCluster::execute( const std::string& name, const TObject& object, const dqm_c
   //and finishes when the difference is smaller. 
 
   i=0;
-  bool cluster_open=0;
+  bool cluster_open=false;
   std::pair<int,int> bin_start_end;
   std::pair<int , std::pair<int,int> > cluster_size_binStart_binEnd;
   std::vector< std::pair< int , std::pair< int, int> > > clusters;
   int size=0;
 
   for(i=0;i<diff.size();i++){
-
-    if(fabs(diff[i])>n_sigma*sqrt(hist->GetBinContent(i+1)+ref->GetBinContent(i+1)*norm)){
+    if(std::abs(diff[i])>n_sigma*std::sqrt(hist->GetBinContent(i+1)+ref->GetBinContent(i+1)*norm)){
       if(cluster_open){
         if(i!=0){
-        
           if(diff[i-1]*diff[i]>0){
             size++;
-          };
-        
-          if(diff[i-1]*diff[i]<=0 ){
+          } else { //diff[i-1]*diff[i]<=0
             if(size>=cluster_size){
               bin_start_end.second=i;
               cluster_size_binStart_binEnd.first=size;
               cluster_size_binStart_binEnd.second=bin_start_end;
               clusters.push_back(cluster_size_binStart_binEnd);
-             };
-            cluster_open=0;
+            };
+            cluster_open=false;
           };
-
-          if(i==0){
+       } else { //i ===0
             ERS_INFO("Cluster searching fail");
             dqm_core::Result *result = new dqm_core::Result(dqm_core::Result::Undefined);
             result->tags_["i"] = i;
             return result;
-          };
-        };
+       };
       };
-        
+      
       if(!cluster_open){
-        cluster_open=1;
+        cluster_open=true;
         size=0;
         bin_start_end.first=i+1;
         size++;
       };
-
     };
 
-    if(fabs(diff[i])<=n_sigma*sqrt(hist->GetBinContent(i+1)+ref->GetBinContent(i+1)*norm)){
+    if(std::abs(diff[i])<=n_sigma*std::sqrt(hist->GetBinContent(i+1)+ref->GetBinContent(i+1)*norm)){
       if(cluster_open){
         if(size>=cluster_size){
           bin_start_end.second=i;
@@ -208,7 +201,7 @@ MDTCluster::execute( const std::string& name, const TObject& object, const dqm_c
           cluster_size_binStart_binEnd.second=bin_start_end;
           clusters.push_back(cluster_size_binStart_binEnd);
         };
-        cluster_open=0;
+        cluster_open=false;
       };
     };
     if(i==diff.size()-1){
@@ -219,7 +212,7 @@ MDTCluster::execute( const std::string& name, const TObject& object, const dqm_c
           cluster_size_binStart_binEnd.second=bin_start_end;
           clusters.push_back(cluster_size_binStart_binEnd);
         };
-        cluster_open=0;
+        cluster_open=false;
       };
     };
   };
@@ -231,7 +224,7 @@ MDTCluster::execute( const std::string& name, const TObject& object, const dqm_c
   result->tags_["00-N_clusters"] = clusters.size();
 
   std::string Cluster="Cluster_";
-  char num[3];
+  char num[12];
   std::string Size="_info_1_size";
   std::string start_at_bin="_info_2_start_at_bin";
   std::string finish_at_bin="_info_3_finish_at_bin";
@@ -241,11 +234,11 @@ MDTCluster::execute( const std::string& name, const TObject& object, const dqm_c
 
   for(i=0;i<clusters.size();i++){
     if((i+1)<10){
-      sprintf(num,"0%d",(i+1));
+      sprintf(num,"0%u",(i+1));
     };  
 
     if((i+1)>=10){
-      sprintf(num,"%d",(i+1));
+      sprintf(num,"%u",(i+1));
     };  
  
     message1 = Cluster + (std::string) num + Size;

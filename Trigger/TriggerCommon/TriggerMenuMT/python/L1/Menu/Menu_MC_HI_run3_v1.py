@@ -44,7 +44,7 @@ def defineMenu():
         'L1_EM20VH_FIRSTEMPTY',
         # new calo
         'L1_eEM5', 'L1_eEM9', 'L1_eEM18', 'L1_eEM15',
-        'L1_eEM26', 'L1_eEM26M',
+        'L1_eEM18L', 'L1_eEM26', 'L1_eEM26M',
 
         ## 
         # MU
@@ -63,25 +63,37 @@ def defineMenu():
         # combined lepton (e and mu)
         ##
         'L1_2EM7', 'L1_2EM10', 'L1_2EM15', 'L1_2EM16',
+        # new calo
+        #'L1_2eEM7', 'L1_2eEM9', 'L1_2eEM15',
+        'L1_2eEM18L',
+
         
         # combined mu - jet
         'L1_MU3V_J12','L1_MU3V_J15', 
+        'L1_MU3V_jJ30', 'L1_MU3V_jJ40',
 
         'L1_TAU8', 'L1_TAU60', 'L1_TAU12IM', 'L1_TAU20IM',
         'L1_TAU8_EMPTY',
+        # new calo
+        'L1_eTAU12',
+
 
         # single jet
         'L1_J12','L1_J15','L1_J20','L1_J25', 'L1_J30', 'L1_J40', 'L1_J50' ,'L1_J75','L1_J85', 'L1_J100',
         'L1_J20p31ETA49', 'L1_J30p31ETA49', 'L1_J50p31ETA49', 'L1_J75p31ETA49', 'L1_J15p31ETA49',
-        'L1_J12_EMPTY','L1_J12_FIRSTEMPTY', 'L1_J12_UNPAIRED_ISO', 'L1_J12_UNPAIRED_NONISO', 'L1_J12_ABORTGAPNOTCALIB',
+        'L1_J12_EMPTY','L1_J12_FIRSTEMPTY', 'L1_J12_UNPAIRED_ISO', 'L1_J12_UNPAIRED_NONISO',
         'L1_J15p31ETA49_UNPAIRED_ISO',
         'L1_J30_EMPTY', 'L1_J30_FIRSTEMPTY', 'L1_J30p31ETA49_EMPTY', 'L1_J30p31ETA49_UNPAIRED_ISO', 'L1_J30p31ETA49_UNPAIRED_NONISO',
-        'L1_J50_UNPAIRED_ISO', 'L1_J50_UNPAIRED_NONISO', 'L1_J50_ABORTGAPNOTCALIB',         
+        'L1_J50_UNPAIRED_ISO', 'L1_J50_UNPAIRED_NONISO',
         'L1_J100_FIRSTEMPTY',
         'L1_J12_BGRP12',
         'L1_J400', 'L1_J400_LAR',
+        # new calo
         'L1_jJ500', 'L1_jJ500_LAR',
         'L1_jJ20', 'L1_jJ30',
+        'L1_jJ40', 'L1_jJ50', 'L1_jJ55', 'L1_jJ60', 'L1_jJ80', 'L1_jJ90',
+        'L1_jJ40p31ETA49', 'L1_jJ50p31ETA49', 'L1_jJ60p31ETA49', 'L1_jJ90p31ETA49', 'L1_jJ125p31ETA49',
+
 
         # XE
         'L1_XE35', 'L1_XE40', 'L1_XE45', 'L1_XE50', 
@@ -108,13 +120,18 @@ def defineMenu():
         'L1_ZDC_A_VZDC_C_VTE200', 'L1_ZDC_C_VZDC_A_VTE200',
         'L1_MBTS_1_ZDC_A_VZDC_C_VTE200', 'L1_MBTS_1_ZDC_C_VZDC_A_VTE200',
         'L1_TE3p0ETA49_ZDC_A_VZDC_C_VTE200', 'L1_TE3p0ETA49_ZDC_C_VZDC_A_VTE200', 'L1_TE5_ZDC_A_VZDC_C_VTE200','L1_TE5_ZDC_C_VZDC_A_VTE200','L1_TE20_ZDC_A_VZDC_C_VTE200', 'L1_TE20_ZDC_C_VZDC_A_VTE200', 
+        #UPC calo only - legacy
+        'L1_TE5_VTE200', 'L1_VTE50',
+
         
         
 
                 
         # RNDM
-        'L1_RD0_FILLED', 'L1_RD0_UNPAIRED_ISO',  'L1_RD0_EMPTY', 'L1_RD0_ABORTGAPNOTCALIB',
-        'L1_RD0_FIRSTEMPTY', 'L1_RD0_BGRP11', 'L1_RD0_BGRP7',
+        'L1_RD0_FILLED', 'L1_RD0_UNPAIRED_ISO',  'L1_RD0_EMPTY',
+        'L1_RD0_FIRSTEMPTY', 'L1_RD0_BGRP11',
+        'L1_RD0_BGRP7',
+        'L1_RD0_FIRSTINTRAIN',
         'L1_RD1_EMPTY',
         'L1_RD2_EMPTY',
         'L1_RD2_FILLED',
@@ -150,16 +167,25 @@ def defineMenu():
         # BPTX
         
         # BCM
-        'L1_BCM_AC_CA_BGRP12', 'L1_BCM_Wide_EMPTY', 'L1_BCM_Wide_UNPAIRED_ISO', 'L1_BCM_Wide_UNPAIRED_NONISO',
-        'L1_BCM_AC_UNPAIRED_ISO', 'L1_BCM_CA_UNPAIRED_ISO',
-        'L1_BCM_AC_UNPAIRED_NONISO', 'L1_BCM_CA_UNPAIRED_NONISO',
-        'L1_BCM_AC_ABORTGAPNOTCALIB', 'L1_BCM_CA_ABORTGAPNOTCALIB', 'L1_BCM_Wide_ABORTGAPNOTCALIB',
-        'L1_BCM_AC_CALIB', 'L1_BCM_CA_CALIB','L1_BCM_Wide_CALIB',
-        'L1_BCM_AC_UNPAIREDB1', 'L1_BCM_CA_UNPAIREDB2',
+        'L1_BCM_Wide_BGRP12', 'L1_BCM_AC_CA_BGRP12', 'L1_BCM_Wide_EMPTY', 'L1_BCM_Wide_UNPAIRED_ISO', 'L1_BCM_Wide_UNPAIRED_NONISO',
+        'L1_BCM_AC_UNPAIRED_ISO','L1_BCM_CA_UNPAIRED_ISO',
+        'L1_BCM_AC_UNPAIRED_NONISO','L1_BCM_CA_UNPAIRED_NONISO',
+        'L1_BCM_Wide_CALIB',
         'L1_J12_UNPAIREDB1', 'L1_J12_UNPAIREDB2',
+        'L1_BCM_2A_EMPTY', 'L1_BCM_2C_EMPTY',
+        'L1_BCM_2A_UNPAIRED_ISO', 'L1_BCM_2C_UNPAIRED_ISO', 'L1_BCM_2A_UNPAIRED_NONISO', 'L1_BCM_2C_UNPAIRED_NONISO',
+        'L1_BCM_2A_FIRSTINTRAIN', 'L1_BCM_2C_FIRSTINTRAIN',
+        # Expected to be needed later after commissioning of the BCM_2A,2C items in other BCIDs
+        # 'L1_BCM_2A_UNPAIREDB1', 'L1_BCM_2A_UNPAIREDB2',
+        # 'L1_BCM_2C_UNPAIREDB1', 'L1_BCM_2C_UNPAIREDB2',
+        # 'L1_BCM_2A_CALIB', 'L1_BCM_2C_CALIB',
+
 
         # AFP
-        'L1_EM7_AFP_A_OR_C', 'L1_EM7_AFP_A_AND_C', 'L1_MU5VF_AFP_A_OR_C', 'L1_MU5VF_AFP_A_AND_C',
+        'L1_EM7_AFP_A_OR_C', 'L1_EM7_AFP_A_AND_C',
+        'L1_MU5VF_AFP_A_OR_C', 'L1_MU5VF_AFP_A_AND_C',
+        'L1_eEM9_AFP_A_OR_C','L1_eEM9_AFP_A_AND_C',
+
         'L1_AFP_A_OR_C_J12', 'L1_AFP_A_AND_C_J12',
         'L1_AFP_A_OR_C_jJ20', 'L1_AFP_A_AND_C_jJ20',
         'L1_AFP_A_OR_C_jJ30', 'L1_AFP_A_AND_C_jJ30',
@@ -186,8 +212,13 @@ def defineMenu():
         # MBTS (ATR-24701)
         'L1_MBTS_1', 'L1_MBTS_1_1',  'L1_MBTS_2',
         'L1_MBTS_1_EMPTY', 'L1_MBTS_1_1_EMPTY', 'L1_MBTS_2_EMPTY',
+        #'L1_MBTS_1_UNPAIRED', 'L1_MBTS_2_UNPAIRED',
         'L1_MBTS_1_UNPAIRED_ISO', 'L1_MBTS_1_1_UNPAIRED_ISO', 'L1_MBTS_2_UNPAIRED_ISO',
         'L1_MBTS_A', 'L1_MBTS_C',
+        # extra MBTS
+        #'L1_MBTSA0', 'L1_MBTSA1', 'L1_MBTSA2', 'L1_MBTSA3', 'L1_MBTSA4', 'L1_MBTSA5', 'L1_MBTSA6', 'L1_MBTSA7', 'L1_MBTSA8', 'L1_MBTSA9', 'L1_MBTSA10', 'L1_MBTSA11', 'L1_MBTSA12', 'L1_MBTSA13', 'L1_MBTSA14', 'L1_MBTSA15',
+        #'L1_MBTSC0', 'L1_MBTSC1', 'L1_MBTSC2', 'L1_MBTSC3', 'L1_MBTSC4', 'L1_MBTSC5', 'L1_MBTSC6', 'L1_MBTSC7', 'L1_MBTSC8', 'L1_MBTSC9', 'L1_MBTSC10', 'L1_MBTSC11', 'L1_MBTSC12', 'L1_MBTSC13', 'L1_MBTSC14', 'L1_MBTSC15',
+
  
         #--------------------------------
         # TOPO items
@@ -214,7 +245,7 @@ def defineMenu():
 
 
 
-# Run this file as python python/l1menu/Menu_MC_pp_v7.py to print out available IDs
+# Run this file as python python/L1/Menu_MC_HI_run3_v1.py to print out available IDs
 # CTP IDs 509-511 are reserved for CALREQ
     
     L1MenuFlags.CtpIdMap = {

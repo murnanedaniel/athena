@@ -16,9 +16,9 @@ def EMVertexBuilderCfg(flags, name="EMVertexBuilder", **kwargs):
     if "VertexFinderTool" not in kwargs:
         vtxFlags = flags.cloneAndReplace(
             "InDet.SecVertex", "InDet.SecVertexEGammaPileUp")
-        from InDetConfig.ConversionFindingConfig import ConversionFinderCfg
+        from InDetConfig.InDetConversionFinderToolsConfig import InDetConversionFinderToolsCfg
         kwargs["VertexFinderTool"] = acc.popToolsAndMerge(
-            ConversionFinderCfg(vtxFlags))
+            InDetConversionFinderToolsCfg(vtxFlags))
 
     alg = CompFactory.EMVertexBuilder(name, **kwargs)
     acc.addEventAlgo(alg)
@@ -26,8 +26,6 @@ def EMVertexBuilderCfg(flags, name="EMVertexBuilder", **kwargs):
 
 
 if __name__ == "__main__":
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior = True
     from AthenaConfiguration.AllConfigFlags import ConfigFlags as flags
     from AthenaConfiguration.TestDefaults import defaultTestFiles
     from AthenaConfiguration.ComponentAccumulator import printProperties

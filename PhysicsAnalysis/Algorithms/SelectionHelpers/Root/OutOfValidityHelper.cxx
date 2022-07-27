@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2018 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /// @author Nils Krumnack
@@ -26,7 +26,7 @@ namespace CP
   {
     if (!m_decorationName.empty())
     {
-      ANA_CHECK (makeSelectionAccessor (m_decorationName, m_accessor));
+      ANA_CHECK (makeSelectionWriteAccessor (m_decorationName, m_accessor));
     }
       
     m_isInitialized = true;
@@ -66,13 +66,4 @@ namespace CP
     return StatusCode::FAILURE;
   }
 
-
-
-  MsgStream& OutOfValidityHelper ::
-  msg (MSG::Level lvl) const
-  {
-    assert (m_msg != nullptr);
-    *m_msg << lvl;
-    return *m_msg;
-  }
 }

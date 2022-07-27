@@ -26,7 +26,6 @@ namespace CP
     , m_selectionTool ("", this)
   {
     declareProperty ("selectionTool", m_selectionTool, "the selection tool we apply");
-    declareProperty ("selectionDecoration", m_selectionDecoration, "the decoration for the jet selection");
   }
 
 
@@ -36,15 +35,9 @@ namespace CP
   {
     ANA_CHECK (m_selectionTool.retrieve());
     ANA_CHECK (m_jetHandle.initialize (m_systematicsList));
+    ANA_CHECK (m_preselection.initialize (m_systematicsList, m_jetHandle, SG::AllowEmpty));
+    ANA_CHECK (m_selectionHandle.initialize (m_systematicsList, m_jetHandle));
     ANA_CHECK (m_systematicsList.initialize());
-    ANA_CHECK (m_preselection.initialize());
-
-    if (m_selectionDecoration.empty())
-    {
-      ANA_MSG_ERROR ("no selection decoration name set");
-      return StatusCode::FAILURE;
-    }
-    ANA_CHECK (makeSelectionAccessor (m_selectionDecoration, m_selectionAccessor));
 
     return StatusCode::SUCCESS;
   }
@@ -60,10 +53,10 @@ namespace CP
       ANA_CHECK (m_jetHandle.retrieve (jets, sys));
       for (const xAOD::Jet *jet : *jets)
       {
-        if (m_preselection.getBool (*jet))
+        if (m_preselection.getBool (*jet, sys))
         {
-          m_selectionAccessor->setBool
-            (*jet, m_selectionTool->keep(*jet));
+          m_selectionHandle.setBool
+            (*jet, m_selectionTool->keep(*jet), sys);
         }
       }
     }

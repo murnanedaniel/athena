@@ -1,15 +1,12 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef INDETMATERIALMANAGER_H
 #define INDETMATERIALMANAGER_H
 
-// Message Stream Member
-#include "AthenaKernel/MsgStreamMember.h"
+#include "AthenaBaseComps/AthMessaging.h"
 #include "RDBAccessSvc/IRDBAccessSvc.h"
-
-#include "CxxUtils/checker_macros.h"
 
 class GeoMaterial;
 class GeoElement;
@@ -32,7 +29,7 @@ namespace InDetDD
 /// materials with a density such that the the total weight is correct.
 
 
-class InDetMaterialManager 
+class InDetMaterialManager : public AthMessaging
 {
 
 public:
@@ -62,7 +59,7 @@ public:
   const GeoMaterial* getMaterial(const std::string & materialName);
 
   /// Get element from GeoModel material manager
-  const GeoElement* getElement(const std::string & elementName) const;
+  const GeoElement* getElement(const std::string & elementName);
 
   /// Create and get material with a specified density based on an existing material.
   /// If a newName is supplied it creates the new material even if the orginal material
@@ -131,12 +128,6 @@ public:
   /// Add material
   void addMaterial(GeoMaterial *material);
 
-  //Declaring the Message method for further use
-  MsgStream& msg (MSG::Level lvl) { return m_msg << lvl; }
-
-  //Declaring the Method providing Verbosity Level
-  bool msgLvl (MSG::Level lvl){ return m_msg.get().level() <= lvl; }
-
 
 private:
 
@@ -186,13 +177,13 @@ private:
   };
   
   
-  const StoredMaterialManager * retrieveManager(const StoreGateSvc* detStore);
+  StoredMaterialManager * retrieveManager(const StoreGateSvc* detStore);
   const GeoMaterial* getAdditionalMaterial(const std::string & materialName) const; 
   bool compareDensity(double d1, double d2) const;
   void addWeightTableOld(const IRDBRecordset_ptr& weightTable, const std::string & space);
 
   // Internal versions. The public versions allow materials to be have extra scaling.
-  const GeoMaterial* getMaterialInternal(const std::string & materialName) const;
+  const GeoMaterial* getMaterialInternal(const std::string & materialName);
   const GeoMaterial* getMaterialInternal(const std::string & origMaterialName, 
 					 double density, 
 					 const std::string & newName = "");
@@ -217,7 +208,7 @@ private:
   void createMaterial(const MaterialDef & material);
   double getExtraScaleFactor(const std::string & materialName);
 
-  const StoredMaterialManager *m_materialManager;
+  StoredMaterialManager *m_materialManager;
   std::string m_managerName;
 
   typedef std::map<std::string, const GeoMaterial *> MaterialStore;
@@ -232,10 +223,7 @@ private:
   typedef std::map<std::string, double > ExtraScaleFactorMap;
   ExtraScaleFactorMap m_scalingMap;
 
-  //Declaring private message stream member.
-  Athena::MsgStreamMember m_msg;
-
-  // Has linear weight flag. 
+  // Has linear weight flag.
   bool m_extraFunctionality;
 
   const InDetDD::AthenaComps * m_athenaComps;

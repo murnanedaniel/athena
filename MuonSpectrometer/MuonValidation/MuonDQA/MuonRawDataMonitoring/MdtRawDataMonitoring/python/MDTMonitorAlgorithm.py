@@ -4,10 +4,9 @@
 
 from AthenaConfiguration.ComponentFactory import CompFactory
 from AthenaConfiguration.Enums import LHCPeriod
-#from MdtRawDataMonitoring.MdtRawMonLabels import *
-from .MdtMonUtils import getMDTLabel, getMDTLabelx
-from .MDTTubeMax import tubeMax
-from .MDTChambers import mdtBA,mdtBC,mdtEA,mdtEC
+from MdtRawDataMonitoring.MdtMonUtils import getMDTLabel, getMDTLabelx
+from MdtRawDataMonitoring.MDTTubeMax import tubeMax, tubeMax_smdt
+from MdtRawDataMonitoring.MDTChambers import mdtBA,mdtBC,mdtEA,mdtEC
 
 def MdtMonitoringConfigOld(inputFlags):
     from AthenaMonitoring import AthMonitorCfgHelperOld
@@ -219,9 +218,9 @@ def MdtMonitoringConfig(inputFlags):
     crates  = ["01","02","03","04"]
   
     for iregion in bigRegions:
-        theTitle = "NumberOfHitsIn"+iregion+"PerChamber_ADCCut"
+        theTitle = "NumberOfHitsIn"+iregion+"PerChamber_ADCCut_forpp"
         theTitle_noise = "NumberOfHitsIn"+iregion+"PerChamber_ADCCutt_NoiseBurst"
-        theTitle_segs = "NumberOfHitsIn"+iregion+"PerChamber_onSegms_ADCCut"
+        theTitle_segs = "NumberOfHitsIn"+iregion+"PerChamber_onSegms_ADCCut_forpp"
         theTitle_eff = "effsIn"+iregion+"PerChamber_ADCCut"
         thisLabelx,thisLabely=getMDTLabel(theTitle+"_labelx",theTitle+"_labely")
         if iregion=="Barrel":
@@ -346,7 +345,7 @@ def MdtMonitoringConfig(inputFlags):
                                        path='Overview',   xbins=120, xmin=0., xmax=2000.)
 
         for ilayer in layers:
-            title_MDTNumberOfHitsPerML="NumberOfHitsIn"+iregion+ilayer+"PerMultiLayer_ADCCut"
+            title_MDTNumberOfHitsPerML="NumberOfHitsIn"+iregion+ilayer+"PerMultiLayer_ADCCut_forpp"
             thisLabelx,thisLabely=getMDTLabel(title_MDTNumberOfHitsPerML+"_labelx",title_MDTNumberOfHitsPerML+"_labely")
             phimaxML=phimax*2
             if (iregion=="BA" or iregion=="BC") and ilayer=="Extra": phimaxML=phimax//2
@@ -415,10 +414,10 @@ def MdtMonitoringConfig(inputFlags):
                         maxy=95
                     if(iregion=="EA" or iregion=="EC"):
                         maxy=80
-                
-            
-            mdtRegionGroup.defineHistogram(var, title=titleOccvsLbPerRegionPerLayer+";LB;[Eta - Phi]", type='TH2F',
-                                           path='Overview', xbins=834, xmin=1, xmax=2502, ybins=maxy, ymin=0, ymax=maxy, ylabels=labelsY, opt='kAddBinsDynamically')
+
+            if ilayer != 'Extra':
+                mdtRegionGroup.defineHistogram(var, title=titleOccvsLbPerRegionPerLayer+";LB;[Eta - Phi]", type='TH2F',
+                                               path='Overview', xbins=834, xmin=1, xmax=2502, ybins=maxy, ymin=0, ymax=maxy, ylabels=labelsY, opt='kAddBinsDynamically', merge='merge')
 
         for icrate in crates:
             maxy=122
@@ -465,17 +464,17 @@ def MdtMonitoringConfig(inputFlags):
             titleOccvsLbPerRegionPerCrate = "OccupancyVsLB_"+iregion+icrate 
             var="lb_mon,y_mon_bin_bycrate_"+iregion+"_"+icrate+";"+titleOccvsLbPerRegionPerCrate
             mdtRegionGroup_bycrate.defineHistogram(var, type='TH2F', title=titleOccvsLbPerRegionPerCrate+";LB;[Eta-Phi]", 
-                                                   path='Overview', xbins=834, xmin=1, xmax=2502, ybins=maxy, ymin=0, ymax=maxy, ylabels=labelsY, opt='kAddBinsDynamically')
+                                                   path='Overview', xbins=834, xmin=1, xmax=2502, ybins=maxy, ymin=0, ymax=maxy, ylabels=labelsY, opt='kAddBinsDynamically', merge='merge')
                                            
             titleOccvsLbPerRegionPerCrate_ontrack = "OccupancyVsLB_ontrack_"+iregion+icrate
             var="lb_mon,y_mon_bin_bycrate_ontrack_"+iregion+"_"+icrate+";"+titleOccvsLbPerRegionPerCrate_ontrack
             mdtRegionGroup_bycrate.defineHistogram(var, title=titleOccvsLbPerRegionPerCrate_ontrack+";LB;[Eta - Phi]", type='TH2F',
-                                           path='Overview', xbins=834, xmin=1, xmax=2502, ybins=maxy, ymin=0, ymax=maxy, ylabels=labelsY, opt='kAddBinsDynamically') 
+                                           path='Overview', xbins=834, xmin=1, xmax=2502, ybins=maxy, ymin=0, ymax=maxy, ylabels=labelsY, opt='kAddBinsDynamically', merge='merge') 
 
     labelsY=getMDTLabelx("labelY_OccupancyVsLB")
     mdtGroup.defineHistogram('lb_mon,sector;OccupancyPerSectorVsLB', type='TH2F',
                              title='OccupancyPerSectorVsLB;LB;[Phi]',
-                             path='Overview', xbins=834, xmin=1, xmax=2502, ybins=64, ymin=0., ymax=64., ylabels=labelsY, opt='kAddBinsDynamically')
+                             path='Overview', xbins=834, xmin=1, xmax=2502, ybins=64, ymin=0., ymax=64., ylabels=labelsY, opt='kAddBinsDynamically', merge='merge')
     
 
     #histograms per chambers
@@ -531,6 +530,8 @@ def MdtMonitoringConfig(inputFlags):
         title_mdttube= ch+"_MDT_Station_TUBE_ADCCut"
         var="tube_perch_"+ch+";"+title_mdttube
         binmax=tubeMax[ch]
+        if mdtMonAlg.do_Run3Geometry and ch[0:5]=="BIS7A":
+            binmax=tubeMax_smdt[ch]
         mdtPerChamberBAGroup.defineHistogram(var,  type='TH1F',
                                              cutmask='adccut',
                                              title=title_mdttube+";tubeID;Number of Entries",
@@ -828,22 +829,12 @@ def MdtMonitoringConfig(inputFlags):
 
 
 if __name__=='__main__':
-    # Setup the Run III behavior
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior = 1
-
-    # Setup logs
-    #from AthenaCommon.Logging import log
-    #from AthenaCommon.Constants import DEBUG
-    #log.setLevel(DEBUG)    
-
-
 
     # Set the Athena configuration flags
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
     from AthenaConfiguration.TestDefaults import defaultTestFiles
     ConfigFlags.Input.Files = defaultTestFiles.ESD
-
+    
     #ConfigFlags.Input.isMC = True
     #ConfigFlags.Common.isOnline = True
     ConfigFlags.Output.HISTFileName = 'MdtMonitorOutput.root'
@@ -855,16 +846,15 @@ if __name__=='__main__':
     #ConfigFlags.IOVDb.DatabaseInstance=""
     #ConfigFlags.GeoModel.AtlasVersion = "ATLAS-R2-2016-01-00-01  "
 
+    ConfigFlags.Detector.GeometryMuon = False
+    ConfigFlags.Detector.GeometryCSC = False
+    ConfigFlags.Detector.GeometryRPC = False
+    ConfigFlags.Detector.GeometryTGC = False
+    ConfigFlags.Detector.GeometrysTGC = False
+    ConfigFlags.Detector.GeometryMM = False
 
-    ConfigFlags.Muon.doCSCs = False
-    ConfigFlags.Muon.doRPCs = False
-    ConfigFlags.Muon.doTGCs = False
-    ConfigFlags.Detector.GeometryMuon=False
-    ConfigFlags.Detector.GeometryCSC=False
+    ConfigFlags.Detector.GeometryMDT = True
 
-    ConfigFlags.Detector.GeometryRPC=False
-    ConfigFlags.Detector.GeometryMDT=True
-    ConfigFlags.Muon.doMicromegas = False
     ConfigFlags.Muon.Align.UseILines = False
     ConfigFlags.Muon.Align.UseALines = False
     ConfigFlags.Muon.Align.UseBLines = False

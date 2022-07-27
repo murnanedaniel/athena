@@ -1,7 +1,7 @@
 // -*- C++ -*-
 
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */ 
 
 #ifndef SCT_ReadCalibDataCondAlg_h
@@ -17,7 +17,6 @@
 #include "SCT_ConditionsData/SCT_CalibDefectData.h"
 #include "SCT_ConditionsData/SCT_AllGoodStripInfo.h"
 
-#include "GaudiKernel/ICondSvc.h"
 #include "Gaudi/Property.h"
 
 #include <map>
@@ -31,11 +30,10 @@ class SCT_ReadCalibDataCondAlg : public AthReentrantAlgorithm
  public:
   SCT_ReadCalibDataCondAlg(const std::string& name, ISvcLocator* pSvcLocator);
   virtual ~SCT_ReadCalibDataCondAlg() = default;
-  virtual StatusCode initialize() override;
-  virtual StatusCode execute(const EventContext& ctx) const override;
-  virtual StatusCode finalize() override;
-  /** Make this algorithm clonable. */
-  virtual bool isClonable() const override { return true; };
+  virtual StatusCode initialize() override final;
+  virtual StatusCode execute(const EventContext& ctx) const override final;
+  virtual StatusCode finalize() override final;
+  virtual bool isReEntrant() const override final { return false; }
 
  private:
   enum Feature {GAIN=0, NOISE=1, NFEATURES=2};
@@ -53,7 +51,6 @@ class SCT_ReadCalibDataCondAlg : public AthReentrantAlgorithm
   StringArrayProperty m_ignoreDefects{this, "IgnoreDefects", {}, "Defects to ignore"};
   FloatArrayProperty m_ignoreDefectParameters{this, "IgnoreDefectsParameters", {}, "Limit on defect to ignore parameters"};
 
-  ServiceHandle<ICondSvc> m_condSvc{this, "CondSvc", "CondSvc"};
   const SCT_ID* m_id_sct{nullptr}; //!< Handle to SCT ID helper
 };
 

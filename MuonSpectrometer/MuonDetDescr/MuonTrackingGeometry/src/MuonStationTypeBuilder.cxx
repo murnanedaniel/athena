@@ -163,10 +163,10 @@ Trk::TrackingVolumeArray* Muon::MuonStationTypeBuilder::processBoxStationCompone
             std::vector<const GeoVPhysVol*>::iterator geoIter = compGeo.begin();
             std::vector<Amg::Transform3D>::iterator transfIter = compTransf.begin();
             while (vol->center()[0] >= (*volIter)->center()[0]) {
-                volIter++;
-                nameIter++;
-                geoIter++;
-                transfIter++;
+                ++volIter;
+                ++nameIter;
+                ++geoIter;
+                ++transfIter;
             }
             compVol.insert(volIter, vol);
             compName.insert(nameIter, cname);
@@ -215,7 +215,8 @@ Trk::TrackingVolumeArray* Muon::MuonStationTypeBuilder::processBoxStationCompone
         double uppX = compVol[i]->center()[0] + compBounds->halflengthX();
 
         if (lowX < currX)
-            ATH_MSG_WARNING(" clash between components in volume:" << compName[i] << "current:" << currX
+            if (compName[i].compare("RPC28") != 0 && compName[i].compare("RPC29") != 0)  // exclude BIS RPCs from the check sice they overlap in x with other volumes
+	       ATH_MSG_WARNING(" clash between components in volume:" << compName[i] << "current:" << currX
                                                                    << ": low edge of next volume:" << lowX);
         if (uppX > maxX) ATH_MSG_WARNING(" clash between component and envelope:" << compName[i] << "upper:" << uppX << ">" << maxX);
 
@@ -462,10 +463,10 @@ Trk::TrackingVolumeArray* Muon::MuonStationTypeBuilder::processTrdStationCompone
             std::vector<const GeoVPhysVol*>::iterator geoIter = compGeo.begin();
             std::vector<Amg::Transform3D>::iterator transfIter = compTransf.begin();
             while (vol->center()[0] >= (*volIter)->center()[0]) {
-                volIter++;
-                nameIter++;
-                geoIter++;
-                transfIter++;
+                ++volIter;
+                ++nameIter;
+                ++geoIter;
+                ++transfIter;
             }
             compVol.insert(volIter, vol);
             compName.insert(nameIter, cname);
@@ -725,9 +726,9 @@ const Trk::TrackingVolume* Muon::MuonStationTypeBuilder::processMdtBox(Trk::Volu
                 std::vector<double>::iterator rIter = x_ref.begin();
                 std::vector<int>::iterator aIter = x_active.begin();
                 while (transfc.translation()[0] > *xIter) {
-                    xIter++;
-                    mIter++;
-                    rIter++;
+                    ++xIter;
+                    ++mIter;
+                    ++rIter;
                 }
                 x_array.insert(xIter, transfc.translation()[0]);
                 x_mat.insert(mIter, mdtMat);
@@ -871,9 +872,9 @@ const Trk::TrackingVolume* Muon::MuonStationTypeBuilder::processMdtTrd(Trk::Volu
                 std::vector<double>::iterator rIter = x_ref.begin();
                 std::vector<int>::iterator aIter = x_active.begin();
                 while (transfc.translation()[0] > *xIter) {
-                    xIter++;
-                    mIter++;
-                    rIter++;
+                    ++xIter;
+                    ++mIter;
+                    ++rIter;
                 }
                 x_array.insert(xIter, transfc.translation()[0]);
                 x_mat.insert(mIter, mdtMat);
@@ -1091,7 +1092,7 @@ const Trk::TrackingVolume* Muon::MuonStationTypeBuilder::processRpc(Trk::Volume*
                             layer->setLayerType(0);
                             layers.push_back(layer);
                         } else if ((gclv->getName()) == "Rpclayer") {
-                            if (std::abs(gx - 6.85) > 0.001)
+                            if (std::abs(gx - 6.85) > 0.001 && std::abs(gx - 5.9) > 0.001)  // two thicknesses allowed for 2/3 gaps RPCs
                                 ATH_MSG_WARNING("processRpc() - unusual thickness of RPC (" << glv->getName() << ") layer :" << 2 * gx);
                             if (!cache.m_rpcLayer) {
                                 double volc = 8 * gx * gy * gz;
@@ -1144,8 +1145,8 @@ const Trk::TrackingVolume* Muon::MuonStationTypeBuilder::processSpacer(Trk::Volu
             vIter = gv.erase(vIter);
             tIter = transf.erase(tIter);
         } else {
-            vIter++;
-            tIter++;
+            ++vIter;
+            ++tIter;
         }
     }
     // translate into layers
@@ -1340,7 +1341,7 @@ const Trk::TrackingVolume* Muon::MuonStationTypeBuilder::processSpacer(Trk::Volu
     }
 
     std::vector<const Trk::Layer*>::iterator lIt = layers.begin();
-    for (; lIt != layers.end(); lIt++)
+    for (; lIt != layers.end(); ++lIt)
         if ((*lIt)->thickness() < 0.) lIt = layers.erase(lIt);
 
     std::vector<const Trk::Layer*>* spacerLayers = new std::vector<const Trk::Layer*>(layers);
@@ -1361,14 +1362,14 @@ const Trk::TrackingVolume* Muon::MuonStationTypeBuilder::processSpacer(Trk::Volu
     return spacer;
 }
 
-const Trk::TrackingVolume* Muon::MuonStationTypeBuilder::processNSW(const MuonGM::MuonDetectorManager* muonDetMgr,
-                                                                    const std::vector<const Trk::Layer*>& layers) const {
+Trk::TrackingVolume* Muon::MuonStationTypeBuilder::processNSW(const MuonGM::MuonDetectorManager* muonDetMgr,
+                                                              const std::vector<const Trk::Layer*>& layers) const {
     ATH_MSG_DEBUG(name() << " processing NSW station components " << layers.size());
     ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     // double tolerance = 0.0001;
 
-    const Trk::TrackingVolume* trVol = nullptr;
+    Trk::TrackingVolume* trVol = nullptr;
 
     Amg::Transform3D transf = layers[0]->surfaceRepresentation().transform();
 

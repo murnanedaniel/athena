@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////////////////////////////////////////////////////////////
@@ -14,7 +14,6 @@
 // Trk
 #include "ISF_FatrasInterfaces/IMultipleScatteringSampler.h"
 #include "TrkEventPrimitives/PropDirection.h"
-#include "TrkEventPrimitives/ParticleHypothesis.h"
 #include "GaudiKernel/ServiceHandle.h"
 
 #include "AthenaKernel/IAtRndmGenSvc.h"
@@ -70,7 +69,6 @@ namespace iFatras {
       CLHEP::HepRandomEngine*                      m_randomEngine;
       std::string                                  m_randomEngineName;                   //!< Name of the random number stream
        
-      static Trk::ParticleMasses s_particleMasses;        //!< struct of Particle masses
        
       static double         s_main_RossiGreisen;     //!< main factor for Rossi-Greisen formula
       static double         s_log_RossiGreisen;      //!< main factor for Rossi-Greisen formula
@@ -80,11 +78,11 @@ namespace iFatras {
       static double	    s_genMixScale;	    //!< General mixture model: Scaling factor
       
       //!< General mixture model: get parameters for single gaussian simulation
-      std::vector<double> getGaussian(double beta, double p,double dOverX0, double scale) const;
+      static std::vector<double> getGaussian(double beta, double p,double dOverX0, double scale) ;
       //!< General mixture model: get parameters for gaussian mixture
-      std::vector<double> 	getGaussmix(double beta, double p,double dOverX0,double Z, double scale) const;
+      static std::vector<double> 	getGaussmix(double beta, double p,double dOverX0,double Z, double scale) ;
       //!< General mixture model: get parameters for semi-gaussian mixture
-      std::vector<double> 	getSemigauss(double beta,double p,double dOverX0,double Z, double scale) const;
+      static std::vector<double> 	getSemigauss(double beta,double p,double dOverX0,double Z, double scale) ;
       //!< General mixture model: simulate semi-gaussian mixture
       double 	simGaussmix(std::vector<double> scattering_params) const;
       //!< General mixture model: simulate gaussian mixture

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /***************************************************************************
@@ -13,6 +13,7 @@
 ***************************************************************************/
 #undef NDEBUG
 #include "TrkParticleCreator/TrackParticleCreatorTool.h"
+#include "TrkParticleCreator/DetailedHitInfo.h"
 // forward declares
 #include "Particle/TrackParticle.h"
 #include "TrkTrack/Track.h"
@@ -126,6 +127,7 @@ TrackParticleCreatorTool::TrackParticleCreatorTool(const std::string& t,
   , m_expressPerigeeToBeamSpot(true)
   , m_perigeeExpression("BeamLine")
 {
+  declareProperty("DoITk" , m_doITk = false);
   declareProperty("ComputeAdditionalInfo", m_computeAdditionalInfo);
   declareProperty("KeepParameters", m_keepParameters);
   declareProperty("KeepFirstParameters", m_keepFirstParameters);
@@ -260,6 +262,9 @@ TrackParticleCreatorTool::initialize()
     }
   }
 
+  ATH_CHECK(  m_eProbabilityTool.retrieve( DisableTool{m_eProbabilityTool.empty()} ) );
+  ATH_CHECK(  m_dedxtool.retrieve( DisableTool{m_dedxtool.empty()} ) );
+
   ATH_MSG_VERBOSE(" initialize successful.");
   return sc;
 }
@@ -335,10 +340,6 @@ TrackParticleCreatorTool::createParticle(const EventContext& ctx,
   if (m_trackSummaryTool.get() != nullptr) {
     if (!track.trackSummary()) {
       updated_summary = m_trackSummaryTool->summary(ctx, track, prd_to_track_map);
-      summary = updated_summary.get();
-    } else if (m_computeAdditionalInfo) {
-      updated_summary = std::make_unique<Trk::TrackSummary>(*track.trackSummary());
-      m_trackSummaryTool->updateAdditionalInfo(track, *updated_summary);
       summary = updated_summary.get();
     }
   } else {
@@ -574,7 +575,8 @@ TrackParticleCreatorTool::createParticle(const EventContext& ctx,
                                                       parameters,
                                                       parameterPositions,
                                                       prtOrigin,
-                                                      container);
+                                                      container,
+                                                      &track);
 
   static const SG::AuxElement::Accessor<int> nbCmeas("nBC_meas");
   switch (m_badclusterID) {
@@ -635,7 +637,8 @@ TrackParticleCreatorTool::createParticle(const EventContext& ctx,
                    trackParticle.trackParameters(),
                    positions,
                    static_cast<xAOD::ParticleHypothesis>(trackParticle.info().particleHypothesis()),
-                   container);
+                   container,
+                   nullptr);
 
   if (!trackparticle) {
     ATH_MSG_WARNING("WARNING: Problem creating TrackParticle - Returning 0");
@@ -672,6 +675,20 @@ TrackParticleCreatorTool::createParticle(const EventContext& ctx,
   return trackparticle;
 }
 
+inline xAOD::TrackParticle* TrackParticleCreatorTool::createParticle(
+                      const EventContext& ctx,
+                      const Perigee* perigee,
+                      const FitQuality* fq,
+                      const TrackInfo* trackInfo,
+                      const TrackSummary* summary,
+                      const std::vector<const Trk::TrackParameters*>& parameters,
+                      const std::vector<xAOD::ParameterPosition>& positions,
+                      xAOD::ParticleHypothesis prtOrigin,
+                      xAOD::TrackParticleContainer* container,
+		      bool addInfoIfMuon) const {
+   return createParticle(ctx,perigee, fq, trackInfo, summary, parameters,  positions, prtOrigin, container, nullptr, addInfoIfMuon);
+}
+
 xAOD::TrackParticle*
 TrackParticleCreatorTool::createParticle(const EventContext& ctx,
                                          const Perigee* perigee,
@@ -681,7 +698,9 @@ TrackParticleCreatorTool::createParticle(const EventContext& ctx,
                                          const std::vector<const Trk::TrackParameters*>& parameters,
                                          const std::vector<xAOD::ParameterPosition>& positions,
                                          xAOD::ParticleHypothesis prtOrigin,
-                                         xAOD::TrackParticleContainer* container) const
+                                         xAOD::TrackParticleContainer* container,
+                                         const Trk::Track *track,
+					 bool addInfoIfMuon) const
 {
 
   xAOD::TrackParticle* trackparticle = new xAOD::TrackParticle;
@@ -714,9 +733,19 @@ TrackParticleCreatorTool::createParticle(const EventContext& ctx,
   if (summary) {
     setTrackSummary(*trackparticle, *summary);
     setHitPattern(*trackparticle, summary->getHitPattern());
-    setNumberOfUsedHits(*trackparticle, summary->numberOfUsedHitsdEdx());
-    setNumberOfOverflowHits(*trackparticle, summary->numberOfOverflowHitsdEdx());
+    addPIDInformation(ctx, track, *trackparticle);
+    if(m_doITk) addDetailedHitInformation(track->trackStateOnSurfaces(), *trackparticle);
   }
+
+  if (m_computeAdditionalInfo) {
+    if(prtOrigin==xAOD::muon){
+      if(addInfoIfMuon && perigee) addExpectedHitInformation(perigee, *trackparticle);
+    }
+    else if(track){
+      addExpectedHitInformation(track->perigeeParameters(), *trackparticle);
+    }
+  }
+
   const auto* beamspot = CacheBeamSpotData(ctx);
   if (beamspot) {
     setTilt(*trackparticle, beamspot->beamTilt(0), beamspot->beamTilt(1));
@@ -864,9 +893,12 @@ void
 TrackParticleCreatorTool::setTrackSummary(xAOD::TrackParticle& tp, const TrackSummary& summary) const
 {
   // ensure that xAOD TrackSummary and TrackSummary enums are in sync.
-  constexpr unsigned int xAodReferenceEnum = static_cast<unsigned int>(xAOD::pixeldEdx);
-  constexpr unsigned int TrkReferenceEnum = static_cast<unsigned int>(Trk::pixeldEdx_res);
-  static_assert(xAodReferenceEnum == TrkReferenceEnum, "Trk and xAOD enums differ in their indices");
+  constexpr unsigned int xAodReferenceEnum1 = static_cast<unsigned int>(xAOD::numberOfTRTXenonHits);
+  constexpr unsigned int TrkReferenceEnum1 = static_cast<unsigned int>(Trk::numberOfTRTXenonHits);
+  static_assert(xAodReferenceEnum1 == TrkReferenceEnum1, "Trk and xAOD enums differ in their indices");
+  constexpr unsigned int xAodReferenceEnum2 = static_cast<unsigned int>(xAOD::numberOfTRTSharedHits);
+  constexpr unsigned int TrkReferenceEnum2 = static_cast<unsigned int>(Trk::numberOfTRTSharedHits);
+  static_assert(xAodReferenceEnum2 == TrkReferenceEnum2, "Trk and xAOD enums differ in their indices");
 
   for (unsigned int i = 0; i < Trk::numberOfTrackSummaryTypes; i++) {
     // Only add values which are +ve (i.e., which were created)
@@ -880,14 +912,13 @@ TrackParticleCreatorTool::setTrackSummary(xAOD::TrackParticle& tp, const TrackSu
       continue;
     }
     // skip values which are floats
-    if (std::find(floatSummaryTypes.begin(), floatSummaryTypes.end(), i) != floatSummaryTypes.end()) {
+    if (std::find(unusedSummaryTypes.begin(), unusedSummaryTypes.end(), i) != unusedSummaryTypes.end()) {
       continue;
     }
     if (i >= Trk::numberOfStgcEtaHits && i <= Trk::numberOfMmHoles) {
       continue;
     }
-    // coverity[mixed_enums]
-    if (i == Trk::numberOfTRTHitsUsedFordEdx) {
+    if (m_doITk && i == Trk::numberOfContribPixelLayers){ // Filled in addDetailedHitInformation for ITk
       continue;
     }
 
@@ -898,30 +929,6 @@ TrackParticleCreatorTool::setTrackSummary(xAOD::TrackParticle& tp, const TrackSu
       tp.setSummaryValue(uvalue, static_cast<xAOD::SummaryType>(i));
     }
   }
-
-  // first eProbabilities which are set in the xAOD track summary
-  for (const Trk::eProbabilityType& copy : m_copyEProbabilities) {
-    float fvalue = summary.getPID(copy);
-    tp.setSummaryValue(fvalue, static_cast<xAOD::SummaryType>(copy + xAOD::eProbabilityComb));
-  }
-
-  // now the eProbabilities which are set as a decoration.
-  for (const std::pair<SG::AuxElement::Accessor<float>, Trk::eProbabilityType>& decoration :
-       m_decorateEProbabilities) {
-    float fvalue = summary.getPID(decoration.second);
-    decoration.first(tp) = fvalue;
-  }
-
-  // now the extra summary types
-  for (const std::pair<SG::AuxElement::Accessor<uint8_t>, Trk::SummaryType>& decoration :
-       m_decorateSummaryTypes) {
-    uint8_t summary_value = summary.get(decoration.second);
-    decoration.first(tp) = summary_value;
-  }
-
-  // this one is "special" so gets a different treatment...
-  float fvalue = summary.getPixeldEdx();
-  tp.setSummaryValue(fvalue, static_cast<xAOD::SummaryType>(51));
 
   // muon hit info
   if (!m_hitSummaryTool.empty()) {
@@ -941,6 +948,163 @@ TrackParticleCreatorTool::setTrackSummary(xAOD::TrackParticle& tp, const TrackSu
     tp.setSummaryValue(numberOfTriggerEtaLayers, xAOD::numberOfTriggerEtaLayers);
     tp.setSummaryValue(numberOfTriggerEtaHoleLayers, xAOD::numberOfTriggerEtaHoleLayers);
   }
+
+}
+
+void
+TrackParticleCreatorTool::addPIDInformation(const EventContext& ctx, const Trk::Track *track, xAOD::TrackParticle& tp) const
+{
+  // TRT PID information
+  {
+     static const std::vector<float> eProbabilityDefault(numberOfeProbabilityTypes,0.5);
+     constexpr int initialValue{-1};
+     std::vector<float> eProbability_tmp;
+     const std::vector<float> &eProbability ( track && !m_eProbabilityTool.empty() ? eProbability_tmp = m_eProbabilityTool->electronProbability(ctx,*track)  : eProbabilityDefault);
+     int nHits = track && !m_eProbabilityTool.empty() ? eProbability[Trk::eProbabilityNumberOfTRTHitsUsedFordEdx] : initialValue;
+     for (const Trk::eProbabilityType& copy : m_copyEProbabilities) {
+        float eProbability_value = eProbability.at(copy);
+        tp.setSummaryValue(eProbability_value, static_cast<xAOD::SummaryType>(copy + xAOD::eProbabilityComb));
+     }
+     for (const std::pair<SG::AuxElement::Accessor<float>, Trk::eProbabilityType>& decoration :
+             m_decorateEProbabilities) {
+        float fvalue = eProbability.at(decoration.second);
+        decoration.first(tp) = fvalue;
+     }
+     // now the extra summary types
+     for (const std::pair<SG::AuxElement::Accessor<uint8_t>, Trk::SummaryType>& decoration :
+             m_decorateSummaryTypes) {
+        uint8_t summary_value = nHits;
+        decoration.first(tp) = summary_value;
+     }
+
+  }
+
+  // PixelPID
+  {
+     const int initialValue{-1};
+     float dedx = initialValue;
+     int nHitsUsed_dEdx = initialValue;
+     int nOverflowHits_dEdx = initialValue;
+     if (track && !m_dedxtool.empty() && track->info().trackFitter() != TrackInfo::Unknown) {
+        dedx = m_dedxtool->dEdx(ctx, *track, nHitsUsed_dEdx, nOverflowHits_dEdx);
+     }
+     tp.setNumberOfUsedHitsdEdx(nHitsUsed_dEdx);
+     tp.setNumberOfIBLOverflowsdEdx(nOverflowHits_dEdx);
+     tp.setSummaryValue(dedx, static_cast<xAOD::SummaryType>(51));
+  }
+}
+
+void
+TrackParticleCreatorTool::addDetailedHitInformation(const DataVector<const TrackStateOnSurface>* trackStates, xAOD::TrackParticle& tp) const
+{
+
+  Trk::DetailedHitInfo detailedInfo;
+
+  for (const TrackStateOnSurface* tsos : *trackStates) {
+
+    const Trk::MeasurementBase* mesb = tsos->measurementOnTrack();
+    if(mesb==nullptr) continue;
+    // Check if the measurement type is RIO on Track (ROT)
+    const RIO_OnTrack* rot = nullptr;
+    if (mesb->type(Trk::MeasurementBaseType::RIO_OnTrack)) {
+      rot = static_cast<const RIO_OnTrack*>(mesb);
+    }
+    if(rot==nullptr) continue;
+
+    const Identifier& id = rot->identify();
+    if(!m_pixelID->is_pixel(id)) continue;
+
+    Trk::DetectorRegion region;
+    const InDetDD::SiDetectorElement* detEl = dynamic_cast<const InDetDD::SiDetectorElement*>(rot->detectorElement());
+    InDetDD::DetectorType type = detEl->design().type();
+    if(type==InDetDD::PixelInclined)  region = Trk::pixelBarrelInclined;
+    else if(m_pixelID->is_barrel(id)) region = Trk::pixelBarrelFlat;
+    else region = Trk::pixelEndcap;
+
+    // DetectorType defaults to InDetDD::PixelBarrel for ATLAS-P2-RUN4-01-00-00 so workaround used for now
+    // Can be ultimately updated in a new geotag with
+    //
+    // else if(type==InDetDD::PixelBarrel) region = Trk::pixelBarrelFlat;
+    // else region = Trk::pixelEndcap;
+
+    detailedInfo.addHit(region, m_pixelID->layer_disk(id), m_pixelID->eta_module(id));
+
+  }
+
+  uint8_t nContribPixelLayers = static_cast<uint8_t>(detailedInfo.getPixelContributions());
+
+  uint8_t nContribPixelBarrelFlatLayers     = static_cast<uint8_t>(detailedInfo.getContributionFromRegion(Trk::pixelBarrelFlat    ));
+  uint8_t nContribPixelBarrelInclinedLayers = static_cast<uint8_t>(detailedInfo.getContributionFromRegion(Trk::pixelBarrelInclined));
+  uint8_t nContribPixelEndcap               = static_cast<uint8_t>(detailedInfo.getContributionFromRegion(Trk::pixelEndcap        ));
+
+  uint8_t nPixelBarrelFlatHits     = static_cast<uint8_t>(detailedInfo.getHitsFromRegion(Trk::pixelBarrelFlat    ));
+  uint8_t nPixelBarrelInclinedHits = static_cast<uint8_t>(detailedInfo.getHitsFromRegion(Trk::pixelBarrelInclined));
+  uint8_t nPixelEndcapHits         = static_cast<uint8_t>(detailedInfo.getHitsFromRegion(Trk::pixelEndcap        ));
+
+  uint8_t nInnermostPixelLayerEndcapHits = static_cast<uint8_t>(detailedInfo.getHits(Trk::pixelEndcap, 0));
+  uint8_t nNextToInnermostPixelLayerEndcapHits = static_cast<uint8_t>(detailedInfo.getHits(Trk::pixelEndcap, 1)
+								      + detailedInfo.getHits(Trk::pixelEndcap, 2)); // L0.5 shorties + L1
+
+  tp.setSummaryValue(nContribPixelLayers, xAOD::numberOfContribPixelLayers);
+  tp.setSummaryValue(nContribPixelBarrelFlatLayers, xAOD::numberOfContribPixelBarrelFlatLayers);
+  tp.setSummaryValue(nContribPixelBarrelInclinedLayers, xAOD::numberOfContribPixelBarrelInclinedLayers);
+  tp.setSummaryValue(nContribPixelEndcap, xAOD::numberOfContribPixelEndcap);
+  tp.setSummaryValue(nPixelBarrelFlatHits, xAOD::numberOfPixelBarrelFlatHits);
+  tp.setSummaryValue(nPixelBarrelInclinedHits, xAOD::numberOfPixelBarrelInclinedHits);
+  tp.setSummaryValue(nPixelEndcapHits, xAOD::numberOfPixelEndcapHits);
+  tp.setSummaryValue(nInnermostPixelLayerEndcapHits, xAOD::numberOfInnermostPixelLayerEndcapHits);
+  tp.setSummaryValue(nNextToInnermostPixelLayerEndcapHits, xAOD::numberOfNextToInnermostPixelLayerEndcapHits);
+
+}
+
+void
+TrackParticleCreatorTool::addExpectedHitInformation(const Perigee *perigee, xAOD::TrackParticle& tp) const
+{
+
+  if(not m_testPixelLayerTool.empty()){
+
+    uint8_t zero = static_cast<uint8_t>(0);
+    uint8_t nContribPixLayers, nInPixHits, nNextInPixHits;
+    if(!tp.summaryValue(nContribPixLayers, xAOD::numberOfContribPixelLayers)){
+      nContribPixLayers = zero;
+    }
+    if(nContribPixLayers==0){
+      ATH_MSG_DEBUG("No pixels on track, so wo do not expect hit in inner layers");
+      tp.setSummaryValue(zero, xAOD::expectInnermostPixelLayerHit);
+      tp.setSummaryValue(zero, xAOD::expectNextToInnermostPixelLayerHit);
+    }
+
+    else {
+
+      // Innermost pixel layer
+      if(!tp.summaryValue(nInPixHits, xAOD::numberOfInnermostPixelLayerHits)){
+	nInPixHits = zero;
+      }
+      if(nInPixHits>0){
+        ATH_MSG_DEBUG("Innermost pixel Layer hit on track, so we expect an innermost pixel layer hit");
+	uint8_t one = static_cast<uint8_t>(1);
+	tp.setSummaryValue(one, xAOD::expectInnermostPixelLayerHit);
+      } else {
+	uint8_t expectHit = static_cast<uint8_t>(m_testPixelLayerTool->expectHitInInnermostPixelLayer(perigee));
+	tp.setSummaryValue(expectHit, xAOD::expectInnermostPixelLayerHit);
+      }
+
+      // Next-to-innermost pixel layer
+      if(!tp.summaryValue(nNextInPixHits, xAOD::numberOfNextToInnermostPixelLayerHits)){
+	nNextInPixHits = zero;
+      }
+      if(nNextInPixHits>0){
+        ATH_MSG_DEBUG("Next-to-innermost pixel Layer hit on track, so we expect an next-to-innermost pixel layer hit");
+	uint8_t one = static_cast<uint8_t>(1);
+	tp.setSummaryValue(one, xAOD::expectNextToInnermostPixelLayerHit);
+      } else {
+	uint8_t expectHit = static_cast<uint8_t>(m_testPixelLayerTool->expectHitInNextToInnermostPixelLayer(perigee));
+	tp.setSummaryValue(expectHit, xAOD::expectNextToInnermostPixelLayerHit);
+      }
+
+    } // end else if nContribPixLayers>0
+  }
+
 }
 
 const InDet::BeamSpotData*

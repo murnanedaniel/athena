@@ -1,5 +1,5 @@
 #
-#  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+#  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #
 
 '''@file SCTLorentzMonAlg.py
@@ -7,7 +7,6 @@
 @date 2019-04-02
 @brief Based on AthenaMonitoring/ExampleMonitorAlgorithm.py
 '''
-from InDetConfig import TrackingCommonConfig
 
 def SCTLorentzMonAlgConfig(inputFlags):
     
@@ -30,9 +29,10 @@ def SCTLorentzMonAlgConfig(inputFlags):
     # base class configuration following the inputFlags. The returned object 
     # is the algorithm.
     from AthenaConfiguration.ComponentFactory import CompFactory
+    from InDetConfig.InDetAssociationToolsConfig import InDetPRDtoTrackMapToolGangedPixelsCfg
     myMonAlg = helper.addAlgorithm(CompFactory.SCTLorentzMonAlg,
                                    'SCTLorentzMonAlg',
-                                   AssociationTool = result.popToolsAndMerge(TrackingCommonConfig.InDetPRDtoTrackMapToolGangedPixelsCfg(inputFlags)) )
+                                   AssociationTool = result.popToolsAndMerge(InDetPRDtoTrackMapToolGangedPixelsCfg(inputFlags)) )
 
     # # If for some really obscure reason you need to instantiate an algorithm
     # # yourself, the AddAlgorithm method will still configure the base 
@@ -46,8 +46,8 @@ def SCTLorentzMonAlgConfig(inputFlags):
     # myMonAlg.RandomHist = True
 
     # Set InDetTrackSummaryTool to TrackSummaryTool of SCTLorentzMonAlg
-    from InDetConfig.TrackingCommonConfig import InDetTrackSummaryToolCfg
-    myMonAlg.TrackSummaryTool = result.getPrimaryAndMerge(InDetTrackSummaryToolCfg(inputFlags))
+    from TrkConfig.TrkTrackSummaryToolConfig import InDetTrackSummaryToolCfg
+    myMonAlg.TrackSummaryTool = result.popToolsAndMerge(InDetTrackSummaryToolCfg(inputFlags))
 
     ### STEP 4 ###
     # Add some tools. N.B. Do not use your own trigger decion tool. Use the
@@ -109,10 +109,6 @@ def SCTLorentzMonAlgConfig(inputFlags):
     return result
     
 if __name__ == "__main__": 
-    # Setup the Run III behavior
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior = 1
-
     # Setup logs
     from AthenaCommon.Logging import log
     from AthenaCommon.Constants import INFO

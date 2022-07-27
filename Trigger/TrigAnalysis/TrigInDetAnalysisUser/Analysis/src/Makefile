@@ -163,7 +163,6 @@ LOBJECTS  = \
         $(OBJDIR)/TagNProbe.o \
         $(OBJDIR)/Track.o \
         $(OBJDIR)/TIDAVertex.o   \
-        $(OBJDIR)/TIDAVertexNew.o   \
         $(OBJDIR)/TIDAChain.o   \
         $(OBJDIR)/TIDARoi.o   \
         $(OBJDIR)/TIDARoiParameters.o  \
@@ -336,7 +335,11 @@ archive :
 	cd ../.. ; tar -czf $(BASEDIR).tgz $(BASEDIR)/src $(BASEDIR)/config 
 
 
-INSTALLDIR=$(TestArea)/build/$(ATLAS_ARCH)/bin
+ifeq ($(WorkDir_DIR),)
+   INSTALLDIR=$(TestArea)/build/$(ATLAS_ARCH)/bin
+else
+   INSTALLDIR=$(WorkDir_DIR)/bin
+endif
 
 $(INSTALLDIR)/TIDA% : $(EXEDIR)/%
 	cp $< $@

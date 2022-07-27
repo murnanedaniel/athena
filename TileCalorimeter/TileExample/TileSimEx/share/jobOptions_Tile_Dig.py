@@ -36,7 +36,7 @@ if not 'EvtMax' in dir():
     EvtMax = -1
 
 if not 'RunNumber' in dir():
-    RunNumber = 310000
+    RunNumber = 410000
 
 if not 'FileSuffix' in dir():
     FileSuffix = ''
@@ -120,7 +120,7 @@ if not 'doD3PDCell' in dir():
     doD3PDCell = False
 
 if not 'doD3PDCellInfo' in dir():
-    doD3PDCellInfo = True
+    doD3PDCellInfo = doD3PD
 
 if not 'doD3PDMBTS' in dir():
     doD3PDMBTS = False
@@ -163,7 +163,6 @@ DetFlags.ID_setOff()
 DetFlags.Calo_setOff()
 DetFlags.Muon_setOff()
 DetFlags.LVL1_setOff()
-#DetFlags.sTGCMicromegas_setOff()
 
 DetFlags.Truth_setOn()
 
@@ -244,7 +243,8 @@ if not TileTB:
 # jobproperties.Digitization.numberOfBeamGas=0.5
 # jobproperties.Digitization.beamGasInputCols=['', '']
 
-topSequence += CfgMgr.xAODMaker__EventInfoCnvAlg()
+if TileTB:
+    topSequence += CfgMgr.xAODMaker__EventInfoCnvAlg()
 
 if doD3PDHit or doD3PDDigit or doD3PDRawChannel or doD3PDCell or doD3PDCellInfo or doD3PDMBTS or doDigitsNtuple or doRawChannelNtuple or doTileNtuple or doRDO:
 
@@ -254,9 +254,13 @@ if doD3PDHit or doD3PDDigit or doD3PDRawChannel or doD3PDCell or doD3PDCellInfo 
         # special settings for TileConditions, to make sure that COOL is not used
         if not 'TileUseCOOL' in dir():
             TileUseCOOL=False
-        elif TileUseCOOL:
+        if TileUseCOOL:
             jobproperties.Digitization.simRunNumber = RunNumber
             jobproperties.Digitization.dataRunNumber = RunNumber
+        else:
+            from TileConditions.TileCondToolConf import getTileCondToolEmscale, getTileCondToolNoiseSample
+            getTileCondToolEmscale('FILE')
+            getTileCondToolNoiseSample('FILE')
 
         # setting Fit and Opt2 method only
         from TileRecUtils.TileRecFlags import jobproperties
@@ -268,9 +272,9 @@ if doD3PDHit or doD3PDDigit or doD3PDRawChannel or doD3PDCell or doD3PDCellInfo 
     if TileTB:
         jobproperties.TileRecFlags.TileRawChannelContainer = "TileRawChannelFit"
         # avoid MBTS hits
-        ToolSvc.TileHitVecToCntTool.TileHitVectors=['TileHitVec']
+        topSequence.StandardPileUpToolsAlg.PileUpTools['TileHitVecToCntTool'].TileHitVectors=['TileHitVec']
         # change threshold in fit method
-        ToolSvc.TileRawChannelBuilderFitFilter.NoiseThresholdRMS = 3.
+        topSequence.TileRChMaker.TileRawChannelBuilder['TileRawChannelBuilderFitFilter'].NoiseThresholdRMS = 3.
 
 else:
     include( "TileConditions/TileConditions_jobOptions.py" )
@@ -422,3 +426,7 @@ if doTileNtuple:
 # from TileSimAlgs.TileSimAlgsConf import *
 # theTilePulseForTileMuonReceiver=TilePulseForTileMuonReceiver()
 # topSequence += theTilePulseForTileMuonReceiver
+
+if TileTB:
+    # sampling fraction for Geant4 10.6 for all run numbers
+    conddb.addOverride("/TILE/OFL02/CALIB/SFR","TileOfl02CalibSfr-SIM-07")

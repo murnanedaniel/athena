@@ -75,7 +75,7 @@ class ItemDef:
         bgrp13cond          = d.BGRP0 & d.BGRP13 #UNPAIREDB1
         bgrp14cond          = d.BGRP0 & d.BGRP14 #UNPAIREDB2
         alfacalib           = d.BGRP0 & d.BGRP10
-        abortgap            = d.BGRP0 & d.BGRP8
+        firstintrain        = d.BGRP0 & d.BGRP8
         physcond_or_unpaired_isocond    = d.BGRP0 & (d.BGRP1 | d.BGRP4)
 
         # partition 1
@@ -267,19 +267,21 @@ class ItemDef:
         MenuItem('L1_J12_VTE100'         ).setLogic( d.J12  & Not(d.TE100) & physcond).setTriggerType( TT.calo )
         MenuItem('L1_J12_VTE200'         ).setLogic( d.J12  & Not(d.TE200) & physcond).setTriggerType( TT.calo )
 
-        MenuItem('L1_TE50_VTE200'        ).setLogic( d.TE50 & Not(d.TE200) & physcond).setTriggerType( TT.ftk )
+        MenuItem('L1_TE50_VTE200'        ).setLogic( d.TE50 & Not(d.TE200) & physcond).setTriggerType( TT.calo )
 
-        MenuItem('L1_TE5_VTE200'         ).setLogic( d.TE5  & Not(d.TE200) & physcond).setTriggerType( TT.ftk )
+        MenuItem('L1_TE5_VTE200'         ).setLogic( d.TE5  & Not(d.TE200) & physcond).setTriggerType( TT.calo )
         MenuItem('L1_TE5_VTE100'         ).setLogic( d.TE5  & Not(d.TE100) & physcond).setTriggerType( TT.calo )
         MenuItem('L1_TE5_VTE50'          ).setLogic( d.TE5  & Not(d.TE50)  & physcond).setTriggerType( TT.calo )
 
-        MenuItem('L1_TE4_VTE200'         ).setLogic( d.TE4  & Not(d.TE200) & physcond).setTriggerType( TT.ftk )
+        MenuItem('L1_TE4_VTE200'         ).setLogic( d.TE4  & Not(d.TE200) & physcond).setTriggerType( TT.calo )
         MenuItem('L1_TE4_VTE100'         ).setLogic( d.TE4  & Not(d.TE100) & physcond).setTriggerType( TT.calo )
         MenuItem('L1_TE4_VTE50'          ).setLogic( d.TE4  & Not(d.TE50)  & physcond).setTriggerType( TT.calo )
 
         MenuItem('L1_TE4_VTE200_EMPTY'   ).setLogic( d.TE4  & Not(d.TE200) & cosmiccond).setTriggerType( TT.calo )
         MenuItem('L1_TE5_VTE200_EMPTY'   ).setLogic( d.TE5  & Not(d.TE200) & cosmiccond).setTriggerType( TT.calo )
 
+        # NSW Monitoring
+        MenuItem('L1_NSW_MONITOR').setLogic(d.NSWMon & physcond ).setTriggerType(TT.nsw)
 
         # MUON ctpid=[0x20;0x2f]
         # RUn3 thresholds
@@ -591,7 +593,7 @@ class ItemDef:
         MenuItem('L1_J175' ).setLogic( d.J175 & physcond).setTriggerType(TT.calo)
         MenuItem('L1_J250' ).setLogic( d.J250 & physcond).setTriggerType(TT.calo)
         MenuItem('L1_J400' ).setLogic( d.J400 & physcond).setTriggerType(TT.calo)
-        MenuItem('L1_J400_LAR' ).setLogic( d.J400 & physcond).setTriggerType(TT.lardemo) # ATR-22344
+        MenuItem('L1_J400_LAR' ).setLogic( d.J400 & physcond).setTriggerType(TT.lardigital) # ATR-22344
 
         MenuItem('L1_jJ20'          ).setLogic( d.jJ20         & physcond).setTriggerType(TT.calo)
         MenuItem('L1_jJ30'          ).setLogic( d.jJ30         & physcond).setTriggerType(TT.calo)
@@ -617,7 +619,7 @@ class ItemDef:
         MenuItem('L1_jJ160'         ).setLogic( d.jJ160        & physcond).setTriggerType(TT.calo)
         MenuItem('L1_jJ180'         ).setLogic( d.jJ180        & physcond).setTriggerType(TT.calo)
         MenuItem('L1_jJ500'         ).setLogic( d.jJ500        & physcond).setTriggerType(TT.calo)
-        MenuItem('L1_jJ500_LAR'     ).setLogic( d.jJ500        & physcond).setTriggerType(TT.lardemo) # ATR-22344
+        MenuItem('L1_jJ500_LAR'     ).setLogic( d.jJ500        & physcond).setTriggerType(TT.lardigital) # ATR-22344
 
         MenuItem('L1_4jJ40'         ).setLogic( d.jJ40.x(4)    & physcond).setTriggerType(TT.calo)
         MenuItem('L1_4jJ40p0ETA25'  ).setLogic( d.jJ400ETA25.x(4) & physcond).setTriggerType(TT.calo)
@@ -674,13 +676,11 @@ class ItemDef:
         MenuItem('L1_J12_UNPAIRED_NONISO' ).setLogic( d.J12 & unpaired_nonisocond).setTriggerType(TT.calo)
         MenuItem('L1_J12_EMPTY'           ).setLogic( d.J12 & cosmiccond ).setTriggerType(TT.calo)
         MenuItem('L1_J12_FIRSTEMPTY'      ).setLogic( d.J12 & firstempty ).setTriggerType(TT.calo)
-        MenuItem('L1_J12_ABORTGAPNOTCALIB').setLogic( d.J12 & abortgap ).setTriggerType(TT.calo)
         MenuItem('L1_J12_UNPAIREDB1'      ).setLogic( d.J12 & bgrp13cond  ).setTriggerType(TT.calo)
         MenuItem('L1_J12_UNPAIREDB2'      ).setLogic( d.J12 & bgrp14cond).setTriggerType(TT.calo)
 
         MenuItem('L1_J50_UNPAIRED_ISO'    ).setLogic( d.J50 & unpaired_isocond   ).setTriggerType(TT.calo)
         MenuItem('L1_J50_UNPAIRED_NONISO' ).setLogic( d.J50 & unpaired_nonisocond).setTriggerType(TT.calo)
-        MenuItem('L1_J50_ABORTGAPNOTCALIB').setLogic( d.J50 & abortgap ).setTriggerType(TT.calo)
 
         MenuItem('L1_J12_BGRP12'        ).setLogic( d.J12 & bgrp12cond ).setTriggerType(TT.calo)
         MenuItem('L1_J30p31ETA49_BGRP12').setLogic( d.J3031ETA49 & bgrp12cond ).setTriggerType(TT.calo)
@@ -733,10 +733,18 @@ class ItemDef:
         MenuItem('L1_4J15p0ETA25' ).setLogic( d.J150ETA25.x(4) & physcond).setTriggerType(TT.calo)
         MenuItem('L1_5J15p0ETA25' ).setLogic( d.J150ETA25.x(5) & physcond).setTriggerType(TT.calo)
 
+        # Legacy ZeroBias
         if ('Physics_HI_run3_v' in menuName or 'MC_HI_run3_v' in menuName):
             MenuItem('L1_ZB', ctpid=240).setLogic(d.ZB_J75  & physcond).setTriggerType(TT.zerobs)
         else:
             MenuItem('L1_ZB', ctpid=240).setLogic(d.ZB_EM15 & physcond).setTriggerType(TT.zerobs)
+
+        # Phase-I ZeroBias trigger for commissioning
+        # TODO: When established, replace legacy logic above with corresponding
+        # Phase-I seeds
+        # Unlike legacy ZeroBias, the delay logic is in the CTP firmware, so
+        # we provide the seed rather than a dedicated threshold
+        MenuItem('L1_ZB_eEM18', ctpid=508).setLogic(d.eEM18 & physcond).setTriggerType(TT.zerobs)
 
 
         # combined jet - xe
@@ -939,7 +947,7 @@ class ItemDef:
         MenuItem('L1_TE9000p0ETA49_OVERLAY').setLogic( d.TE90000ETA49 & physcond).setTriggerType(TT.zerobs)
 
         MenuItem('L1_TE50_VTE600p0ETA49'    ).setLogic( d.TE50 & Not(d.TE6000ETA49) & physcond).setTriggerType(TT.calo)
-        MenuItem('L1_TE50_VTE600p0ETA49_PEB').setLogic( d.TE50 & Not(d.TE6000ETA49) & physcond).setTriggerType(TT.ftk)
+        MenuItem('L1_TE50_VTE600p0ETA49_PEB').setLogic( d.TE50 & Not(d.TE6000ETA49) & physcond).setTriggerType(TT.calo)
         MenuItem('L1_TE600p0ETA49_PEB'      ).setLogic( d.TE6000ETA49 & physcond).setTriggerType(TT.calo)
 
         MenuItem('L1_VTE2' ).setLogic( Not(d.TE2)  & physcond).setTriggerType(TT.calo)
@@ -967,111 +975,112 @@ class ItemDef:
         MBTS_4_C = d.MBTS_C.x(4)
 
 
-        MenuItem('L1_MBTS_A'             ).setLogic( d.MBTS_A   & physcond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_C'             ).setLogic( d.MBTS_C   & physcond ).setTriggerType(TT.minb)
+        MenuItem('L1_MBTS_A'             ).setLogic( d.MBTS_A   & physcond )
+        MenuItem('L1_MBTS_C'             ).setLogic( d.MBTS_C   & physcond )
         
-        MenuItem('L1_MBTS_1'             ).setLogic( MBTS_1   & physcond ).setTriggerType(TT.minb)
+        MenuItem('L1_MBTS_1'             ).setLogic( MBTS_1   & physcond )
         MenuItem('L1_MBTS_1_OVERLAY'     ).setLogic( MBTS_1   & physcond ).setTriggerType(TT.zerobs)
-        MenuItem('L1_MBTS_2'             ).setLogic( MBTS_2   & physcond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_1'           ).setLogic( MBTS_1_1 & physcond ).setTriggerType(TT.minb)
+        MenuItem('L1_MBTS_2'             ).setLogic( MBTS_2   & physcond )
+        MenuItem('L1_MBTS_1_1'           ).setLogic( MBTS_1_1 & physcond )
         MenuItem('L1_MBTS_1_1_OVERLAY'   ).setLogic( MBTS_1_1 & physcond ).setTriggerType(TT.zerobs)
-        MenuItem('L1_MBTS_2_2'           ).setLogic( MBTS_2_2 & physcond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_2_A'           ).setLogic( MBTS_2_A & physcond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_2_C'           ).setLogic( MBTS_2_C & physcond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_3_3'           ).setLogic( MBTS_3_3 & physcond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_4_4'           ).setLogic( MBTS_4_4 & physcond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_4_A'           ).setLogic( MBTS_4_A & physcond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_4_C'           ).setLogic( MBTS_4_C & physcond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_A'           ).setLogic( MBTS_1_A & physcond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_C'           ).setLogic( MBTS_1_C & physcond ).setTriggerType(TT.minb)
+        MenuItem('L1_MBTS_2_2'           ).setLogic( MBTS_2_2 & physcond )
+        MenuItem('L1_MBTS_2_A'           ).setLogic( MBTS_2_A & physcond )
+        MenuItem('L1_MBTS_2_C'           ).setLogic( MBTS_2_C & physcond )
+        MenuItem('L1_MBTS_3_3'           ).setLogic( MBTS_3_3 & physcond )
+        MenuItem('L1_MBTS_4_4'           ).setLogic( MBTS_4_4 & physcond )
+        MenuItem('L1_MBTS_4_A'           ).setLogic( MBTS_4_A & physcond )
+        MenuItem('L1_MBTS_4_C'           ).setLogic( MBTS_4_C & physcond )
+        MenuItem('L1_MBTS_1_A'           ).setLogic( MBTS_1_A & physcond )
+        MenuItem('L1_MBTS_1_C'           ).setLogic( MBTS_1_C & physcond )
 
-        MenuItem('L1_MBTS_1_UNPAIRED_ISO'   ).setLogic( MBTS_1   & unpaired_isocond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_2_UNPAIRED_ISO'   ).setLogic( MBTS_2   & unpaired_isocond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_1_UNPAIRED_ISO' ).setLogic( MBTS_1_1 & unpaired_isocond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_2_2_UNPAIRED_ISO' ).setLogic( MBTS_2_2 & unpaired_isocond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_3_3_UNPAIRED_ISO' ).setLogic( MBTS_3_3 & unpaired_isocond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_4_4_UNPAIRED_ISO' ).setLogic( MBTS_3_3 & unpaired_isocond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_UNPAIRED_NONISO').setLogic( MBTS_1   & unpaired_nonisocond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_2_UNPAIRED_NONISO').setLogic( MBTS_2   & unpaired_nonisocond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_4_A_UNPAIRED_ISO' ).setLogic( MBTS_4_A & unpaired_isocond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_4_C_UNPAIRED_ISO' ).setLogic( MBTS_4_C & unpaired_isocond ).setTriggerType(TT.minb)
 
-        MenuItem('L1_MBTS_1_A_EMPTY'    ).setLogic( MBTS_1_A   & cosmiccond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_C_EMPTY'    ).setLogic( MBTS_1_C   & cosmiccond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_EMPTY'    ).setLogic( MBTS_1   & cosmiccond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_2_EMPTY'    ).setLogic( MBTS_2   & cosmiccond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_1_EMPTY'  ).setLogic( MBTS_1_1 & cosmiccond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_2_2_EMPTY'  ).setLogic( MBTS_2_2 & cosmiccond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_3_3_EMPTY'  ).setLogic( MBTS_3_3 & cosmiccond ).setTriggerType(TT.minb)
+        MenuItem('L1_MBTS_1_UNPAIRED_ISO'   ).setLogic( MBTS_1   & unpaired_isocond)
+        MenuItem('L1_MBTS_2_UNPAIRED_ISO'   ).setLogic( MBTS_2   & unpaired_isocond)
+        MenuItem('L1_MBTS_1_1_UNPAIRED_ISO' ).setLogic( MBTS_1_1 & unpaired_isocond)
+        MenuItem('L1_MBTS_2_2_UNPAIRED_ISO' ).setLogic( MBTS_2_2 & unpaired_isocond)
+        MenuItem('L1_MBTS_3_3_UNPAIRED_ISO' ).setLogic( MBTS_3_3 & unpaired_isocond)
+        MenuItem('L1_MBTS_4_4_UNPAIRED_ISO' ).setLogic( MBTS_3_3 & unpaired_isocond)
+        MenuItem('L1_MBTS_1_UNPAIRED_NONISO').setLogic( MBTS_1   & unpaired_nonisocond)
+        MenuItem('L1_MBTS_2_UNPAIRED_NONISO').setLogic( MBTS_2   & unpaired_nonisocond)
+        MenuItem('L1_MBTS_4_A_UNPAIRED_ISO' ).setLogic( MBTS_4_A & unpaired_isocond )
+        MenuItem('L1_MBTS_4_C_UNPAIRED_ISO' ).setLogic( MBTS_4_C & unpaired_isocond )
 
-        MenuItem('L1_MBTS_1_1_VTE50'  ).setLogic( MBTS_1_1  & Not(d.TE50) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_2_2_VTE50'  ).setLogic( MBTS_2_2  & Not(d.TE50) & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_MBTS_1_A_EMPTY'    ).setLogic( MBTS_1_A   & cosmiccond )
+        MenuItem('L1_MBTS_1_C_EMPTY'    ).setLogic( MBTS_1_C   & cosmiccond )
+        MenuItem('L1_MBTS_1_EMPTY'    ).setLogic( MBTS_1   & cosmiccond )
+        MenuItem('L1_MBTS_2_EMPTY'    ).setLogic( MBTS_2   & cosmiccond )
+        MenuItem('L1_MBTS_1_1_EMPTY'  ).setLogic( MBTS_1_1 & cosmiccond )
+        MenuItem('L1_MBTS_2_2_EMPTY'  ).setLogic( MBTS_2_2 & cosmiccond )
+        MenuItem('L1_MBTS_3_3_EMPTY'  ).setLogic( MBTS_3_3 & cosmiccond )
 
-        MenuItem('L1_MBTS_1_VTE2'     ).setLogic( MBTS_1  & Not(d.TE2) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_VTE3'     ).setLogic( MBTS_1  & Not(d.TE3) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_VTE4'     ).setLogic( MBTS_1  & Not(d.TE4) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_VTE5'     ).setLogic( MBTS_1  & Not(d.TE5) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_VTE10'    ).setLogic( MBTS_1  & Not(d.TE10) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_VTE70'    ).setLogic( MBTS_1  & Not(d.TE70) & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_MBTS_1_1_VTE50'  ).setLogic( MBTS_1_1  & Not(d.TE50) & physcond)
+        MenuItem('L1_MBTS_2_2_VTE50'  ).setLogic( MBTS_2_2  & Not(d.TE50) & physcond)
 
-        MenuItem('L1_MBTS_2_VTE2'     ).setLogic( MBTS_2  & Not(d.TE2) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_2_VTE3'     ).setLogic( MBTS_2  & Not(d.TE3) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_2_VTE4'     ).setLogic( MBTS_2  & Not(d.TE4) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_2_VTE5'     ).setLogic( MBTS_2  & Not(d.TE5) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_2_VTE10'    ).setLogic( MBTS_2  & Not(d.TE10) & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_MBTS_1_VTE2'     ).setLogic( MBTS_1  & Not(d.TE2) & physcond)
+        MenuItem('L1_MBTS_1_VTE3'     ).setLogic( MBTS_1  & Not(d.TE3) & physcond)
+        MenuItem('L1_MBTS_1_VTE4'     ).setLogic( MBTS_1  & Not(d.TE4) & physcond)
+        MenuItem('L1_MBTS_1_VTE5'     ).setLogic( MBTS_1  & Not(d.TE5) & physcond)
+        MenuItem('L1_MBTS_1_VTE10'    ).setLogic( MBTS_1  & Not(d.TE10) & physcond)
+        MenuItem('L1_MBTS_1_VTE70'    ).setLogic( MBTS_1  & Not(d.TE70) & physcond)
 
-        MenuItem('L1_MBTSA0' ).setLogic( d.MBTS_A0 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSA1' ).setLogic( d.MBTS_A1 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSA2' ).setLogic( d.MBTS_A2 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSA3' ).setLogic( d.MBTS_A3 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSA4' ).setLogic( d.MBTS_A4 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSA5' ).setLogic( d.MBTS_A5 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSA6' ).setLogic( d.MBTS_A6 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSA7' ).setLogic( d.MBTS_A7 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSA8' ).setLogic( d.MBTS_A8 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSA10').setLogic( d.MBTS_A10 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSA12').setLogic( d.MBTS_A12 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSA14').setLogic( d.MBTS_A14 & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_MBTS_2_VTE2'     ).setLogic( MBTS_2  & Not(d.TE2) & physcond)
+        MenuItem('L1_MBTS_2_VTE3'     ).setLogic( MBTS_2  & Not(d.TE3) & physcond)
+        MenuItem('L1_MBTS_2_VTE4'     ).setLogic( MBTS_2  & Not(d.TE4) & physcond)
+        MenuItem('L1_MBTS_2_VTE5'     ).setLogic( MBTS_2  & Not(d.TE5) & physcond)
+        MenuItem('L1_MBTS_2_VTE10'    ).setLogic( MBTS_2  & Not(d.TE10) & physcond)
 
-        MenuItem('L1_MBTSA9' ).setLogic( d.MBTS_A9 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSA11').setLogic( d.MBTS_A11 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSA13').setLogic( d.MBTS_A13 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSA15').setLogic( d.MBTS_A15 & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_MBTSA0' ).setLogic( d.MBTS_A0 & physcond)
+        MenuItem('L1_MBTSA1' ).setLogic( d.MBTS_A1 & physcond)
+        MenuItem('L1_MBTSA2' ).setLogic( d.MBTS_A2 & physcond)
+        MenuItem('L1_MBTSA3' ).setLogic( d.MBTS_A3 & physcond)
+        MenuItem('L1_MBTSA4' ).setLogic( d.MBTS_A4 & physcond)
+        MenuItem('L1_MBTSA5' ).setLogic( d.MBTS_A5 & physcond)
+        MenuItem('L1_MBTSA6' ).setLogic( d.MBTS_A6 & physcond)
+        MenuItem('L1_MBTSA7' ).setLogic( d.MBTS_A7 & physcond)
+        MenuItem('L1_MBTSA8' ).setLogic( d.MBTS_A8 & physcond)
+        MenuItem('L1_MBTSA10').setLogic( d.MBTS_A10 & physcond)
+        MenuItem('L1_MBTSA12').setLogic( d.MBTS_A12 & physcond)
+        MenuItem('L1_MBTSA14').setLogic( d.MBTS_A14 & physcond)
 
-        MenuItem('L1_MBTSC0' ).setLogic( d.MBTS_C0 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSC1' ).setLogic( d.MBTS_C1 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSC2' ).setLogic( d.MBTS_C2 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSC3' ).setLogic( d.MBTS_C3 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSC4' ).setLogic( d.MBTS_C4 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSC5' ).setLogic( d.MBTS_C5 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSC6' ).setLogic( d.MBTS_C6 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSC7' ).setLogic( d.MBTS_C7 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSC8' ).setLogic( d.MBTS_C8 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSC10').setLogic( d.MBTS_C10 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSC12').setLogic( d.MBTS_C12 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSC14').setLogic( d.MBTS_C14 & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_MBTSA9' ).setLogic( d.MBTS_A9 & physcond)
+        MenuItem('L1_MBTSA11').setLogic( d.MBTS_A11 & physcond)
+        MenuItem('L1_MBTSA13').setLogic( d.MBTS_A13 & physcond)
+        MenuItem('L1_MBTSA15').setLogic( d.MBTS_A15 & physcond)
 
-        MenuItem('L1_MBTSC9' ).setLogic( d.MBTS_C9 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSC11').setLogic( d.MBTS_C11 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSC13').setLogic( d.MBTS_C13 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTSC15').setLogic( d.MBTS_C15 & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_MBTSC0' ).setLogic( d.MBTS_C0 & physcond)
+        MenuItem('L1_MBTSC1' ).setLogic( d.MBTS_C1 & physcond)
+        MenuItem('L1_MBTSC2' ).setLogic( d.MBTS_C2 & physcond)
+        MenuItem('L1_MBTSC3' ).setLogic( d.MBTS_C3 & physcond)
+        MenuItem('L1_MBTSC4' ).setLogic( d.MBTS_C4 & physcond)
+        MenuItem('L1_MBTSC5' ).setLogic( d.MBTS_C5 & physcond)
+        MenuItem('L1_MBTSC6' ).setLogic( d.MBTS_C6 & physcond)
+        MenuItem('L1_MBTSC7' ).setLogic( d.MBTS_C7 & physcond)
+        MenuItem('L1_MBTSC8' ).setLogic( d.MBTS_C8 & physcond)
+        MenuItem('L1_MBTSC10').setLogic( d.MBTS_C10 & physcond)
+        MenuItem('L1_MBTSC12').setLogic( d.MBTS_C12 & physcond)
+        MenuItem('L1_MBTSC14').setLogic( d.MBTS_C14 & physcond)
 
-        MenuItem('L1_MBTS_1_BGRP9'   ).setLogic( MBTS_1 & bgrp9cond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_1_BGRP9' ).setLogic( MBTS_1_1 & bgrp9cond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_2_BGRP9'   ).setLogic( MBTS_2 & bgrp9cond ).setTriggerType(TT.minb)
+        MenuItem('L1_MBTSC9' ).setLogic( d.MBTS_C9 & physcond)
+        MenuItem('L1_MBTSC11').setLogic( d.MBTS_C11 & physcond)
+        MenuItem('L1_MBTSC13').setLogic( d.MBTS_C13 & physcond)
+        MenuItem('L1_MBTSC15').setLogic( d.MBTS_C15 & physcond)
 
-        MenuItem('L1_MBTS_1_BGRP11'  ).setLogic( MBTS_1 & bgrp11cond ).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_1_BGRP11').setLogic( MBTS_1_1 & bgrp11cond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_2_BGRP11'  ).setLogic( MBTS_2 & bgrp11cond ).setTriggerType(TT.minb)
+        MenuItem('L1_MBTS_1_BGRP9'   ).setLogic( MBTS_1 & bgrp9cond )
+        MenuItem('L1_MBTS_1_1_BGRP9' ).setLogic( MBTS_1_1 & bgrp9cond )
+        MenuItem('L1_MBTS_2_BGRP9'   ).setLogic( MBTS_2 & bgrp9cond )
+
+        MenuItem('L1_MBTS_1_BGRP11'  ).setLogic( MBTS_1 & bgrp11cond )
+        MenuItem('L1_MBTS_1_1_BGRP11').setLogic( MBTS_1_1 & bgrp11cond)
+        MenuItem('L1_MBTS_2_BGRP11'  ).setLogic( MBTS_2 & bgrp11cond )
 
 
         # ZDC
 
-        MenuItem('L1_ZDC'             ).setLogic( (ZDC_A | ZDC_C) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_A'           ).setLogic( ZDC_A & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_C'           ).setLogic( ZDC_C & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_AND'         ).setLogic( ZDC_AND & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_A_C'         ).setLogic( ZDC_A_C & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_ZDC'             ).setLogic( (ZDC_A | ZDC_C) & physcond)
+        MenuItem('L1_ZDC_A'           ).setLogic( ZDC_A & physcond)
+        MenuItem('L1_ZDC_C'           ).setLogic( ZDC_C & physcond)
+        MenuItem('L1_ZDC_AND'         ).setLogic( ZDC_AND & physcond)
+        MenuItem('L1_ZDC_A_C'         ).setLogic( ZDC_A_C & physcond)
 
         MenuItem('L1_ZDC_A_C_OVERLAY' ).setLogic( ZDC_A_C & physcond).setTriggerType(TT.zerobs)
         MenuItem('L1_ZDC_A_OVERLAY'   ).setLogic( ZDC_A & physcond).setTriggerType(TT.zerobs)
@@ -1082,107 +1091,107 @@ class ItemDef:
         MenuItem('L1_TE20_OVERLAY'    ).setLogic( d.TE20 & physcond).setTriggerType(TT.zerobs)
         MenuItem('L1_TE50_OVERLAY'    ).setLogic( d.TE50 & physcond).setTriggerType(TT.zerobs)
 
-        MenuItem('L1_ZDC_VTE200'      ).setLogic((ZDC_A | ZDC_C) & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_AND_VTE50'   ).setLogic( ZDC_AND & Not(d.TE50) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_A_C_VTE50'   ).setLogic( ZDC_A_C & Not(d.TE50) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_A_C_TE50'    ).setLogic( ZDC_A_C & d.TE50 & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_ZDC_VTE200'      ).setLogic((ZDC_A | ZDC_C) & Not(d.TE200) & physcond)
+        MenuItem('L1_ZDC_AND_VTE50'   ).setLogic( ZDC_AND & Not(d.TE50) & physcond)
+        MenuItem('L1_ZDC_A_C_VTE50'   ).setLogic( ZDC_A_C & Not(d.TE50) & physcond)
+        MenuItem('L1_ZDC_A_C_TE50'    ).setLogic( ZDC_A_C & d.TE50 & physcond)
 
-        MenuItem('L1_ZDC_A_C_VTE50_PEB').setLogic( ZDC_A_C & Not(d.TE50) & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_ZDC_A_C_VTE50_PEB').setLogic( ZDC_A_C & Not(d.TE50) & physcond)
 
-        MenuItem('L1_ZDC_A_VTE20'      ).setLogic( ZDC_A & Not(d.TE20) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_C_VTE20'      ).setLogic( ZDC_C & Not(d.TE20) & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_ZDC_A_VTE20'      ).setLogic( ZDC_A & Not(d.TE20) & physcond)
+        MenuItem('L1_ZDC_C_VTE20'      ).setLogic( ZDC_C & Not(d.TE20) & physcond)
 
-        MenuItem('L1_ZDC_A_C_VTE200'    ).setLogic( ZDC_A_C & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_A_C_TE5_VTE200').setLogic( ZDC_A_C & d.TE5 & Not(d.TE200) & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_ZDC_A_C_VTE200'    ).setLogic( ZDC_A_C & Not(d.TE200) & physcond)
+        MenuItem('L1_ZDC_A_C_TE5_VTE200').setLogic( ZDC_A_C & d.TE5 & Not(d.TE200) & physcond)
 
-        MenuItem('L1_VZDC_A_C_VTE50'      ).setLogic( VZDC_A_C & Not(d.TE50) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_VZDC_A_C_TE5_VTE200' ).setLogic( VZDC_A_C & d.TE5 & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_VZDC_A_C_TE20_VTE200').setLogic( VZDC_A_C & d.TE20 & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_VZDC_AORC_TE5_VTE200').setLogic( VZDC_AORC & d.TE5 & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_VZDC_A_VZDC_C_TE5_VTE200').setLogic( Not(ZDC_A) & Not(ZDC_C) & d.TE5 & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_TE20_ZDC_A_VZDC_C_VTE200').setLogic( ZDC_A & Not(ZDC_C) & d.TE20 & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_TE20_ZDC_C_VZDC_A_VTE200').setLogic( ZDC_C & Not(ZDC_A) & d.TE20 & Not(d.TE200) & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_VZDC_A_C_VTE50'      ).setLogic( VZDC_A_C & Not(d.TE50) & physcond)
+        MenuItem('L1_VZDC_A_C_TE5_VTE200' ).setLogic( VZDC_A_C & d.TE5 & Not(d.TE200) & physcond)
+        MenuItem('L1_VZDC_A_C_TE20_VTE200').setLogic( VZDC_A_C & d.TE20 & Not(d.TE200) & physcond)
+        MenuItem('L1_VZDC_AORC_TE5_VTE200').setLogic( VZDC_AORC & d.TE5 & Not(d.TE200) & physcond)
+        MenuItem('L1_VZDC_A_VZDC_C_TE5_VTE200').setLogic( Not(ZDC_A) & Not(ZDC_C) & d.TE5 & Not(d.TE200) & physcond)
+        MenuItem('L1_TE20_ZDC_A_VZDC_C_VTE200').setLogic( ZDC_A & Not(ZDC_C) & d.TE20 & Not(d.TE200) & physcond)
+        MenuItem('L1_TE20_ZDC_C_VZDC_A_VTE200').setLogic( ZDC_C & Not(ZDC_A) & d.TE20 & Not(d.TE200) & physcond)
 
-        MenuItem('L1_ZDC_MBTS_1'        ).setLogic((ZDC_A | ZDC_C) & MBTS_1 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_MBTS_2'        ).setLogic((ZDC_A | ZDC_C) & MBTS_2 & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_ZDC_MBTS_1'        ).setLogic((ZDC_A | ZDC_C) & MBTS_1 & physcond)
+        MenuItem('L1_ZDC_MBTS_2'        ).setLogic((ZDC_A | ZDC_C) & MBTS_2 & physcond)
 
-        MenuItem('L1_ZDC_MBTS_1_1'      ).setLogic((ZDC_A | ZDC_C) & MBTS_1_1 & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_MBTS_2_2'      ).setLogic((ZDC_A | ZDC_C) & MBTS_2_2 & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_ZDC_MBTS_1_1'      ).setLogic((ZDC_A | ZDC_C) & MBTS_1_1 & physcond)
+        MenuItem('L1_ZDC_MBTS_2_2'      ).setLogic((ZDC_A | ZDC_C) & MBTS_2_2 & physcond)
 
-        MenuItem('L1_ZDC_EMPTY'           ).setLogic( (ZDC_A | ZDC_C) & cosmiccond ).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_A_EMPTY'           ).setLogic( ZDC_A & cosmiccond ).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_C_EMPTY'           ).setLogic( ZDC_C & cosmiccond ).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_UNPAIRED_ISO'    ).setLogic( (ZDC_A | ZDC_C) & unpaired_isocond ).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_UNPAIRED_NONISO' ).setLogic( (ZDC_A | ZDC_C) & unpaired_nonisocond ).setTriggerType(TT.minb)
+        MenuItem('L1_ZDC_EMPTY'           ).setLogic( (ZDC_A | ZDC_C) & cosmiccond )
+        MenuItem('L1_ZDC_A_EMPTY'           ).setLogic( ZDC_A & cosmiccond )
+        MenuItem('L1_ZDC_C_EMPTY'           ).setLogic( ZDC_C & cosmiccond )
+        MenuItem('L1_ZDC_UNPAIRED_ISO'    ).setLogic( (ZDC_A | ZDC_C) & unpaired_isocond )
+        MenuItem('L1_ZDC_UNPAIRED_NONISO' ).setLogic( (ZDC_A | ZDC_C) & unpaired_nonisocond )
 
-        MenuItem('L1_ZDC_AND_EMPTY'           ).setLogic( ZDC_AND & cosmiccond ).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_AND_UNPAIRED_ISO'    ).setLogic( ZDC_AND & unpaired_isocond ).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_AND_UNPAIRED_NONISO' ).setLogic( ZDC_AND & unpaired_nonisocond ).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_A_UNPAIRED_NONISO' ).setLogic( ZDC_A & unpaired_nonisocond ).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_C_UNPAIRED_NONISO' ).setLogic( ZDC_C & unpaired_nonisocond ).setTriggerType(TT.minb)
+        MenuItem('L1_ZDC_AND_EMPTY'           ).setLogic( ZDC_AND & cosmiccond )
+        MenuItem('L1_ZDC_AND_UNPAIRED_ISO'    ).setLogic( ZDC_AND & unpaired_isocond )
+        MenuItem('L1_ZDC_AND_UNPAIRED_NONISO' ).setLogic( ZDC_AND & unpaired_nonisocond )
+        MenuItem('L1_ZDC_A_UNPAIRED_NONISO' ).setLogic( ZDC_A & unpaired_nonisocond )
+        MenuItem('L1_ZDC_C_UNPAIRED_NONISO' ).setLogic( ZDC_C & unpaired_nonisocond )
 
-        MenuItem('L1_ZDC_A_C_EMPTY'           ).setLogic( ZDC_A_C & cosmiccond ).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_A_C_UNPAIRED_ISO'    ).setLogic( ZDC_A_C & unpaired_isocond ).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_A_C_UNPAIRED_NONISO' ).setLogic( ZDC_A_C & unpaired_nonisocond ).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_A_UNPAIRED_ISO'    ).setLogic( ZDC_A & unpaired_isocond ).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_C_UNPAIRED_ISO'    ).setLogic( ZDC_C & unpaired_isocond ).setTriggerType(TT.minb)
+        MenuItem('L1_ZDC_A_C_EMPTY'           ).setLogic( ZDC_A_C & cosmiccond )
+        MenuItem('L1_ZDC_A_C_UNPAIRED_ISO'    ).setLogic( ZDC_A_C & unpaired_isocond )
+        MenuItem('L1_ZDC_A_C_UNPAIRED_NONISO' ).setLogic( ZDC_A_C & unpaired_nonisocond )
+        MenuItem('L1_ZDC_A_UNPAIRED_ISO'    ).setLogic( ZDC_A & unpaired_isocond )
+        MenuItem('L1_ZDC_C_UNPAIRED_ISO'    ).setLogic( ZDC_C & unpaired_isocond )
 
-        MenuItem('L1_ZDC_A_C_BGRP9'      ).setLogic( ZDC_A_C & bgrp9cond & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_A_BGRP9'      ).setLogic( ZDC_A & bgrp9cond & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_C_BGRP9'      ).setLogic( ZDC_C & bgrp9cond & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_A_C_BGRP11'     ).setLogic( ZDC_A_C & bgrp11cond & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_ZDC_A_C_BGRP9'      ).setLogic( ZDC_A_C & bgrp9cond & physcond)
+        MenuItem('L1_ZDC_A_BGRP9'      ).setLogic( ZDC_A & bgrp9cond & physcond)
+        MenuItem('L1_ZDC_C_BGRP9'      ).setLogic( ZDC_C & bgrp9cond & physcond)
+        MenuItem('L1_ZDC_A_C_BGRP11'     ).setLogic( ZDC_A_C & bgrp11cond & physcond)
 
   # ATR-12470
         ZDC_XOR = (ZDC_A & Not(ZDC_C)) | (ZDC_C & Not(ZDC_A))
-        MenuItem('L1_ZDC_A_VZDC_C'                  ).setLogic(ZDC_A & Not(ZDC_C) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_C_VZDC_A'                  ).setLogic(ZDC_C & Not(ZDC_A) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_A_VZDC_C_VTE200'           ).setLogic(ZDC_A & Not(ZDC_C) & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_C_VZDC_A_VTE200'           ).setLogic(ZDC_C & Not(ZDC_A) & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_ZDC_A_VZDC_C_VTE200'    ).setLogic(MBTS_1      & ZDC_A & Not(ZDC_C) & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_1_ZDC_C_VZDC_A_VTE200'    ).setLogic(MBTS_1      & ZDC_C & Not(ZDC_A) & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_TE3p0ETA49_ZDC_A_VZDC_C_VTE200').setLogic(d.TE30ETA49 & ZDC_A & Not(ZDC_C) & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_TE3p0ETA49_ZDC_C_VZDC_A_VTE200').setLogic(d.TE30ETA49 & ZDC_C & Not(ZDC_A) & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_TE4_ZDC_A_VZDC_C_VTE200'       ).setLogic(d.TE4       & ZDC_A & Not(ZDC_C) & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_TE4_ZDC_C_VZDC_A_VTE200'       ).setLogic(d.TE4       & ZDC_C & Not(ZDC_A) & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_TE5_ZDC_A_VZDC_C_VTE200'       ).setLogic(d.TE5       & ZDC_A & Not(ZDC_C) & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_TE5_ZDC_C_VZDC_A_VTE200'       ).setLogic(d.TE5       & ZDC_C & Not(ZDC_A) & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_TE7p0ETA49_ZDC_A_VZDC_C_VTE200').setLogic(d.TE70ETA49 & ZDC_A & Not(ZDC_C) & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_TE7p0ETA49_ZDC_C_VZDC_A_VTE200').setLogic(d.TE70ETA49 & ZDC_C & Not(ZDC_A) & Not(d.TE200) & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_ZDC_A_VZDC_C'                  ).setLogic(ZDC_A & Not(ZDC_C) & physcond)
+        MenuItem('L1_ZDC_C_VZDC_A'                  ).setLogic(ZDC_C & Not(ZDC_A) & physcond)
+        MenuItem('L1_ZDC_A_VZDC_C_VTE200'           ).setLogic(ZDC_A & Not(ZDC_C) & Not(d.TE200) & physcond)
+        MenuItem('L1_ZDC_C_VZDC_A_VTE200'           ).setLogic(ZDC_C & Not(ZDC_A) & Not(d.TE200) & physcond)
+        MenuItem('L1_MBTS_1_ZDC_A_VZDC_C_VTE200'    ).setLogic(MBTS_1      & ZDC_A & Not(ZDC_C) & Not(d.TE200) & physcond)
+        MenuItem('L1_MBTS_1_ZDC_C_VZDC_A_VTE200'    ).setLogic(MBTS_1      & ZDC_C & Not(ZDC_A) & Not(d.TE200) & physcond)
+        MenuItem('L1_TE3p0ETA49_ZDC_A_VZDC_C_VTE200').setLogic(d.TE30ETA49 & ZDC_A & Not(ZDC_C) & Not(d.TE200) & physcond)
+        MenuItem('L1_TE3p0ETA49_ZDC_C_VZDC_A_VTE200').setLogic(d.TE30ETA49 & ZDC_C & Not(ZDC_A) & Not(d.TE200) & physcond)
+        MenuItem('L1_TE4_ZDC_A_VZDC_C_VTE200'       ).setLogic(d.TE4       & ZDC_A & Not(ZDC_C) & Not(d.TE200) & physcond)
+        MenuItem('L1_TE4_ZDC_C_VZDC_A_VTE200'       ).setLogic(d.TE4       & ZDC_C & Not(ZDC_A) & Not(d.TE200) & physcond)
+        MenuItem('L1_TE5_ZDC_A_VZDC_C_VTE200'       ).setLogic(d.TE5       & ZDC_A & Not(ZDC_C) & Not(d.TE200) & physcond)
+        MenuItem('L1_TE5_ZDC_C_VZDC_A_VTE200'       ).setLogic(d.TE5       & ZDC_C & Not(ZDC_A) & Not(d.TE200) & physcond)
+        MenuItem('L1_TE7p0ETA49_ZDC_A_VZDC_C_VTE200').setLogic(d.TE70ETA49 & ZDC_A & Not(ZDC_C) & Not(d.TE200) & physcond)
+        MenuItem('L1_TE7p0ETA49_ZDC_C_VZDC_A_VTE200').setLogic(d.TE70ETA49 & ZDC_C & Not(ZDC_A) & Not(d.TE200) & physcond)
 
 
-        MenuItem('L1_ZDC_XOR'                  ).setLogic(ZDC_XOR & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_XOR_TE3p0ETA49_VTE200').setLogic(ZDC_XOR & d.TE30ETA49 & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_XOR_TE4_VTE200'       ).setLogic(ZDC_XOR & d.TE4 & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_XOR_TE5_VTE200'       ).setLogic(ZDC_XOR & d.TE5 & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_XOR_TE20_VTE200'      ).setLogic(ZDC_XOR & d.TE20 & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_XOR_TRT_VTE200'       ).setLogic(ZDC_XOR & d.NIMTRT & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_XOR_VTE50'            ).setLogic(ZDC_XOR & Not(d.TE50) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_XOR_VTE200'           ).setLogic(ZDC_XOR & Not(d.TE200) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_ZDC_XOR_VTE200_MBTS_1'    ).setLogic(ZDC_XOR & Not(d.TE200) & MBTS_1 & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_ZDC_XOR'                  ).setLogic(ZDC_XOR & physcond)
+        MenuItem('L1_ZDC_XOR_TE3p0ETA49_VTE200').setLogic(ZDC_XOR & d.TE30ETA49 & Not(d.TE200) & physcond)
+        MenuItem('L1_ZDC_XOR_TE4_VTE200'       ).setLogic(ZDC_XOR & d.TE4 & Not(d.TE200) & physcond)
+        MenuItem('L1_ZDC_XOR_TE5_VTE200'       ).setLogic(ZDC_XOR & d.TE5 & Not(d.TE200) & physcond)
+        MenuItem('L1_ZDC_XOR_TE20_VTE200'      ).setLogic(ZDC_XOR & d.TE20 & Not(d.TE200) & physcond)
+        MenuItem('L1_ZDC_XOR_TRT_VTE200'       ).setLogic(ZDC_XOR & d.NIMTRT & Not(d.TE200) & physcond)
+        MenuItem('L1_ZDC_XOR_VTE50'            ).setLogic(ZDC_XOR & Not(d.TE50) & physcond)
+        MenuItem('L1_ZDC_XOR_VTE200'           ).setLogic(ZDC_XOR & Not(d.TE200) & physcond)
+        MenuItem('L1_ZDC_XOR_VTE200_MBTS_1'    ).setLogic(ZDC_XOR & Not(d.TE200) & MBTS_1 & physcond)
 
         # ATR-14967
-        MenuItem('L1_EM3_VZDC_A'           ).setLogic( d.EM3 & Not(ZDC_A) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_EM3_VZDC_C'           ).setLogic( d.EM3 & Not(ZDC_C) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_2EM3_VZDC_A'          ).setLogic( d.EM3.x(2) & Not(ZDC_A) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_2EM3_VZDC_C'          ).setLogic( d.EM3.x(2) & Not(ZDC_C) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_EM5_VZDC_A'           ).setLogic( d.EM5 & Not(ZDC_A) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_EM5_VZDC_C'           ).setLogic( d.EM5 & Not(ZDC_C) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_TE5_VZDC_A'           ).setLogic( d.TE5 & Not(ZDC_A) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_TE5_VZDC_C'           ).setLogic( d.TE5 & Not(ZDC_C) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_TE10_VZDC_A'          ).setLogic( d.TE10 & Not(ZDC_A) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_TE10_VZDC_C'          ).setLogic( d.TE10 & Not(ZDC_C) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_TE20_VZDC_A'          ).setLogic( d.TE20 & Not(ZDC_A) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_TE20_VZDC_C'          ).setLogic( d.TE20 & Not(ZDC_C) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_VTE10_VZDC_A'         ).setLogic( Not(d.TE10) & Not(ZDC_A) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_VTE10_VZDC_C'         ).setLogic( Not(d.TE10) & Not(ZDC_C) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_J5_VZDC_A'            ).setLogic( d.J5  & Not(ZDC_A) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_J5_VZDC_C'            ).setLogic( d.J5  & Not(ZDC_C) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_J10_VZDC_A'           ).setLogic( d.J10 & Not(ZDC_A) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_J10_VZDC_C'           ).setLogic( d.J10 & Not(ZDC_C) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_J15_VZDC_A'           ).setLogic( d.J15 & Not(ZDC_A) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_J15_VZDC_C'           ).setLogic( d.J15 & Not(ZDC_C) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_J20_VZDC_A'           ).setLogic( d.J20 & Not(ZDC_A) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_J20_VZDC_C'           ).setLogic( d.J20 & Not(ZDC_C) & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_EM3_VZDC_A'           ).setLogic( d.EM3 & Not(ZDC_A) & physcond)
+        MenuItem('L1_EM3_VZDC_C'           ).setLogic( d.EM3 & Not(ZDC_C) & physcond)
+        MenuItem('L1_2EM3_VZDC_A'          ).setLogic( d.EM3.x(2) & Not(ZDC_A) & physcond)
+        MenuItem('L1_2EM3_VZDC_C'          ).setLogic( d.EM3.x(2) & Not(ZDC_C) & physcond)
+        MenuItem('L1_EM5_VZDC_A'           ).setLogic( d.EM5 & Not(ZDC_A) & physcond)
+        MenuItem('L1_EM5_VZDC_C'           ).setLogic( d.EM5 & Not(ZDC_C) & physcond)
+        MenuItem('L1_TE5_VZDC_A'           ).setLogic( d.TE5 & Not(ZDC_A) & physcond)
+        MenuItem('L1_TE5_VZDC_C'           ).setLogic( d.TE5 & Not(ZDC_C) & physcond)
+        MenuItem('L1_TE10_VZDC_A'          ).setLogic( d.TE10 & Not(ZDC_A) & physcond)
+        MenuItem('L1_TE10_VZDC_C'          ).setLogic( d.TE10 & Not(ZDC_C) & physcond)
+        MenuItem('L1_TE20_VZDC_A'          ).setLogic( d.TE20 & Not(ZDC_A) & physcond)
+        MenuItem('L1_TE20_VZDC_C'          ).setLogic( d.TE20 & Not(ZDC_C) & physcond)
+        MenuItem('L1_VTE10_VZDC_A'         ).setLogic( Not(d.TE10) & Not(ZDC_A) & physcond)
+        MenuItem('L1_VTE10_VZDC_C'         ).setLogic( Not(d.TE10) & Not(ZDC_C) & physcond)
+        MenuItem('L1_J5_VZDC_A'            ).setLogic( d.J5  & Not(ZDC_A) & physcond)
+        MenuItem('L1_J5_VZDC_C'            ).setLogic( d.J5  & Not(ZDC_C) & physcond)
+        MenuItem('L1_J10_VZDC_A'           ).setLogic( d.J10 & Not(ZDC_A) & physcond)
+        MenuItem('L1_J10_VZDC_C'           ).setLogic( d.J10 & Not(ZDC_C) & physcond)
+        MenuItem('L1_J15_VZDC_A'           ).setLogic( d.J15 & Not(ZDC_A) & physcond)
+        MenuItem('L1_J15_VZDC_C'           ).setLogic( d.J15 & Not(ZDC_C) & physcond)
+        MenuItem('L1_J20_VZDC_A'           ).setLogic( d.J20 & Not(ZDC_A) & physcond)
+        MenuItem('L1_J20_VZDC_C'           ).setLogic( d.J20 & Not(ZDC_C) & physcond)
         MenuItem('L1_MU3V_VZDC_A'          ).setLogic( d.MU3V & Not(ZDC_A) & physcond).setTriggerType(TT.muon)
         MenuItem('L1_MU3V_VZDC_C'          ).setLogic( d.MU3V & Not(ZDC_C) & physcond).setTriggerType(TT.muon)
         MenuItem('L1_2MU3V_VZDC_A'         ).setLogic( d.MU3V.x(2) & Not(ZDC_A) & physcond).setTriggerType(TT.muon)
@@ -1200,65 +1209,79 @@ class ItemDef:
         MenuItem('L1_MU5VF_VTE10_VZDC_A'    ).setLogic( d.MU5VF & Not(d.TE10) & Not(ZDC_A) & physcond).setTriggerType(TT.muon)
         MenuItem('L1_MU5VF_VTE10_VZDC_C'    ).setLogic( d.MU5VF & Not(d.TE10) & Not(ZDC_C) & physcond).setTriggerType(TT.muon)
         MenuItem('L1_MU5VF_VZDC_A_C'        ).setLogic( d.MU5VF & VZDC_A_C & physcond).setTriggerType(TT.muon)
-        MenuItem('L1_RD0_FILLED_VZDC_A'    ).setLogic( d.RNDM0 & Not(ZDC_A) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_RD0_FILLED_VZDC_C'    ).setLogic( d.RNDM0 & Not(ZDC_C) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_4_C_VZDC_A'      ).setLogic( MBTS_4_C & Not(ZDC_A) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_4_A_VZDC_C'      ).setLogic( MBTS_4_A & Not(ZDC_C) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_2_C_VZDC_A'      ).setLogic( MBTS_2_C & Not(ZDC_A) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBTS_2_A_VZDC_C'      ).setLogic( MBTS_2_A & Not(ZDC_C) & physcond).setTriggerType(TT.minb)
+        MenuItem('L1_RD0_FILLED_VZDC_A'    ).setLogic( d.RNDM0 & Not(ZDC_A) & physcond)
+        MenuItem('L1_RD0_FILLED_VZDC_C'    ).setLogic( d.RNDM0 & Not(ZDC_C) & physcond)
+        MenuItem('L1_MBTS_4_C_VZDC_A'      ).setLogic( MBTS_4_C & Not(ZDC_A) & physcond)
+        MenuItem('L1_MBTS_4_A_VZDC_C'      ).setLogic( MBTS_4_A & Not(ZDC_C) & physcond)
+        MenuItem('L1_MBTS_2_C_VZDC_A'      ).setLogic( MBTS_2_C & Not(ZDC_A) & physcond)
+        MenuItem('L1_MBTS_2_A_VZDC_C'      ).setLogic( MBTS_2_A & Not(ZDC_C) & physcond)
 
 
 
 
         # VDM
-        MenuItem('L1_ZDC_A_C_BGRP7'     ).setLogic( ZDC_A_C & bgrp7cond).setTriggerType(TT.minb)
-        MenuItem('L1_LUCID_BGRP7'       ).setLogic( (d.LUCID_A | d.LUCID_C) & bgrp7cond).setTriggerType(TT.minb)
+        MenuItem('L1_ZDC_A_C_BGRP7'     ).setLogic( ZDC_A_C & bgrp7cond)
+        MenuItem('L1_LUCID_BGRP7'       ).setLogic( (d.LUCID_A | d.LUCID_C) & bgrp7cond)
 
         # LUCID
-        MenuItem('L1_LUCID_A'           ).setLogic( d.LUCID_A             & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_LUCID_C'           ).setLogic( d.LUCID_C             & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_LUCID_A_C',        ).setLogic( d.LUCID_A & d.LUCID_C   & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_LUCID'             ).setLogic((d.LUCID_A | d.LUCID_C)  & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_LUCID_COMM'        ).setLogic( d.LUCID_COMM          & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_LUCID_COMM_EMPTY'  ).setLogic( d.LUCID_COMM          & cosmiccond).setTriggerType(TT.minb)
-        MenuItem('L1_LUCID_EMPTY'       ).setLogic((d.LUCID_A | d.LUCID_C)  & cosmiccond).setTriggerType(TT.minb)
-        MenuItem('L1_LUCID_A_C_EMPTY'   ).setLogic( d.LUCID_A & d.LUCID_C   & cosmiccond).setTriggerType(TT.minb)
-        MenuItem('L1_LUCID_UNPAIRED_ISO').setLogic((d.LUCID_A | d.LUCID_C)  & unpaired_isocond).setTriggerType(TT.minb)
-        MenuItem('L1_LUCID_COMM_UNPAIRED_ISO' ).setLogic( d.LUCID_COMM        & unpaired_isocond ).setTriggerType(TT.minb)
-        MenuItem('L1_LUCID_A_C_UNPAIRED_ISO'  ).setLogic( d.LUCID_A & d.LUCID_C & unpaired_isocond).setTriggerType(TT.minb)
-        MenuItem('L1_LUCID_A_C_UNPAIRED_NONISO').setLogic(d.LUCID_A & d.LUCID_C & unpaired_nonisocond).setTriggerType(TT.minb)
+        MenuItem('L1_LUCID_A'           ).setLogic( d.LUCID_A             & physcond)
+        MenuItem('L1_LUCID_C'           ).setLogic( d.LUCID_C             & physcond)
+        MenuItem('L1_LUCID_A_C',        ).setLogic( d.LUCID_A & d.LUCID_C   & physcond)
+        MenuItem('L1_LUCID'             ).setLogic((d.LUCID_A | d.LUCID_C)  & physcond)
+        MenuItem('L1_LUCID_COMM'        ).setLogic( d.LUCID_COMM          & physcond)
+        MenuItem('L1_LUCID_COMM_EMPTY'  ).setLogic( d.LUCID_COMM          & cosmiccond)
+        MenuItem('L1_LUCID_EMPTY'       ).setLogic((d.LUCID_A | d.LUCID_C)  & cosmiccond)
+        MenuItem('L1_LUCID_A_C_EMPTY'   ).setLogic( d.LUCID_A & d.LUCID_C   & cosmiccond)
+        MenuItem('L1_LUCID_UNPAIRED_ISO').setLogic((d.LUCID_A | d.LUCID_C)  & unpaired_isocond)
+        MenuItem('L1_LUCID_COMM_UNPAIRED_ISO' ).setLogic( d.LUCID_COMM        & unpaired_isocond )
+        MenuItem('L1_LUCID_A_C_UNPAIRED_ISO'  ).setLogic( d.LUCID_A & d.LUCID_C & unpaired_isocond)
+        MenuItem('L1_LUCID_A_C_UNPAIRED_NONISO').setLogic(d.LUCID_A & d.LUCID_C & unpaired_nonisocond)
 
-        MenuItem('L1_LUCID_BGRP9').setLogic( (d.LUCID_A | d.LUCID_C) & bgrp9cond).setTriggerType(TT.minb)
-        MenuItem('L1_LUCID_BGRP11').setLogic( (d.LUCID_A | d.LUCID_C) & bgrp11cond).setTriggerType(TT.minb)
+        MenuItem('L1_LUCID_BGRP9').setLogic( (d.LUCID_A | d.LUCID_C) & bgrp9cond)
+        MenuItem('L1_LUCID_BGRP11').setLogic( (d.LUCID_A | d.LUCID_C) & bgrp11cond)
 
         # BCM
-        MenuItem('L1_BCM_Wide'                   ).setLogic( d.BCM_Wide & physcond ).setTriggerType(TT.minb)
-        MenuItem('L1_BCM_Wide_BGRP12'            ).setLogic( d.BCM_Wide & bgrp12cond ).setTriggerType(TT.minb)
-        MenuItem('L1_BCM_Wide_EMPTY'             ).setLogic( d.BCM_Wide & cosmiccond ).setTriggerType(TT.minb)
-        MenuItem('L1_BCM_Wide_UNPAIRED_ISO'      ).setLogic( d.BCM_Wide & unpaired_isocond ).setTriggerType(TT.minb)
-        MenuItem('L1_BCM_Wide_UNPAIRED_NONISO'   ).setLogic( d.BCM_Wide & unpaired_nonisocond ).setTriggerType(TT.minb)
+        MenuItem('L1_BCM_Wide'                   ).setLogic( d.BCM_Wide & physcond )
+        MenuItem('L1_BCM_Wide_BGRP12'            ).setLogic( d.BCM_Wide & bgrp12cond )
+        MenuItem('L1_BCM_Wide_EMPTY'             ).setLogic( d.BCM_Wide & cosmiccond )
+        MenuItem('L1_BCM_Wide_UNPAIRED_ISO'      ).setLogic( d.BCM_Wide & unpaired_isocond )
+        MenuItem('L1_BCM_Wide_UNPAIRED_NONISO'   ).setLogic( d.BCM_Wide & unpaired_nonisocond )
 
-        MenuItem('L1_BCM_HT_BGRP12'               ).setLogic( d.BCM_Comb.x(7) & bgrp12cond).setTriggerType(TT.minb)
-        MenuItem('L1_BCM_AC_CA_BGRP12'            ).setLogic((d.BCM_AtoC | d.BCM_CtoA) & bgrp12cond ).setTriggerType(TT.minb)
-        MenuItem('L1_BCM_AC_CA_UNPAIRED_ISO'     ).setLogic((d.BCM_AtoC | d.BCM_CtoA) & unpaired_isocond).setTriggerType(TT.minb)
+        MenuItem('L1_BCM_HT_BGRP12'               ).setLogic( d.BCM_Comb.x(7) & bgrp12cond)
+        MenuItem('L1_BCM_AC_CA_BGRP12'            ).setLogic((d.BCM_AtoC | d.BCM_CtoA) & bgrp12cond )
+        MenuItem('L1_BCM_AC_CA_UNPAIRED_ISO'     ).setLogic((d.BCM_AtoC | d.BCM_CtoA) & unpaired_isocond)
 
-        MenuItem('L1_BCM_AC_UNPAIRED_ISO'        ).setLogic( d.BCM_AtoC & unpaired_isocond).setTriggerType(TT.minb)
-        MenuItem('L1_BCM_CA_UNPAIRED_ISO'        ).setLogic( d.BCM_CtoA & unpaired_isocond).setTriggerType(TT.minb)
+        MenuItem('L1_BCM_AC_UNPAIRED_ISO'        ).setLogic( d.BCM_AtoC & unpaired_isocond)
+        MenuItem('L1_BCM_CA_UNPAIRED_ISO'        ).setLogic( d.BCM_CtoA & unpaired_isocond)
 
-        MenuItem('L1_BCM_AC_UNPAIRED_NONISO'     ).setLogic( d.BCM_AtoC & unpaired_nonisocond).setTriggerType(TT.minb)
-        MenuItem('L1_BCM_CA_UNPAIRED_NONISO'     ).setLogic( d.BCM_CtoA & unpaired_nonisocond).setTriggerType(TT.minb)
+        MenuItem('L1_BCM_AC_UNPAIRED_NONISO'     ).setLogic( d.BCM_AtoC & unpaired_nonisocond)
+        MenuItem('L1_BCM_CA_UNPAIRED_NONISO'     ).setLogic( d.BCM_CtoA & unpaired_nonisocond)
 
-        MenuItem('L1_BCM_AC_ABORTGAPNOTCALIB'    ).setLogic( d.BCM_AtoC & abortgap).setTriggerType(TT.minb)
-        MenuItem('L1_BCM_CA_ABORTGAPNOTCALIB'    ).setLogic( d.BCM_CtoA & abortgap).setTriggerType(TT.minb)
-        MenuItem('L1_BCM_Wide_ABORTGAPNOTCALIB'  ).setLogic( d.BCM_Wide & abortgap).setTriggerType(TT.minb)
+        MenuItem('L1_BCM_AC_CALIB'     ).setLogic( d.BCM_AtoC & calibcond)
+        MenuItem('L1_BCM_CA_CALIB'     ).setLogic( d.BCM_CtoA & calibcond)
+        MenuItem('L1_BCM_Wide_CALIB'   ).setLogic( d.BCM_Wide & calibcond)
 
-        MenuItem('L1_BCM_AC_CALIB'     ).setLogic( d.BCM_AtoC & calibcond).setTriggerType(TT.minb)
-        MenuItem('L1_BCM_CA_CALIB'     ).setLogic( d.BCM_CtoA & calibcond).setTriggerType(TT.minb)
-        MenuItem('L1_BCM_Wide_CALIB'   ).setLogic( d.BCM_Wide & calibcond).setTriggerType(TT.minb)
+        MenuItem('L1_BCM_AC_UNPAIREDB1'  ).setLogic( d.BCM_AtoC & bgrp13cond)
+        MenuItem('L1_BCM_CA_UNPAIREDB2'  ).setLogic( d.BCM_CtoA & bgrp14cond)
 
-        MenuItem('L1_BCM_AC_UNPAIREDB1'  ).setLogic( d.BCM_AtoC & bgrp13cond).setTriggerType(TT.minb)
-        MenuItem('L1_BCM_CA_UNPAIREDB2'  ).setLogic( d.BCM_CtoA & bgrp14cond).setTriggerType(TT.minb)
+        MenuItem('L1_BCM_2A_EMPTY' ).setLogic( d.BCM6 & cosmiccond)
+        MenuItem('L1_BCM_2C_EMPTY' ).setLogic( d.BCM7 & cosmiccond)
 
+        MenuItem('L1_BCM_2A_UNPAIREDB1' ).setLogic( d.BCM6 & bgrp13cond)
+        MenuItem('L1_BCM_2C_UNPAIREDB1' ).setLogic( d.BCM7 & bgrp13cond)
+        MenuItem('L1_BCM_2A_UNPAIREDB2' ).setLogic( d.BCM6 & bgrp14cond)
+        MenuItem('L1_BCM_2C_UNPAIREDB2' ).setLogic( d.BCM7 & bgrp14cond)
+
+        MenuItem('L1_BCM_2A_UNPAIRED_ISO' ).setLogic( d.BCM6 & unpaired_isocond)
+        MenuItem('L1_BCM_2C_UNPAIRED_ISO' ).setLogic( d.BCM7 & unpaired_isocond)
+        MenuItem('L1_BCM_2A_UNPAIRED_NONISO' ).setLogic( d.BCM6 & unpaired_nonisocond)
+        MenuItem('L1_BCM_2C_UNPAIRED_NONISO' ).setLogic( d.BCM7 & unpaired_nonisocond)
+
+        MenuItem('L1_BCM_2A_CALIB' ).setLogic( d.BCM6 & calibcond)
+        MenuItem('L1_BCM_2C_CALIB' ).setLogic( d.BCM7 & calibcond)
+
+        MenuItem('L1_BCM_2A_FIRSTINTRAIN' ).setLogic( d.BCM6 & firstintrain)
+        MenuItem('L1_BCM_2C_FIRSTINTRAIN' ).setLogic( d.BCM7 & firstintrain)
 
         # RANDOM
         MenuItem('L1_RD0_FILLED'         ).setLogic( d.RNDM0 & physcond           ).setTriggerType(TT.rand)
@@ -1271,7 +1294,7 @@ class ItemDef:
         MenuItem('L1_RD0_BGRP9'          ).setLogic( d.RNDM0 & bgrp9cond          ).setTriggerType(TT.rand)
         MenuItem('L1_RD0_BGRP10'         ).setLogic( d.RNDM0 & alfacalib          ).setTriggerType(TT.rand)
         MenuItem('L1_RD0_BGRP11'         ).setLogic( d.RNDM0 & bgrp11cond         ).setTriggerType(TT.rand)
-        MenuItem('L1_RD0_ABORTGAPNOTCALIB').setLogic( d.RNDM0 & abortgap          ).setTriggerType(TT.rand)
+        MenuItem('L1_RD0_FIRSTINTRAIN'   ).setLogic( d.RNDM0 & firstintrain       ).setTriggerType(TT.rand)
 
         MenuItem('L1_RD1_FILLED'         ).setLogic( d.RNDM1 & physcond           ).setTriggerType(TT.zerobs) # used to be TT.rand
         MenuItem('L1_RD1_EMPTY'          ).setLogic( d.RNDM1 & cosmiccond         ).setTriggerType(TT.zerobs)
@@ -1289,9 +1312,9 @@ class ItemDef:
         MenuItem('L1_BPTX1_BGRP12', ctpid=0xf2).setLogic(d.BPTX1 & bgrp12cond ).setTriggerType(TT.rand)
 
         # lumi measurements
-        MenuItem('L1_MLZ_A').setLogic( (d.MBTS_A|ZDC_A|d.LUCID_A) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MLZ_C').setLogic( (d.MBTS_C|ZDC_C|d.LUCID_C) & physcond).setTriggerType(TT.minb)
-        MenuItem('L1_MBLZ' ).setLogic( ( (d.MBTS_A|ZDC_A|d.LUCID_A) & (d.MBTS_C|ZDC_C|d.LUCID_C) | d.BCM_Wide) & physcond ).setTriggerType(TT.minb)
+        MenuItem('L1_MLZ_A').setLogic( (d.MBTS_A|ZDC_A|d.LUCID_A) & physcond)
+        MenuItem('L1_MLZ_C').setLogic( (d.MBTS_C|ZDC_C|d.LUCID_C) & physcond)
+        MenuItem('L1_MBLZ' ).setLogic( ( (d.MBTS_A|ZDC_A|d.LUCID_A) & (d.MBTS_C|ZDC_C|d.LUCID_C) | d.BCM_Wide) & physcond )
 
         MenuItem('L1_CALREQ0', ctpid=0x1fd).setLogic( d.CAL0 & calibcond).setTriggerType(TT.calreq0)
         MenuItem('L1_CALREQ1', ctpid=0x1fe).setLogic( d.CAL1 & calibcond).setTriggerType(TT.calreq1)
@@ -1304,7 +1327,6 @@ class ItemDef:
 
         # TGC
         MenuItem('L1_TGC_BURST').setLogic(d.NIMTGC & bgrp12cond ).setTriggerType(TT.nim)
-
 
         # LHCF
         MenuItem('L1_LHCF').setLogic( d.NIMLHCF & physcond).setTriggerType(TT.nim)
@@ -1407,8 +1429,8 @@ class ItemDef:
         MenuItem('L1_AFP_A_AND_C_MBTS_2').setLogic( AFP_A & AFP_C & MBTS_2 & physcond )
         MenuItem('L1_AFP_A_OR_C_MBTS_2').setLogic( (AFP_A | AFP_C) & MBTS_2 & physcond )
 
-        MenuItem('L1_AFP_A_AND_C_TOF_CEP-CjJ100').setLogic( AFP_TOF_A & AFP_TOF_C & d.TOPO_CEP_CjJ60s6 & physcond ) # TODO: change cuts in l1topo algo once calibration is applied in jJ 
-        MenuItem('L1_AFP_A_AND_C_TOF_T0T1_CEP-CjJ100').setLogic( (d.AFP_FSA_TOF_T0 | d.AFP_FSA_TOF_T1) & (d.AFP_FSC_TOF_T0 | d.AFP_FSC_TOF_T1) & d.TOPO_CEP_CjJ60s6 & physcond ) # TODO: change cuts in l1topo algo once calibration is applied in jJ 
+        MenuItem('L1_AFP_A_AND_C_TOF_CEP-CjJ100').setLogic( AFP_TOF_A & AFP_TOF_C & d.TOPO_CEP_CjJ100s6 & physcond )
+        MenuItem('L1_AFP_A_AND_C_TOF_T0T1_CEP-CjJ100').setLogic( (d.AFP_FSA_TOF_T0 | d.AFP_FSA_TOF_T1) & (d.AFP_FSC_TOF_T0 | d.AFP_FSC_TOF_T1) & d.TOPO_CEP_CjJ100s6 & physcond )
 
         MenuItem('L1_AFP_A_AND_C_TOF_J20').setLogic( AFP_TOF_A & AFP_TOF_C & d.J20 & physcond )
         MenuItem('L1_AFP_A_AND_C_TOF_T0T1_J20').setLogic( (d.AFP_FSA_TOF_T0 | d.AFP_FSA_TOF_T1) & (d.AFP_FSC_TOF_T0 | d.AFP_FSC_TOF_T1) & d.J20 & physcond )
@@ -1568,7 +1590,6 @@ class ItemDef:
         MenuItem('L1_ALFA_ANY_UNPAIRED_ISO').setLogic(ALFA_ANY & unpaired_isocond).setTriggerType(TT.alfa)
         MenuItem('L1_ALFA_ANY_UNPAIRED_NONISO').setLogic(ALFA_ANY & unpaired_nonisocond).setTriggerType(TT.alfa)
         MenuItem('L1_ALFA_ANY_BGRP10').setLogic(ALFA_ANY & alfacalib).setTriggerType(TT.alfa)
-        MenuItem('L1_ALFA_ANY_ABORTGAPNOTCALIB').setLogic( ALFA_ANY & abortgap).setTriggerType(TT.alfa)
         MenuItem('L1_ALFA_ANY_CALIB').setLogic( ALFA_ANY & calibcond).setTriggerType(TT.alfa)
 
         MenuItem('L1_ALFA_ANY_A_EMPTY').setLogic(ALFA_ANY_A & cosmiccond).setTriggerType(TT.alfa)
@@ -1615,123 +1636,125 @@ class ItemDef:
             MenuItem('L1_DR-TAU20ITAU12I-J25').setLogic( d.R2TOPO_1DISAMB_J25ab_0DR28_TAU20abi_TAU12abi & physcond)
             MenuItem('L1_TAU60_DR-TAU20ITAU12I' ).setLogic( d.HA60 & d.R2TOPO_0DR28_TAU20abi_TAU12abi & physcond)
             MenuItem('L1_DR-TAU20ITAU12I' ).setLogic( d.R2TOPO_0DR28_TAU20abi_TAU12abi & physcond)
-            MenuItem('L1_LAR-ZEE').setLogic( d.R2TOPO_ZEE_EM20shi2 & physcond).setTriggerType( TT.lardemo ) # LAr demo (ATR-11897, ATR-23403)
+            MenuItem('L1_LAR-ZEE').setLogic( d.R2TOPO_ZEE_EM20shi2 & physcond).setTriggerType( TT.lardigital ) # LAr demo (ATR-11897, ATR-23403)
 
             # Phase-1:
-            MenuItem('L1_LAR-ZEE-eEM').setLogic( d.TOPO_ZEE_eEM20sm2 & physcond).setTriggerType( TT.lardemo ) # LAr demo (ATR-23403), # TODO: change cuts in l1topo algo once calibration is applied in eEM
+            MenuItem('L1_LAR-ZEE-eEM').setLogic( d.TOPO_ZEE_eEM24sm2 & physcond).setTriggerType( TT.lardigital ) # LAr demo (ATR-23403),
             MenuItem('L1_LATE-MU8F_jXE70').setLogic( d.TOPO_LATE_MU10s1 & d.jXE70 & physcond)
             MenuItem('L1_LATE-MU8F_jJ90' ).setLogic( d.TOPO_LATE_MU10s1 & d.jJ90 & physcond)
             MenuItem('L1_LFV-MU8VF').setLogic( d.TOPO_0DR15_2MU5VFab & d.MU8VF & d.MU5VF.x(2) & physcond)
             MenuItem('L1_LFV-MU5VF' ).setLogic( d.TOPO_0DR15_2MU5VFab & d.MU5VF.x(2) & physcond)
-            MenuItem('L1_LFV-eEM10L-MU8VF' ).setLogic( d.TOPO_0INVM10_0DR15_eEM8abl_MU8Fab & d.MU8VF & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_LFV-eEM15L-MU5VF' ).setLogic( d.TOPO_0INVM10_0DR15_eEM12abl_MU5VFab & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
+            MenuItem('L1_LFV-eEM10L-MU8VF' ).setLogic( d.TOPO_0INVM10_0DR15_eEM10abl_MU8Fab & d.MU8VF & physcond)
+            MenuItem('L1_LFV-eEM15L-MU5VF' ).setLogic( d.TOPO_0INVM10_0DR15_eEM15abl_MU5VFab & physcond)
 
             #BLS
             #ATR-19720
-            MenuItem('L1_BPH-2M9-0DR15-2MU3V'         ).setLogic( d.TOPO_2INVM9_0DR15_2MU3Vab & physcond)
-            MenuItem('L1_BPH-2M9-0DR15-2MU3VF'        ).setLogic( d.TOPO_2INVM9_0DR15_2MU3VFab & physcond)
+            MenuItem('L1_BPH-2M9-0DR15-2MU3V'         ).setLogic( d.TOPO_2INVM9_0DR15_2MU3Vab & physcond) 
+            MenuItem('L1_BPH-2M9-0DR15-2MU3VF'        ).setLogic( d.TOPO_2INVM9_0DR15_2MU3VFab & physcond) 
             MenuItem('L1_BPH-2M9-0DR15-MU5VFMU3V'     ).setLogic( d.TOPO_2INVM9_0DR15_MU5VFab_MU3Vab & physcond)
-            MenuItem('L1_BPH-2M9-2DR15-2MU5VF'        ).setLogic( d.TOPO_2INVM9_2DR15_2MU5VFab & physcond)
-            MenuItem('L1_BPH-8M15-0DR22-MU5VFMU3V-BO' ).setLogic( d.TOPO_8INVM15_0DR22_CMU5VFab_CMU3Vab & physcond)
-            MenuItem('L1_BPH-8M15-0DR22-2MU5VF'       ).setLogic( d.TOPO_8INVM15_0DR22_2MU5VFab & physcond)
+            MenuItem('L1_BPH-2M9-2DR15-2MU5VF'        ).setLogic( d.TOPO_2INVM9_2DR15_2MU5VFab & physcond) 
+            MenuItem('L1_BPH-8M15-0DR22-MU5VFMU3V-BO' ).setLogic( d.TOPO_8INVM15_0DR22_CMU5VFab_CMU3Vab & physcond) 
+            MenuItem('L1_BPH-8M15-0DR22-2MU5VF'       ).setLogic( d.TOPO_8INVM15_0DR22_2MU5VFab & physcond) 
             #ATR-19355
-            MenuItem('L1_BPH-0M10-3MU3V'              ).setLogic( d.TOPO_0INVM10_3MU3Vab & physcond)
-            MenuItem('L1_BPH-0M10-3MU3VF'             ).setLogic( d.TOPO_0INVM10_3MU3VFab & physcond)
+            MenuItem('L1_BPH-0M10-3MU3V'              ).setLogic( d.TOPO_0INVM10_3MU3Vab & physcond) 
+            MenuItem('L1_BPH-0M10-3MU3VF'             ).setLogic( d.TOPO_0INVM10_3MU3VFab & physcond) 
             #ATR-19638
-            MenuItem('L1_BPH-0M10C-3MU3V'             ).setLogic( d.TOPO_0INVM10C_3MU3Vab & physcond)
-            #ATR-19639
-            MenuItem('L1_BPH-2M9-0DR15-C-MU5VFMU3V'   ).setLogic( d.TOPO_2INVM9_0DR15_C_MU5VFab_MU3Vab & physcond)        
+            MenuItem('L1_BPH-0M10C-3MU3V'             ).setLogic( d.TOPO_0INVM10C_3MU3Vab & physcond) 
+            #ATR-19639 
+            MenuItem('L1_BPH-2M9-0DR15-C-MU5VFMU3V'   ).setLogic( d.TOPO_2INVM9_0DR15_C_MU5VFab_MU3Vab & physcond) 
 
             # ATR-21566
-            MenuItem('L1_BPH-7M22-2MU3VF'       ).setLogic( d.TOPO_7INVM22_2MU3VFab & physcond)
-            MenuItem('L1_BPH-7M22-MU5VFMU3VF'   ).setLogic( d.TOPO_7INVM22_MU5VFab_MU3VFab & physcond)
-            MenuItem('L1_BPH-7M22-0DR20-2MU3V'  ).setLogic( d.TOPO_7INVM22_0DR20_2MU3Vab & physcond)
-            MenuItem('L1_BPH-7M22-0DR20-2MU3VF' ).setLogic( d.TOPO_7INVM22_0DR20_2MU3VFab & physcond)
-            MenuItem('L1_BPH-7M22-0DR12-2MU3V'  ).setLogic( d.TOPO_7INVM22_0DR12_2MU3Vab & physcond)
+            MenuItem('L1_BPH-7M22-2MU3VF'       ).setLogic( d.TOPO_7INVM22_2MU3VFab & physcond) 
+            MenuItem('L1_BPH-7M22-MU5VFMU3VF'   ).setLogic( d.TOPO_7INVM22_MU5VFab_MU3VFab & physcond) 
+            MenuItem('L1_BPH-7M22-0DR20-2MU3V'  ).setLogic( d.TOPO_7INVM22_0DR20_2MU3Vab & physcond) 
+            MenuItem('L1_BPH-7M22-0DR20-2MU3VF' ).setLogic( d.TOPO_7INVM22_0DR20_2MU3VFab & physcond) 
+            MenuItem('L1_BPH-7M22-0DR12-2MU3V'  ).setLogic( d.TOPO_7INVM22_0DR12_2MU3Vab & physcond) 
 
             #ATR-22782
-            MenuItem('L1_BPH-7M11-25DR99-2MU3VF'   ).setLogic( d.TOPO_7INVM11_25DR99_2MU3VFab & physcond)
+            MenuItem('L1_BPH-7M11-25DR99-2MU3VF'   ).setLogic( d.TOPO_7INVM11_25DR99_2MU3VFab & physcond) 
             MenuItem('L1_BPH-7M14-MU5VFMU3VF'      ).setLogic( d.TOPO_7INVM14_MU5VFab_MU3VFab & physcond)
-            MenuItem('L1_BPH-7M14-2MU3VF'          ).setLogic( d.TOPO_7INVM14_2MU3VFab & physcond)
-            MenuItem('L1_BPH-7M14-2MU3V'           ).setLogic( d.TOPO_7INVM14_2MU3Vab & physcond)
+            MenuItem('L1_BPH-7M14-2MU3VF'          ).setLogic( d.TOPO_7INVM14_2MU3VFab & physcond) 
+            MenuItem('L1_BPH-7M14-2MU3V'           ).setLogic( d.TOPO_7INVM14_2MU3Vab & physcond) 
+
+            #ATR-24932
+            MenuItem('L1_BPH-7M14-0DR25-MU5VFMU3VF'   ).setLogic( d.TOPO_7INVM14_0DR25_MU5VFab_MU3VFab & physcond)
 
             # ATR-19510, SM Low-mass DY
-            MenuItem('L1_DY-BOX-2MU3V' ).setLogic( d.TOPO_5DETA99_5DPHI99_2MU3Vab & physcond)
-            MenuItem('L1_DY-BOX-MU5VFMU3V').setLogic( d.TOPO_5DETA99_5DPHI99_MU5VFab_MU3Vab & physcond)
-            MenuItem('L1_DY-BOX-2MU5VF').setLogic( d.TOPO_5DETA99_5DPHI99_2MU5VFab & physcond)
+            MenuItem('L1_DY-BOX-2MU3V' ).setLogic( d.TOPO_5DETA99_5DPHI99_2MU3Vab & physcond) 
+            MenuItem('L1_DY-BOX-MU5VFMU3V').setLogic( d.TOPO_5DETA99_5DPHI99_MU5VFab_MU3Vab & physcond) 
+            MenuItem('L1_DY-BOX-2MU5VF').setLogic( d.TOPO_5DETA99_5DPHI99_2MU5VFab & physcond) 
 
             #ATR-17320
-            MenuItem('L1_CEP-CjJ100').setLogic( d.TOPO_CEP_CjJ60s6 & physcond ) # TODO: change cuts in l1topo algo once calibration is applied in jJ 
-            MenuItem('L1_CEP-CjJ90' ).setLogic( d.TOPO_CEP_CjJ50s6 & physcond ) # TODO: change cuts in l1topo algo once calibration is applied in jJ 
+            MenuItem('L1_CEP-CjJ100').setLogic( d.TOPO_CEP_CjJ100s6 & physcond )
+            MenuItem('L1_CEP-CjJ90' ).setLogic( d.TOPO_CEP_CjJ90s6 & physcond )
             #ATR-18824
-            MenuItem('L1_ZAFB-04DPHI-eEM18M' ).setLogic( d.TOPO_60INVM_04DPHI32_eEM15abm_FjJj15s623ETA49 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_ZAFB-25DPHI-eEM18M' ).setLogic( d.TOPO_60INVM_25DPHI32_eEM15abm_FjJj15s623ETA49 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
+            MenuItem('L1_ZAFB-04DPHI-eEM18M' ).setLogic( d.TOPO_60INVM_04DPHI32_eEM18abm_FjJj40s623ETA49 & physcond)
+            MenuItem('L1_ZAFB-25DPHI-eEM18M' ).setLogic( d.TOPO_60INVM_25DPHI32_eEM18abm_FjJj40s623ETA49 & physcond)
             #ATR-19302:
-            MenuItem('L1_DPHI-M70-2eEM12M' ).setLogic( d.TOPO_0INVM70_27DPHI32_eEM10sm1_eEM10sm6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_DPHI-M70-2eEM15M' ).setLogic( d.TOPO_0INVM70_27DPHI32_eEM12sm1_eEM12sm6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
+            MenuItem('L1_DPHI-M70-2eEM12M' ).setLogic( d.TOPO_0INVM70_27DPHI32_eEM12sm1_eEM12sm6 & physcond)
+            MenuItem('L1_DPHI-M70-2eEM15M' ).setLogic( d.TOPO_0INVM70_27DPHI32_eEM15sm1_eEM15sm6 & physcond)
             #ATR-21637
-            MenuItem('L1_DPHI-M70-2eEM9' ).setLogic( d.TOPO_0INVM70_27DPHI32_eEM7s1_eEM7s6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_DPHI-M70-2eEM9L' ).setLogic( d.TOPO_0INVM70_27DPHI32_eEM7sl1_eEM7sl6 & physcond) # TODO: change cuts  in l1topo algo once calibration is applied in eEM
+            MenuItem('L1_DPHI-M70-2eEM9' ).setLogic( d.TOPO_0INVM70_27DPHI32_eEM9s1_eEM9s6 & physcond)
+            MenuItem('L1_DPHI-M70-2eEM9L' ).setLogic( d.TOPO_0INVM70_27DPHI32_eEM9sl1_eEM9sl6 & physcond)
             #ATR-19376
-            MenuItem('L1_10DR-MU14FCH-MU5VF'             ).setLogic( d.TOPO_10DR99_2MU5VFab & d.MU14FCH & physcond)
-            MenuItem('L1_10DR-MU14FCH-MU5VF_EMPTY'       ).setLogic( d.TOPO_10DR99_2MU5VFab & d.MU14FCH & cosmiccond)
-            MenuItem('L1_10DR-MU14FCH-MU5VF_UNPAIRED_ISO').setLogic( d.TOPO_10DR99_2MU5VFab & d.MU14FCH & unpaired_isocond)
+            MenuItem('L1_10DR-MU14FCH-MU5VF'             ).setLogic( d.TOPO_10DR99_2MU5VFab & d.MU14FCH & physcond) 
+            MenuItem('L1_10DR-MU14FCH-MU5VF_EMPTY'       ).setLogic( d.TOPO_10DR99_2MU5VFab & d.MU14FCH & cosmiccond) 
+            MenuItem('L1_10DR-MU14FCH-MU5VF_UNPAIRED_ISO').setLogic( d.TOPO_10DR99_2MU5VFab & d.MU14FCH & unpaired_isocond) 
 
             #Missing: KF
-
             # subset of legacy chains migrated phase1 boards
-            MenuItem('L1_BPH-0M9-eEM9-eEM7').setLogic( d.TOPO_0INVM9_eEM7ab_eEMab & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_BPH-0M9-eEM9-eEM7_MU5VF').setLogic( d.MU5VF & d.TOPO_0INVM9_eEM7ab_eEMab & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_BPH-0M9-eEM9-eEM7_2MU3V').setLogic( d.MU3V.x(2) & d.TOPO_0INVM9_eEM7ab_eEMab & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_BPH-0DR3-eEM9jJ40').setLogic( d.TOPO_0DR03_eEM7ab_CjJ15ab & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM, jJ
-            MenuItem('L1_BPH-0DR3-eEM9jJ40_MU5VF').setLogic(  d.MU5VF & d.TOPO_0DR03_eEM7ab_CjJ15ab & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM, jJ
-            MenuItem('L1_BPH-0DR3-eEM9jJ40_2MU3V').setLogic( d.MU3V.x(2) & d.TOPO_0DR03_eEM7ab_CjJ15ab & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM, jJ
+            MenuItem('L1_BPH-0M9-eEM9-eEM7').setLogic( d.TOPO_0INVM9_eEM9ab_eEMab & physcond)
+            MenuItem('L1_BPH-0M9-eEM9-eEM7_MU5VF').setLogic( d.MU5VF & d.TOPO_0INVM9_eEM9ab_eEMab & physcond)
+            MenuItem('L1_BPH-0M9-eEM9-eEM7_2MU3V').setLogic( d.MU3V.x(2) & d.TOPO_0INVM9_eEM9ab_eEMab & physcond) 
+            MenuItem('L1_BPH-0DR3-eEM9jJ40').setLogic( d.TOPO_0DR03_eEM9ab_CjJ40ab & physcond)
+            MenuItem('L1_BPH-0DR3-eEM9jJ40_MU5VF').setLogic(  d.MU5VF & d.TOPO_0DR03_eEM9ab_CjJ40ab & physcond)
+            MenuItem('L1_BPH-0DR3-eEM9jJ40_2MU3V').setLogic( d.MU3V.x(2) & d.TOPO_0DR03_eEM9ab_CjJ40ab & physcond)
 
-            MenuItem("L1_JPSI-1M5-eEM9" ).setLogic( d.TOPO_1INVM5_eEM7s1_eEMs6  & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem("L1_JPSI-1M5-eEM15").setLogic( d.TOPO_1INVM5_eEM12s1_eEMs6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
+            MenuItem("L1_JPSI-1M5-eEM9" ).setLogic( d.TOPO_1INVM5_eEM9s1_eEMs6  & physcond)
+            MenuItem("L1_JPSI-1M5-eEM15").setLogic( d.TOPO_1INVM5_eEM15s1_eEMs6 & physcond)
 
-            MenuItem('L1_LLP-RO-eEM').setLogic( d.TOPO_100RATIO_0MATCH_eTAU30si2_eEMall & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_LLP-NOMATCH-eEM').setLogic( d.TOPO_NOT_0MATCH_eTAU30si1_eEMall & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
+            MenuItem('L1_LLP-RO-eEM').setLogic( d.TOPO_100RATIO_0MATCH_eTAU40si2_eEMall & physcond)
+            MenuItem('L1_LLP-NOMATCH-eEM').setLogic( d.TOPO_NOT_0MATCH_eTAU40si1_eEMall & physcond)
 
-            MenuItem('L1_DR25-eTAU30eTAU20').setLogic( d.TOPO_0DR25_eTAU20ab_eTAU12ab & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_DR25-eTAU30eTAU20-jJ55').setLogic( d.TOPO_2DISAMB_jJ25ab_0DR25_eTAU20ab_eTAU12ab & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM, jJ
-            MenuItem('L1_DR-eTAU30eTAU20').setLogic( d.TOPO_0DR28_eTAU20ab_eTAU12ab & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_DR-eTAU30eTAU20-jJ55').setLogic( d.TOPO_2DISAMB_jJ25ab_0DR28_eTAU20ab_eTAU12ab & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM, jJ
-            MenuItem('L1_DR-eTAU30MeTAU20M').setLogic( d.TOPO_0DR28_eTAU20abm_eTAU12abm & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_DR-eTAU30MeTAU20M-jJ55').setLogic( d.TOPO_2DISAMB_jJ25ab_0DR28_eTAU20abm_eTAU12abm & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM, jJ
-            MenuItem('L1_cTAU30M_2cTAU20M_DR-eTAU30MeTAU20M').setLogic( d.cTAU30M & d.cTAU20M.x(2) & d.TOPO_0DR28_eTAU20abm_eTAU12abm & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_cTAU30M_2cTAU20M_DR-eTAU30MeTAU20M-jJ55').setLogic( d.cTAU30M & d.cTAU20M.x(2) & d.TOPO_2DISAMB_jJ25ab_0DR28_eTAU20abm_eTAU12abm & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM, jJ
-            MenuItem('L1_cTAU30M_2cTAU20M_DR-eTAU30eTAU20').setLogic( d.cTAU30M & d.cTAU20M.x(2) & d.TOPO_0DR28_eTAU20ab_eTAU12ab & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_cTAU30M_2cTAU20M_DR-eTAU30eTAU20-jJ55').setLogic( d.cTAU30M & d.cTAU20M.x(2) & d.TOPO_2DISAMB_jJ25ab_0DR28_eTAU20ab_eTAU12ab & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM, jJ
-            MenuItem('L1_eTAU80_2cTAU30M_DR-eTAU30eTAU20').setLogic( d.eTAU80 & d.cTAU30M.x(2) & d.TOPO_0DR28_eTAU20ab_eTAU12ab & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
+            MenuItem('L1_DR25-eTAU30eTAU20').setLogic( d.TOPO_0DR25_eTAU30ab_eTAU20ab & physcond)
+            MenuItem('L1_DR25-eTAU30eTAU20-jJ55').setLogic( d.TOPO_2DISAMB_jJ55ab_0DR25_eTAU30ab_eTAU20ab & physcond)
+            MenuItem('L1_DR-eTAU30eTAU20').setLogic( d.TOPO_0DR28_eTAU30ab_eTAU20ab & physcond)
+            MenuItem('L1_DR-eTAU30eTAU20-jJ55').setLogic( d.TOPO_2DISAMB_jJ55ab_0DR28_eTAU30ab_eTAU20ab & physcond)
+            MenuItem('L1_DR-eTAU30MeTAU20M').setLogic( d.TOPO_0DR28_eTAU30abm_eTAU20abm & physcond)
+            MenuItem('L1_DR-eTAU30MeTAU20M-jJ55').setLogic( d.TOPO_2DISAMB_jJ55ab_0DR28_eTAU30abm_eTAU20abm & physcond)
+            MenuItem('L1_cTAU30M_2cTAU20M_DR-eTAU30MeTAU20M').setLogic( d.cTAU30M & d.cTAU20M.x(2) & d.TOPO_0DR28_eTAU30abm_eTAU20abm & physcond)
+            MenuItem('L1_cTAU30M_2cTAU20M_DR-eTAU30MeTAU20M-jJ55').setLogic( d.cTAU30M & d.cTAU20M.x(2) & d.TOPO_2DISAMB_jJ55ab_0DR28_eTAU30abm_eTAU20abm & physcond)
+            MenuItem('L1_cTAU30M_2cTAU20M_DR-eTAU30eTAU20').setLogic( d.cTAU30M & d.cTAU20M.x(2) & d.TOPO_0DR28_eTAU30ab_eTAU20ab & physcond)
+            MenuItem('L1_cTAU30M_2cTAU20M_DR-eTAU30eTAU20-jJ55').setLogic( d.cTAU30M & d.cTAU20M.x(2) & d.TOPO_2DISAMB_jJ55ab_0DR28_eTAU30ab_eTAU20ab & physcond)
+            MenuItem('L1_eTAU80_2cTAU30M_DR-eTAU30eTAU20').setLogic( d.eTAU80 & d.cTAU30M.x(2) & d.TOPO_0DR28_eTAU30ab_eTAU20ab & physcond)
 
-            MenuItem('L1_jMJJ-400-NFF-0DPHI20').setLogic( d.TOPO_400INVM_0DPHI20_jJ30s6_AjJ20s6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_jMJJ-400-NFF-0DPHI22').setLogic( d.TOPO_400INVM_0DPHI22_jJ30s6_AjJ20s6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_jMJJ-400-NFF-0DPHI24').setLogic( d.TOPO_400INVM_0DPHI24_jJ30s6_AjJ20s6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_jMJJ-400-NFF-0DPHI26').setLogic( d.TOPO_400INVM_0DPHI26_jJ30s6_AjJ20s6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_jMJJ-300-NFF').setLogic( d.TOPO_300INVM_jJ30s6_AjJ20s6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_jMJJ-400-NFF').setLogic( d.TOPO_400INVM_jJ30s6_AjJ20s6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_jMJJ-500-NFF').setLogic( d.TOPO_500INVM_jJ30s6_AjJ20s6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_jMJJ-700').setLogic( d.TOPO_700INVM_AjJ30s6_AjJ20s6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_jMJJ-700-NFF').setLogic( d.TOPO_700INVM_jJ30s6_AjJ20s6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_MU5VF_jMJJ-300-NFF').setLogic( d.MU5VF & d.TOPO_300INVM_jJ30s6_AjJ20s6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_eEM22M_jMJJ-300').setLogic( d.eEM22M & d.TOPO_300INVM_AjJ30s6_AjJ20s6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_eEM22M_jMJJ-300-NFF').setLogic( d.eEM22M & d.TOPO_300INVM_jJ30s6_AjJ20s6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_jHT150-jJ50s5pETA31_jMJJ-400-CF').setLogic( d.TOPO_HT150_jJ20s5pETA31   & d.TOPO_400INVM_AjJ30s6pETA31_AjJ20s6p31ETA49 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_jMJJ-400-CF').setLogic( d.TOPO_400INVM_AjJ30s6pETA31_AjJ20s6p31ETA49 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_jJ90_DETA20-jJ90J').setLogic( d.jJ50 & d.TOPO_0DETA20_jJ50s1_jJs2 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_HT190-jJ40s5pETA21').setLogic( d.TOPO_HT190_jJ15s5pETA21   & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_SC111-CjJ40').setLogic(  d.TOPO_SC111_CjJ15abpETA26 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
+            MenuItem('L1_jMJJ-400-NFF-0DPHI20').setLogic( d.TOPO_400INVM_0DPHI20_jJ60s6_AjJ50s6 & physcond)
+            MenuItem('L1_jMJJ-400-NFF-0DPHI22').setLogic( d.TOPO_400INVM_0DPHI22_jJ60s6_AjJ50s6 & physcond)
+            MenuItem('L1_jMJJ-400-NFF-0DPHI24').setLogic( d.TOPO_400INVM_0DPHI24_jJ60s6_AjJ50s6 & physcond)
+            MenuItem('L1_jMJJ-400-NFF-0DPHI26').setLogic( d.TOPO_400INVM_0DPHI26_jJ60s6_AjJ50s6 & physcond)
+            MenuItem('L1_jMJJ-300-NFF').setLogic( d.TOPO_300INVM_jJ60s6_AjJ50s6 & physcond)
+            MenuItem('L1_jMJJ-400-NFF').setLogic( d.TOPO_400INVM_jJ60s6_AjJ50s6 & physcond)
+            MenuItem('L1_jMJJ-500-NFF').setLogic( d.TOPO_500INVM_jJ60s6_AjJ50s6 & physcond)
+            MenuItem('L1_jMJJ-700').setLogic( d.TOPO_700INVM_AjJ60s6_AjJ50s6 & physcond)
+            MenuItem('L1_jMJJ-700-NFF').setLogic( d.TOPO_700INVM_jJ60s6_AjJ50s6 & physcond)
+            MenuItem('L1_MU5VF_jMJJ-300-NFF').setLogic( d.MU5VF & d.TOPO_300INVM_jJ60s6_AjJ50s6 & physcond)
+            MenuItem('L1_eEM22M_jMJJ-300').setLogic( d.eEM22M & d.TOPO_300INVM_AjJ60s6_AjJ50s6 & physcond)
+            MenuItem('L1_eEM22M_jMJJ-300-NFF').setLogic( d.eEM22M & d.TOPO_300INVM_jJ60s6_AjJ50s6 & physcond)
+            MenuItem('L1_jHT150-jJ50s5pETA31_jMJJ-400-CF').setLogic( d.TOPO_HT150_jJ50s5pETA31   & d.TOPO_400INVM_AjJ60s6pETA31_AjJ50s6p31ETA49 & physcond)
+            MenuItem('L1_jMJJ-400-CF').setLogic( d.TOPO_400INVM_AjJ60s6pETA31_AjJ50s6p31ETA49 & physcond)
+            MenuItem('L1_jJ90_DETA20-jJ90J').setLogic( d.jJ50 & d.TOPO_0DETA20_jJ90s1_jJs2 & physcond)
+            MenuItem('L1_HT190-jJ40s5pETA21').setLogic( d.TOPO_HT190_jJ40s5pETA21   & physcond)
+            MenuItem('L1_SC111-CjJ40').setLogic(  d.TOPO_SC111_CjJ40abpETA26 & physcond)
 
             # Needed?
-            MenuItem('L1_DPHI-2eEM5').setLogic( d.TOPO_27DPHI32_eEMs1_eEMs6 & physcond) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_DPHI-2eEM5_VTE5p24ETA49').setLogic( d.TOPO_27DPHI32_eEMs1_eEMs6 & Not(d.TE524ETA49) & physcond).setTriggerType(TT.calo) # TODO: change cuts in l1topo algo once calibration is applied in eEM 
-            MenuItem('L1_DPHI-2eEM5_VTE5p24ETA49_ALFA_EINE').setLogic( d.TOPO_27DPHI32_eEMs1_eEMs6 & Not(d.TE524ETA49) & ALFA_EINE & physcond).setTriggerType(TT.alfa) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_DPHI-2eEM5_VTE10').setLogic( d.TOPO_27DPHI32_eEMs1_eEMs6 & Not(d.TE10) & physcond).setTriggerType(TT.calo) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_DPHI-2eEM9_VTE50').setLogic( d.eEM9.x(2) & d.TOPO_27DPHI32_eEMs1_eEMs6 & Not(d.TE50) & physcond).setTriggerType(TT.calo) # TODO: change cuts in l1topo algo once calibration is applied in eEM
-            MenuItem('L1_BTAG-MU3VjJ40').setLogic( d.TOPO_0DR04_MU3Vab_CjJ15ab & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
-            MenuItem('L1_BTAG-MU5VFjJ50').setLogic( d.TOPO_0DR04_MU5VFab_CjJ20ab & physcond) # added temporarily 
-            MenuItem('L1_BTAG-MU5VFjJ90').setLogic( d.TOPO_0DR04_MU5VFab_CjJ50ab & physcond) # TODO: change cuts in l1topo algo once calibration is applied in jJ
+            MenuItem('L1_DPHI-2eEM5').setLogic( d.TOPO_27DPHI32_eEMs1_eEMs6 & physcond)
+            MenuItem('L1_DPHI-2eEM5_VTE5p24ETA49').setLogic( d.TOPO_27DPHI32_eEMs1_eEMs6 & Not(d.TE524ETA49) & physcond).setTriggerType(TT.calo) 
+            MenuItem('L1_DPHI-2eEM5_VTE5p24ETA49_ALFA_EINE').setLogic( d.TOPO_27DPHI32_eEMs1_eEMs6 & Not(d.TE524ETA49) & ALFA_EINE & physcond).setTriggerType(TT.alfa)
+            MenuItem('L1_DPHI-2eEM5_VTE10').setLogic( d.TOPO_27DPHI32_eEMs1_eEMs6 & Not(d.TE10) & physcond).setTriggerType(TT.calo)
+            MenuItem('L1_DPHI-2eEM9_VTE50').setLogic( d.eEM9.x(2) & d.TOPO_27DPHI32_eEMs1_eEMs6 & Not(d.TE50) & physcond).setTriggerType(TT.calo)
+            MenuItem('L1_BTAG-MU3VjJ40').setLogic( d.TOPO_0DR04_MU3Vab_CjJ40ab & physcond)
+            MenuItem('L1_BTAG-MU5VFjJ50').setLogic( d.TOPO_0DR04_MU5VFab_CjJ50ab & physcond) # added temporarily 
+            MenuItem('L1_BTAG-MU5VFjJ90').setLogic( d.TOPO_0DR04_MU5VFab_CjJ90ab & physcond)
             MenuItem('L1_BPH-8M15-2MU3V-BO'    ).setLogic( d.TOPO_8INVM15_2CMU3Vab & physcond)           # 96% for Upsi
 
         except NameError as ex:

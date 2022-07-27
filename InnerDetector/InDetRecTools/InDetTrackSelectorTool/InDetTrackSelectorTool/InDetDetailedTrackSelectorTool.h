@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef InDetDetailedTrackSelectorTool_InDetDetailedTrackSelectorTool_H
@@ -13,6 +13,7 @@
 #include "xAODTracking/TrackParticle.h"
 #include "xAODTracking/VertexFwd.h"
 #include "BeamSpotConditionsData/BeamSpotData.h"
+#include "xAODEventInfo/EventInfo.h"
 // MagField cache
 #include "MagFieldConditions/AtlasFieldCacheCondObj.h"
 #include "MagFieldElements/AtlasFieldCache.h"
@@ -49,7 +50,7 @@ namespace Trk
 namespace InDet
 {
   class ITrtDriftCircleCutTool;
-  class IInDetTestBLayerTool;
+  class IInDetTestPixelLayerTool;
 
 
   class InDetDetailedTrackSelectorTool : virtual public Trk::ITrackSelectorTool, public AthAlgTool
@@ -154,7 +155,7 @@ namespace InDet
       SG::ReadCondHandleKey<InDet::BeamSpotData> m_beamSpotKey { this, "BeamSpotKey", "BeamSpotData", "SG key for beam spot" };
       ToolHandle<ITrtDriftCircleCutTool> m_trtDCTool; //!< Tool to get eta dependent cut on number of TRT hits
 
-      ToolHandle< InDet::IInDetTestBLayerTool > m_inDetTestBLayerTool; //Tool to test if the track crosses a dead module on the b-layer
+      ToolHandle< InDet::IInDetTestPixelLayerTool > m_inDetTestPixelLayerTool; //Tool to test if the track crosses a dead module on the b-layer
     // Read handle for conditions object to get the field cache
     SG::ReadCondHandleKey<AtlasFieldCacheCondObj> m_fieldCacheCondObjInputKey {this, "AtlasFieldCacheCondObj", "fieldCondObj", "Name of the Magnetic Field conditions object key"};
 
@@ -165,8 +166,10 @@ namespace InDet
       
       std::vector<float> m_ptBenchmarks;
       
-      std::vector<int> m_nSCTValues;      
-
+      std::vector<int> m_nSCTValues;
+      SG::ReadHandleKey<xAOD::EventInfo> m_eventInfo_key{this, "EventInfo", "EventInfo", "Input event information"};
+      bool m_useEventInfoBs;//!<Access beamspot via the EvenInfo object
+      Trk::Vertex* getBeamSpot(const EventContext&) const;
   }; //end of class definitions
 
 } //end of namespace definitions

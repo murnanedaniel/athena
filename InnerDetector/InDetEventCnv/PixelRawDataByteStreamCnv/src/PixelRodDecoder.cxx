@@ -236,7 +236,8 @@ StatusCode PixelRodDecoder::fillCollection( const ROBFragment *robFrag, IPixelRD
   std::unordered_set<Identifier> foundPixels;
   // ============== ============== ============== ============== ============== ============== ============== ============== //
   // loop over the data in the fragment
-  for (uint32_t dataword_it = 0, nwords = robFrag->rod_ndata(); dataword_it < nwords; ++dataword_it) {
+  const int nwords = robFrag->rod_ndata();
+  for (int dataword_it = 0; dataword_it < nwords; ++dataword_it) {
     const uint32_t rawDataWord = vint[dataword_it];
     corruptionError = corruptionError || checkDataWordsCorruption( rawDataWord );
     uint32_t word_type = getDataType(rawDataWord, link_start);   // get type of data word
@@ -900,7 +901,7 @@ StatusCode PixelRodDecoder::fillCollection( const ROBFragment *robFrag, IPixelRD
           ATH_MSG_VERBOSE( "Decoding Pixel FEflag word: 0x" << std::hex << rawDataWord << std::dec );
           uint32_t FEFlags = decodeFEFlags2(rawDataWord);   // get FE flags
           uint32_t MCCFlags = decodeMCCFlags(rawDataWord);   // get MCC flags
-          FEFlags = FEFlags & 0xF3; // mask out the parity bits, they don't work
+          FEFlags = FEFlags & 0xff;
           if ((MCCFlags | FEFlags) != 0) {
             sc = StatusCode::RECOVERABLE;
             errorRecoverable = errorRecoverable | (MCCFlags << 12) | (FEFlags << 4); //encode error as HHHHMMMMMMMMFFFFFFFFTTTT for header, flagword, trailer errors
@@ -908,10 +909,10 @@ StatusCode PixelRodDecoder::fillCollection( const ROBFragment *robFrag, IPixelRD
             const std::array<unsigned long long, 8> bitPosition {0_BIT, 1_BIT, 2_BIT, 3_BIT, 4_BIT, 5_BIT, 6_BIT, 7_BIT};
             for (const auto thisBit:bitPosition){
               if (MCCFlags & thisBit) ++m_numFlaggedErrors;
-              if (FEFlags & thisBit) ++ m_numFlaggedErrors;
+              if (FEFlags & 0xf3 & thisBit) ++m_numFlaggedErrors;
             }
            
-            if ( MCCFlags & 0xff or FEFlags & 0xff ) {
+            if ( MCCFlags & 0xff or FEFlags & 0xf3 ) {
               if (indexModule>-1) { PixelByteStreamErrors::addError(bsErrWord[indexModule],PixelByteStreamErrors::Flagged); }
               if (indexFE>-1)     { PixelByteStreamErrors::addError(bsErrWord[indexFE],PixelByteStreamErrors::Flagged); }
             }

@@ -1,11 +1,9 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "RPCHitsTestTool.h"
 
-#include "EventInfo/EventInfo.h"
-#include "EventInfo/EventID.h"
 #include "Identifier/Identifier.h"
 #include "GeoAdaptors/GeoMuonHits.h"
 
@@ -25,7 +23,7 @@
 #include "TTree.h"
 
 Identifier RPCHitsTestTool::getIdentifier(HitID rpchit) {
-  RpcHitIdHelper* rpchelper = RpcHitIdHelper::GetHelper(m_pRpcIdHelper->gasGapMax());
+  const RpcHitIdHelper* rpchelper = RpcHitIdHelper::GetHelper(m_pRpcIdHelper->gasGapMax());
   std::string rpc_stname = rpchelper->GetStationName(rpchit);
   int         rpc_steta  = rpchelper->GetZSector(rpchit);
   int         rpc_stphi  = rpchelper->GetPhiSector(rpchit);
@@ -79,22 +77,23 @@ StatusCode RPCHitsTestTool::processEvent() {
   if (m_DoRPCTest) {
 
     const DataHandle<RPCSimHitCollection> p_collection;
-    CHECK(evtStore()->retrieve(p_collection,"RPC_Hits"));
-    for (RPCSimHitCollection::const_iterator i_hit = p_collection->begin(); i_hit != p_collection->end(); ++i_hit) {
-      // Check the Hits identifiers, access the functions that give:
-      // Station name, station eta, station phi, doublet Z, doublet phi, doublet R, GasGap, Measures Phi.
-      HitID rpchit= (*i_hit).RPCid();
-      Identifier offid= getIdentifier(rpchit);
-      CHECK(checkIdentifier(offid));
-     
-      // Check Hits
-      // For every hit within the event, get the global position Amg::Vector3D u and then retrieve all releveant info
-      // either from the Amg::Vector3D or from the MC vector (direction)
-      GeoRPCHit ghit(*i_hit);
+    if (evtStore()->retrieve(p_collection,"RPC_Hits") == StatusCode::SUCCESS) {
+      for (RPCSimHitCollection::const_iterator i_hit = p_collection->begin(); i_hit != p_collection->end(); ++i_hit) {
+        // Check the Hits identifiers, access the functions that give:
+        // Station name, station eta, station phi, doublet Z, doublet phi, doublet R, GasGap, Measures Phi.
+        HitID rpchit= (*i_hit).RPCid();
+        Identifier offid= getIdentifier(rpchit);
+        CHECK(checkIdentifier(offid));
+       
+        // Check Hits
+        // For every hit within the event, get the global position Amg::Vector3D u and then retrieve all releveant info
+        // either from the Amg::Vector3D or from the MC vector (direction)
+        GeoRPCHit ghit(*i_hit);
 
-      if (!ghit) continue;
-      Amg::Vector3D u = ghit.getGlobalPosition();
-      CHECK(executeFillHistos(u));
+        if (!ghit) continue;
+        Amg::Vector3D u = ghit.getGlobalPosition();
+        CHECK(executeFillHistos(u));
+      }
     }
   }
 

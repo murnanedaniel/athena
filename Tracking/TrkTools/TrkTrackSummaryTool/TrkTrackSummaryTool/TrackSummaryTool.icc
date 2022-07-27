@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 namespace Trk {
@@ -16,8 +16,6 @@ TrackSummaryTool::updateTrackSummary(const EventContext& ctx,
 {
   /*suppress hole search*/
   UpdateSummary(ctx, track, nullptr, true);
-  /*Needed for expected B-Layer*/
-  m_idTool->updateExpectedHitInfo(ctx, track, *track.trackSummary());
 }
 
 inline void
@@ -54,23 +52,11 @@ TrackSummaryTool::updateSharedHitCount(Track& track) const
 }
 
 inline void
-TrackSummaryTool::updateAdditionalInfo(const Track& track,
-                                       TrackSummary& summary) const
-{
-  updateAdditionalInfo(track, summary, false);
-}
-
-inline void
 TrackSummaryTool::updateAdditionalInfo(Track& track) const
 {
   if (!track.trackSummary()) {
     computeAndReplaceTrackSummary(
       track, nullptr, false /*DO NOT suppress hole search*/);
-  } else {
-    updateAdditionalInfo(
-      track,
-      *track.trackSummary(),
-      true); // @TODO set to false; true for backward compatibility
   }
 }
 inline void

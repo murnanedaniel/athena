@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////////////////////////////////////////////////////////////
@@ -13,9 +13,9 @@
 #include "MultipleScatteringSamplerHighland.h"
 
 #include "CLHEP/Random/RandGaussZiggurat.h"
+#include "TrkEventPrimitives/ParticleHypothesis.h"
 
-// static particle masses
-Trk::ParticleMasses iFatras::MultipleScatteringSamplerHighland::s_particleMasses;
+
 // static doubles
 double iFatras::MultipleScatteringSamplerHighland::s_main_RutherfordScott = 13.6*Gaudi::Units::MeV;
 double iFatras::MultipleScatteringSamplerHighland::s_log_RutherfordScott  =  0.038;
@@ -44,7 +44,7 @@ iFatras::MultipleScatteringSamplerHighland::MultipleScatteringSamplerHighland(co
 
 // destructor
 iFatras::MultipleScatteringSamplerHighland::~MultipleScatteringSamplerHighland()
-{}
+= default;
 
 // Athena standard methods
 // initialize
@@ -93,13 +93,13 @@ double iFatras::MultipleScatteringSamplerHighland::simTheta(const Trk::MaterialP
   double t = pathcorrection * mat.thicknessInX0();
 
   // kinematics (relativistic)
-  double m    = s_particleMasses.mass[particle];
+  double m    = Trk::ParticleMasses::mass[particle];
   double E    = sqrt(p*p + m*m);
   double beta = p/E;
   
   double sigma2(0.);
   
-  double sigma = matInt.sigmaMS(t, p, beta);
+  double sigma = Trk::MaterialInteraction::sigmaMS(t, p, beta);
   sigma2 = sigma*sigma;
   
   // Code below will not be used if the parameterization of TrkUtils is used 

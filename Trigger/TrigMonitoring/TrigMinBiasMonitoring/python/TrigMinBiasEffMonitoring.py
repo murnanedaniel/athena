@@ -16,9 +16,8 @@ def _TrigEff(flags, triggerAndRef, algname='HLTMinBiasEffMonitoringAlg'):
     alg = monConfig.addAlgorithm(
         CompFactory.HLTMinBiasEffMonitoringAlg, algname)
 
-    trkSel = CompFactory.InDet.InDetTrackSelectionTool(
-        "InDetTrackSelectionTool_LoosePrimary", CutLevel="LoosePrimary"
-    )
+    from InDetConfig.InDetTrackSelectionToolConfig import InDetTrackSelectionTool_LoosePrimary_Cfg
+    trkSel = monConfig.resobj.popToolsAndMerge(InDetTrackSelectionTool_LoosePrimary_Cfg(flags))
     alg.TrackSelectionTool = trkSel
 
     alg.triggerList = [ el["chain"] for el in  triggerAndRef ]
@@ -55,9 +54,10 @@ def _TrigEff(flags, triggerAndRef, algname='HLTMinBiasEffMonitoringAlg'):
             # these chains have such form: HLT_mb_excl_1trk5_pt4_L1RD0_FILLED                                  
             whichcounter += '_'+chain.split('_')[4]
 
-
+        if '_pusup' in chain or '_hmt_' in chain:
+            whichcounter = 'nTrkOfflineVtx'
         effGroup.defineHistogram(f'EffPassed,{whichcounter};{chain}_ref_{refchain}', type='TEfficiency',
-                                    title=chain+f';Offline Good nTrk {whichcounter};Efficiency', xbins=xbins, xmin=xmin, xmax=xmax)
+                                    title=f'{chain} ref: {refchain} ;Offline Good nTrk {whichcounter};Efficiency', xbins=xbins, xmin=xmin, xmax=xmax)
 
 
 
@@ -91,6 +91,9 @@ def TrigMinBiasEff(flags):
     # check all mb_sptrk chains w.r.t. random noalg
     triggerAndRef = [ _c(chain, "HLT_noalg_L1RD0_FILLED")  for chain in mbChains
                     if ("HLT_mb_sptrk_" in chain or "HLT_mb_sp_" in chain or "HLT_mb_mbts_" in chain)]
+    # for monitoring in MB stream
+    triggerAndRef += [ _c(chain, "HLT_noalg_mb_L1RD0_FILLED")  for chain in mbChains
+                    if ("HLT_mb_sptrk_" in chain or "HLT_mb_sp_" in chain or "HLT_mb_mbts_" in chain)]
     triggerAndRef += [ _c("HLT_mb_sptrk_L1RD0_FILLED", "HLT_mb_sp_L1RD0_FILLED") ]
 
     hmt = [c for c in mbChains if ('_hmt_' in c and '_pusup' not in c)]
@@ -107,8 +110,9 @@ def TrigMinBiasEff(flags):
         # monitor first hmt w.r.t sptrk
         triggerAndRef += [ _c(hmt[0], "HLT_mb_sptrk_L1RD0_FILLED", xmax=_trk(hmt[0])+30)]
 
-        # group set the ref for each trigger to be one of lower threshold
-        triggerAndRef += [  _c(chain, ref, xmin=_trk(chain)-20, xmax=_trk(chain)+50) for chain,ref in zip(hmt[1:], hmt) ]
+        # group set the ref for each trigger to be one of lower threshold : ordering of chains needs to be reviewed  
+        # triggerAndRef += [  _c(chain, ref, xmin=_trk(chain)-20, xmax=_trk(chain)+50) for chain,ref in zip(hmt[1:], hmt) ]
+        triggerAndRef += [  _c(chain, "HLT_mb_sptrk_L1RD0_FILLED", xmin=_trk(chain)-20, xmax=_trk(chain)+50) for chain in hmt[1:] ]
 
         # pu suppressing trigger should be monitored using trigger of the same threshold w/o pu suppression
         pusup = [c for c in mbChains if '_hmt_' in c and '_pusup' in c]
@@ -121,6 +125,15 @@ def TrigMinBiasEff(flags):
     # monitor exclusivity cut
     triggerAndRef += [  _c(chain, 'HLT_mb_sptrk_L1RD0_FILLED') for chain in excl ]
 
+    mbtsNoAlg = [c for c in mbChains if 'noalg' in c and 'L1MBTS' in c]
+    # monitor noalg MBTS chains
+    triggerAndRef += [  _c(chain, 'HLT_mb_sptrk_L1RD0_FILLED') for chain in mbtsNoAlg ]
+    # L1 MBTS
+    mbts = ["L1_MBTS_A","L1_MBTS_C","L1_MBTS_1", "L1_MBTS_2","L1_MBTS_1_1"]
+    triggerAndRef += [  _c(chain, 'HLT_mb_sptrk_L1RD0_FILLED') for chain in mbts ]
+
+
+    triggerAndRef += [ _c("L1_TE{}".format(i), 'HLT_mb_sptrk_L1RD0_FILLED', xmin=0, xmax=100) for i in [3,5,10,40]]
 
     # add here all the special cases
     return _TrigEff(flags, triggerAndRef)
@@ -128,12 +141,6 @@ def TrigMinBiasEff(flags):
 
 
 if __name__ == '__main__':
-    # Setup the Run III behavior
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior = 1
-
-    # Setup logs
-    #    from AthenaCommon.Constants import DEBUG
     # Set the Athena configuration flags
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
     ConfigFlags.Output.HISTFileName = 'TestMinBiasMonitorOutput.root'

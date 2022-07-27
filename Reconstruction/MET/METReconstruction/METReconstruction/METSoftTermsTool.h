@@ -1,7 +1,7 @@
 ///////////////////////// -*- C++ -*- /////////////////////////////
 
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // METSoftTermsTool.h 
@@ -47,38 +47,40 @@ namespace met{
     // Constructor with name (does this have to be a non-const
     // std::string and not a const reference?)
     METSoftTermsTool(const std::string& name);
-    ~METSoftTermsTool();
+    ~METSoftTermsTool() = default;
 
     // AsgTool Hooks
-    StatusCode  initialize();
-    StatusCode  finalize();
+    virtual StatusCode initialize() override;
 
-  protected: 
-    StatusCode  executeTool(xAOD::MissingET* metTerm, xAOD::MissingETComponentMap* metMap) const;
+  protected:
+    virtual
+    StatusCode  executeTool(xAOD::MissingET* metTerm, xAOD::MissingETComponentMap* metMap) const override;
     // Accept functions
-    bool accept            (const xAOD::IParticle* object) const;
+    virtual
+    bool accept            (const xAOD::IParticle* object) const override;
     bool accept            (const xAOD::CaloCluster* clus) const;
     bool accept            (const xAOD::TrackParticle* trk) const;
     // Overlap resolver function
+    virtual
     bool resolveOverlap    (const xAOD::IParticle* object,
                             xAOD::MissingETComponentMap* metMap,
                             std::vector<const xAOD::IParticle*>& acceptedSignals,
-                            MissingETBase::Types::weight_t& objWeight) const;
+                            MissingETBase::Types::weight_t& objWeight) const override;
     bool resolveOverlap    (xAOD::MissingETComponentMap* metMap,
                             std::vector<const xAOD::IParticle*>& acceptedSignals) const;
 
   private:
     // Default constructor: 
     METSoftTermsTool();
+
     // Use Case - Clusters OR Tracks OR PFOs
-    std::string m_inputType;
+    Gaudi::Property<std::string> m_inputType{this, "InputComposition", "Clusters", ""};  // Options : Clusters (default) OR Tracks
     xAOD::Type::ObjectType m_st_objtype;
     // Cluster selection
-    bool m_cl_vetoNegE;
-    bool m_cl_onlyNegE;
-    SG::ReadHandleKey<xAOD::CaloClusterContainer>  m_caloClusterKey{""};
-    SG::ReadHandleKey<xAOD::TrackParticleContainer>  m_trackParticleKey{""};
-
+    Gaudi::Property<bool> m_cl_vetoNegE{this, "VetoNegEClus", true, ""};
+    Gaudi::Property<bool> m_cl_onlyNegE{this, "OnlyNegEClus", false, ""};
+    SG::ReadHandleKey<xAOD::CaloClusterContainer>  m_caloClusterKey{this, "CaloClusterKey", "", "Input calo cluster container name (not to be configured manually)"};
+    SG::ReadHandleKey<xAOD::TrackParticleContainer>  m_trackParticleKey{this, "TrackKey", "", "Input track container name (not to be configured manually)"};
   }; 
 
 }

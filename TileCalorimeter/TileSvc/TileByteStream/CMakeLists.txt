@@ -1,13 +1,10 @@
-# $Id: CMakeLists.txt 757198 2016-06-23 10:12:56Z krasznaa $
-################################################################################
-# Package: TileByteStream
-################################################################################
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # Declare the package name:
 atlas_subdir( TileByteStream )
 
 # External dependencies:
-find_package( tdaq-common COMPONENTS eformat eformat_write )
+find_package( tdaq-common COMPONENTS eformat )
 
 # Component(s) in the package:
 atlas_add_library( TileByteStreamLib
@@ -27,7 +24,7 @@ atlas_add_component( TileByteStream
    LINK_LIBRARIES TileByteStreamLib )
 
 
-set( extra_patterns "LArDetectorToolNV|is still valid|no data retrieved|Database being retired|Reading file|Unable to locate catalog|Resolved path|DigitizationFlags|^Domain|created CondCont|no dictionary for class|^ +[+]|Reading LArPedestalMC|IOV callback|^DetectorStore|TileDetectorTool|Creating TileCondProxyFile|Cache alignment|INFO opening|loading cache|start processing|done processing|WARNING ../MuRcvDigitsCnt|WARNING ../MuRcvRawChCnt|TileL2Builder initialization completed|Initializing TileMuRcvContByteStreamTool|filled inputFileSummary from file|Picked valid file|No SimFlags|MetaReader|AutoConfiguration|INFO Initializing|IOVDbSvc[0-9 ]+INFO" )
+set( extra_patterns "LArDetectorToolNV|is still valid|no data retrieved|Database being retired|Reading file|Unable to locate catalog|Resolved path|DigitizationFlags|^Domain|created CondCont|no dictionary for class|^ +[+]|Reading LArPedestalMC|IOV callback|^DetectorStore|TileDetectorTool|Creating TileCondProxyFile|Cache alignment|INFO opening|loading cache|start processing|done processing|WARNING ../MuRcvDigitsCnt|WARNING ../MuRcvRawChCnt|TileL2Builder initialization completed|Initializing TileMuRcvContByteStreamTool|filled inputFileSummary from file|Picked valid file|No SimFlags|MetaReader|AutoConfiguration|INFO Initializing|IOVDbSvc[0-9 ]+INFO|Found [0-9]* algorithms" )
 
 atlas_add_test( TileDigitsContByteStreamCnv_test
    SCRIPT test/TileDigitsContByteStreamCnv_test.sh

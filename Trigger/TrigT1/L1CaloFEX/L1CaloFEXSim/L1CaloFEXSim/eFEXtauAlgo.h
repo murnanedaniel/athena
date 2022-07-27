@@ -38,7 +38,7 @@ namespace LVL1 {
     virtual ~eFEXtauAlgo();
 
     virtual StatusCode safetyTest() override;
-    virtual void setup(int inputTable[3][3]) override;
+    virtual void setup(int inputTable[3][3], int efex_id, int fpga_id, int central_eta) override;
 
     /** standard Athena-Algorithm method */
     //virtual StatusCode initialize();
@@ -47,7 +47,7 @@ namespace LVL1 {
     //virtual StatusCode finalize();
 
     virtual bool isCentralTowerSeed() override;
-    virtual eFEXtauTOB* getTauTOB() override;
+    virtual std::unique_ptr<eFEXtauTOB> getTauTOB() override;
     virtual unsigned int rCoreCore() override;
     virtual unsigned int rCoreEnv() override;
     virtual void getRCore(std::vector<unsigned int> & rCoreVec) override;
@@ -64,7 +64,7 @@ namespace LVL1 {
   private:
     int m_eFexalgoTowerID[3][3];
 
-    void buildLayers();
+    void buildLayers(int efex_id, int fpga_id, int central_eta);
     void setSupercellSeed();
     void setUnDAndOffPhi();
     virtual bool getUnD() override;
@@ -78,8 +78,8 @@ namespace LVL1 {
     unsigned int m_twrcells[3][3];
     unsigned int m_seed;
     bool m_cellsSet = false;
-    bool m_und = true;
-    bool m_offPhi = 2;
+    bool m_und;
+    unsigned int m_offPhi;
 
     SG::ReadHandleKey<LVL1::eTowerContainer> m_eTowerContainerKey {this, "MyETowers", "eTowerContainer", "Input container for eTowers"};
 

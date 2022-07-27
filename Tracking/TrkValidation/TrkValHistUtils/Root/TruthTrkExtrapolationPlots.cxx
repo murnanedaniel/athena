@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include <utility>
@@ -241,7 +241,7 @@ namespace Trk {
 
     // check if IP, since extr is not available there (sDetBegin="")
     TVector3 vecDetBegin_extr;
-    if (sDetBegin != "") {
+    if (!sDetBegin.empty()) {
       if (!truthprt.isAvailable<float>(sDetBegin + "px_extr") ||
           !truthprt.isAvailable<float>(sDetBegin + "py_extr") ||
           !truthprt.isAvailable<float>(sDetBegin + "pz_extr")) {
@@ -256,7 +256,7 @@ namespace Trk {
     }
 
     TVector3 vecDetEnd_extr;
-    if (sDetEnd != "") {
+    if (!sDetEnd.empty()) {
       if (!truthprt.isAvailable<float>(sDetEnd + "px_extr") ||
           !truthprt.isAvailable<float>(sDetEnd + "py_extr") ||
           !truthprt.isAvailable<float>(sDetEnd + "pz_extr")) {

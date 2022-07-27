@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /***************************************************************************
@@ -28,6 +28,9 @@ changes : 11.02.04 added docu
 #include "TrkParameters/TrackParameters.h"
 #include "TrkParticleBase/TrackParticleBase.h" // for TrackParticleOrigin enum
 #include "TrkToolInterfaces/IExtendedTrackSummaryTool.h"
+#include "TrkToolInterfaces/IPixelToTPIDTool.h" //template parameter to tool handle
+#include "TrkToolInterfaces/ITRT_ElectronPidTool.h" //template parameter to tool handle
+#include "InDetRecToolInterfaces/IInDetTestPixelLayerTool.h"
 #include "TrkTrack/TrackInfo.h"
 #include "TrkTrackSummary/MuonTrackSummary.h"
 #include "TrkTrackSummary/TrackSummary.h"
@@ -127,7 +130,8 @@ public:
     const std::vector<const Trk::TrackParameters*>& parameters,
     const std::vector<xAOD::ParameterPosition>& positions,
     xAOD::ParticleHypothesis prtOrigin,
-    xAOD::TrackParticleContainer* container) const override final;
+    xAOD::TrackParticleContainer* container,
+    bool addInfoIfMuon) const override final;
 
   virtual const InDet::BeamSpotData* CacheBeamSpotData(
     const EventContext& ctx) const override final;
@@ -143,6 +147,19 @@ public:
   /** Method to set TrackSummary of a xAOD::TrackParticle */
   void setTrackSummary(xAOD::TrackParticle& tp,
                        const TrackSummary& summary) const;
+
+  /** Add Pixel and TRT PID information to the track particle.
+   * @param ctx the current event context
+   * @param track a valid track or nullptr to set all PID values to the default value.
+   * @param tp the trackparticle in which the PID values are set.
+   */
+   void addPIDInformation(const EventContext& ctx, const Track *track, xAOD::TrackParticle& tp) const;
+
+   /** Add extra detailed hit summary info not computed in Trk::TrkSummary */
+   void addDetailedHitInformation(const DataVector<const TrackStateOnSurface>* trackStates, xAOD::TrackParticle& tp) const;
+
+   /** Add expected hit info for innermost pixel layers not computed in Trk::TrkSummary */
+   void addExpectedHitInformation(const Perigee* perigee, xAOD::TrackParticle& tp) const;
 
   /** Method to set Defining parameters of a xAOD::TrackParticle */
   void setDefiningParameters(xAOD::TrackParticle& tp,
@@ -169,6 +186,21 @@ public:
   {
     return s_trtdEdxUsedHitsDecorationName;
   }
+
+protected:
+  /** create a xAOD::TrackParticle out of constituents */
+  xAOD::TrackParticle* createParticle(
+    const EventContext& ctx,
+    const Perigee* perigee,
+    const FitQuality* fq,
+    const TrackInfo* trackInfo,
+    const TrackSummary* summary,
+    const std::vector<const Trk::TrackParameters*>& parameters,
+    const std::vector<xAOD::ParameterPosition>& positions,
+    xAOD::ParticleHypothesis prtOrigin,
+    xAOD::TrackParticleContainer* container,
+    const Trk::Track *track,
+    bool addInfoIfMuon = false) const;
 
 private:
   void compare(const Rec::TrackParticle& tp,
@@ -209,6 +241,20 @@ private:
     "Name of the Magnetic Field conditions object key"
   };
 
+   /**tool to calculate electron probabilities*/
+  ToolHandle<ITRT_ElectronPidTool> m_eProbabilityTool{ this,
+                                                       "TRT_ElectronPidTool",
+                                                       "",
+                                                       "" };
+  /**tool to calculate dE/dx using pixel clusters*/
+  ToolHandle<IPixelToTPIDTool> m_dedxtool{ this, "PixelToTPIDTool", "", "" };
+
+  /**tool to calculate expected hit information in innermost layers*/
+  ToolHandle<InDet::IInDetTestPixelLayerTool> m_testPixelLayerTool{ this,
+                                                                    "TestPixelLayerTool",
+                                                                    "",
+                                                                    "" };
+
   /** Configurable to set the eProbabilities and extra track summary types which
    * are to be copied from the track summary.*/
   std::vector<std::string> m_copyExtraSummaryName;
@@ -228,6 +274,7 @@ private:
   static const SG::AuxElement::Accessor<uint8_t> s_trtdEdxUsedHitsDecoration;
 
   bool m_doIBL;
+  bool m_doITk;
   ///< if the track contains a summary, the shared, expected hit, and PID
   ///< information will be recomputed. The summary of the track is not updated.
   bool m_computeAdditionalInfo;

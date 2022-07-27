@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // Efficient pythonic CoraCool bindings
@@ -30,6 +30,10 @@
 
 #include <string>
 #include <iostream>
+
+#include "CxxUtils/checker_macros.h"
+ATLAS_NO_CHECK_FILE_THREAD_SAFETY;   // Python-bindings
+
 using std::cout;
 using std::endl;
 using std::string;
@@ -165,7 +169,7 @@ inline PyObject *apply_function(PyObject *function, PyObject *object)
     return new_object;
 }
 
-CoraCoolFolderPtr fetch_coracool_folder(IDatabasePtr cooldb, string folder)
+CoraCoolFolderPtr fetch_coracool_folder(IDatabasePtr cooldb, const string & folder)
 {
     CoraCoolDatabaseSvc&  corasvc     = CoraCoolDatabaseSvcFactory::
                                         databaseService();
@@ -177,7 +181,7 @@ CoraCoolFolderPtr fetch_coracool_folder(IDatabasePtr cooldb, string folder)
 }
 
 const cool::RecordSpecification 
-    get_coracool_payload_spec(IDatabasePtr cooldb, string folder)
+    get_coracool_payload_spec(IDatabasePtr cooldb, const string & folder)
 {
     return fetch_coracool_folder(cooldb, folder)->payloadSpecification();
 }
@@ -185,13 +189,13 @@ const cool::RecordSpecification
 inline PyObject* make_iov_key(PyObject *iovkey_wrapper, 
                               unsigned long long value)
 {
-    static char *argtypes = const_cast<char *>("K");
+    static const char * const argtypes = const_cast<char *>("K");
     if (iovkey_wrapper && iovkey_wrapper != Py_None)
         return PyObject_CallFunction(iovkey_wrapper, argtypes, value);
     return PyLong_FromUnsignedLongLong(value);
 }
 
-PyObject *browse_coracool(IDatabasePtr cooldb, string folder, 
+PyObject *browse_coracool(IDatabasePtr cooldb, const string & folder, 
                           ValidityKey since, ValidityKey until,
                           const ChannelSelection &cs = ChannelSelection::all(), 
                           const char *tag="",

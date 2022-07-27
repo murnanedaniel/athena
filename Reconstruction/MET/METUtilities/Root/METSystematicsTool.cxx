@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "METUtilities/METSystematicsTool.h"
@@ -31,32 +31,10 @@ namespace met {
 
   //  const static MissingETBase::Types::bitmask_t invisSource = 0x100000; // doesn't overlap with any other
 
-  METSystematicsTool::METSystematicsTool(const std::string& name) : asg::AsgTool::AsgTool(name),
-  m_appliedSystEnum(NONE),
-  m_shiftpara_pthard_njet_mu(nullptr),
-  m_resopara_pthard_njet_mu(nullptr),
-  m_resoperp_pthard_njet_mu(nullptr),
-  m_jet_systRpt_pt_eta(nullptr),
-  m_h_calosyst_scale(nullptr),
-  m_h_calosyst_reso (nullptr),
-  m_rand(0),
-  m_units(-1),
-  m_VertexContKey(""),
-  m_TruthContKey(""),
-  m_EventInfoKey("")
+  METSystematicsTool::METSystematicsTool(const std::string& name)
+    : asg::AsgTool::AsgTool(name)
   {
     ATH_MSG_DEBUG (__PRETTY_FUNCTION__ );
-    declareProperty( "VertexContainer",   m_vertexCont        = "PrimaryVertices"                           );
-    declareProperty( "EventInfo",         m_eventInfo         = "EventInfo"                                 );
-    declareProperty( "TruthContainer",    m_truthCont         = "MET_Truth"                                 );
-    declareProperty( "TruthObj",          m_truthObj          = "NonInt"                                    );
-    declareProperty( "ConfigPrefix",      m_configPrefix      = "METUtilities/data16_13TeV/rec_Dec16v1");
-    declareProperty( "ConfigSoftTrkFile", m_configSoftTrkFile = "TrackSoftTerms.config"                     );
-    //    declareProperty( "ConfigSoftTrkFile", m_configSoftTrkFile = "TrackSoftTerms_afii.config"            );//for ATLFAST
-    declareProperty( "ConfigJetTrkFile",  m_configJetTrkFile  = ""                                          );
-    declareProperty( "ConfigSoftCaloFile",m_configSoftCaloFile= ""                                          );
-    // declareProperty( "ConfigSoftCaloFile",m_configSoftCaloFile= "METRefFinal_Obsolete2012_V2.config"        );
-    declareProperty( "UseDevArea",        m_useDevArea        = false                                       );
 
     applySystematicVariation(CP::SystematicSet()).ignore();
   }
@@ -108,19 +86,13 @@ namespace met {
     ATH_MSG_VERBOSE (__PRETTY_FUNCTION__ );
     // ReadHandleKey(s)
 
-    ATH_CHECK( m_VertexContKey.assign(m_vertexCont) );
     ATH_CHECK( m_VertexContKey.initialize() );
-
-    ATH_CHECK( m_TruthContKey.assign(m_truthCont) );
     ATH_CHECK( m_TruthContKey.initialize() );
-
-    ATH_CHECK( m_EventInfoKey.assign(m_eventInfo) );
     ATH_CHECK( m_EventInfoKey.initialize() );
 
-
-    const char lastchar = m_configPrefix.back();
-    if(std::strncmp(&lastchar,"/",1)!=0) {
-      m_configPrefix.append("/");
+    const char lastchar = m_configPrefix.value().back();
+    if (lastchar != '/') {
+      m_configPrefix = m_configPrefix.value() + "/";
     }
 
     if(m_configSoftTrkFile.empty()  &&
@@ -132,20 +104,6 @@ namespace met {
     if(!m_configJetTrkFile.empty())   ATH_CHECK( jetTrkSystInitialize()  );
 
     return addMETAffectingSystematics();
-  }
-
-  StatusCode METSystematicsTool::finalize()
-  {
-    ATH_MSG_DEBUG (__PRETTY_FUNCTION__);
-
-    delete m_shiftpara_pthard_njet_mu;
-    delete m_resopara_pthard_njet_mu;
-    delete m_resoperp_pthard_njet_mu;
-    delete m_jet_systRpt_pt_eta;
-    delete m_h_calosyst_scale;
-    delete m_h_calosyst_reso;
-
-    return StatusCode::SUCCESS;
   }
 
   StatusCode METSystematicsTool::softCaloSystInitialize()
@@ -164,8 +122,8 @@ namespace met {
     TFile infile(histpath.c_str());
 
     ATH_MSG_INFO( "METSystematics: Read calo uncertainties" );
-    m_h_calosyst_scale = dynamic_cast<TH1D*>( infile.Get((gsystpath+"/globsyst_scale").c_str()));
-    m_h_calosyst_reso  = dynamic_cast<TH1D*>( infile.Get((gsystpath+"/globsyst_reso").c_str()));
+    m_h_calosyst_scale.reset(dynamic_cast<TH1D*>( infile.Get((gsystpath+"/globsyst_scale").c_str())));
+    m_h_calosyst_reso.reset(dynamic_cast<TH1D*>( infile.Get((gsystpath+"/globsyst_reso").c_str())));
 
     if( !(m_h_calosyst_scale &&
           m_h_calosyst_reso
@@ -197,8 +155,8 @@ namespace met {
 
     TFile infile((configdir).c_str());
 
-    m_jet_systRpt_pt_eta = dynamic_cast<TH2D*>( infile.Get("jet_systRpt_pt_eta") ) ;
-//    m_jet_systRpt_pt_eta = dynamic_cast<TH2D*>( infile.Get("uncertaintyMap") ) ;
+    m_jet_systRpt_pt_eta.reset(dynamic_cast<TH2D*>( infile.Get("jet_systRpt_pt_eta")));
+//    m_jet_systRpt_pt_eta.reset(dynamic_cast<TH2D*>( infile.Get("uncertaintyMap")));
 
     if( !m_jet_systRpt_pt_eta)
       {
@@ -226,9 +184,9 @@ namespace met {
 
     TFile infile(histpath.c_str());
 
-    m_resoperp_pthard_njet_mu  = dynamic_cast<TH3D*>( infile.Get((psystpath+"/resoperp_"+suffix).c_str()) );
-    m_resopara_pthard_njet_mu  = dynamic_cast<TH3D*>( infile.Get((psystpath+"/resopara_"+suffix).c_str()) );
-    m_shiftpara_pthard_njet_mu = dynamic_cast<TH3D*>( infile.Get((psystpath+"/shiftpara_"+suffix).c_str()));
+    m_resoperp_pthard_njet_mu.reset(dynamic_cast<TH3D*>( infile.Get((psystpath+"/resoperp_"+suffix).c_str()) ));
+    m_resopara_pthard_njet_mu.reset(dynamic_cast<TH3D*>( infile.Get((psystpath+"/resopara_"+suffix).c_str()) ));
+    m_shiftpara_pthard_njet_mu.reset(dynamic_cast<TH3D*>( infile.Get((psystpath+"/shiftpara_"+suffix).c_str())));
 
     if( !(m_resoperp_pthard_njet_mu  &&
           m_resopara_pthard_njet_mu  &&
@@ -434,13 +392,13 @@ namespace met {
       const xAOD::MissingET* jetterm = *METcont->find( MissingETBase::Source::jet() );
       size_t njet = (jetterm==nullptr) ? 0 : acc_constitObjLinks(*jetterm ).size();
 
-      int          phbin                                     = m_shiftpara_pthard_njet_mu->GetXaxis()->FindBin( ptHardMet  ) ;
+      int          phbin                                     = std::as_const(m_shiftpara_pthard_njet_mu)->GetXaxis()->FindBin( ptHardMet  ) ;
       if(phbin>m_shiftpara_pthard_njet_mu->GetNbinsX())  phbin = m_shiftpara_pthard_njet_mu->GetNbinsX();
-      int    const jetbin                                    = m_shiftpara_pthard_njet_mu->GetYaxis()->FindBin(njet);
-      int    const mubin                                     = m_shiftpara_pthard_njet_mu->GetZaxis()->FindBin(eInfo.actualInteractionsPerCrossing() );
+      int    const jetbin                                    = std::as_const(m_shiftpara_pthard_njet_mu)->GetYaxis()->FindBin(njet);
+      int    const mubin                                     = std::as_const(m_shiftpara_pthard_njet_mu)->GetZaxis()->FindBin(eInfo.actualInteractionsPerCrossing() );
       double const ptHardShift                               = m_shiftpara_pthard_njet_mu->GetBinContent(phbin,jetbin,mubin);
 
-      double const randGaus = m_rand.Gaus(0.,1.);
+      double const randGaus = getTLSRandomGen()->Gaus(0.,1.);
 
       ATH_MSG_DEBUG("About to apply systematic " << appliedSystematicsString() );
 
@@ -522,10 +480,10 @@ namespace met {
       xAOD::MissingETAssociation const * const assoc = MissingETComposition::getAssociation(helper.map(),jet);
       MissingETBase::Types::constvec_t trkvec = assoc->overlapTrkVec(helper);
 
-      int phbin  = m_jet_systRpt_pt_eta->GetXaxis()->FindBin(jet->pt()/1e3);
+      int phbin  = std::as_const(m_jet_systRpt_pt_eta)->GetXaxis()->FindBin(jet->pt()/1e3);
       if(phbin>m_jet_systRpt_pt_eta->GetNbinsX())  phbin  = m_jet_systRpt_pt_eta->GetNbinsX();
 
-      int etabin  = m_jet_systRpt_pt_eta->GetYaxis()->FindBin(std::abs( jet->eta()  ));
+      int etabin  = std::as_const(m_jet_systRpt_pt_eta)->GetYaxis()->FindBin(std::abs( jet->eta()  ));
       if(etabin>m_jet_systRpt_pt_eta->GetNbinsY()) etabin = m_jet_systRpt_pt_eta->GetNbinsY();
 
       double uncert = 0.;
@@ -589,10 +547,10 @@ namespace met {
 	if(std::abs(jet->eta())<=2.5)
 	  {
 	    jetCount++;
-	    int         phbin  = m_jet_systRpt_pt_eta->GetXaxis()->FindBin(jet->pt()/1e3);
+	    int         phbin  = std::as_const(m_jet_systRpt_pt_eta)->GetXaxis()->FindBin(jet->pt()/1e3);
 	    if(phbin>m_jet_systRpt_pt_eta->GetNbinsX())  phbin  = m_jet_systRpt_pt_eta->GetNbinsX();
 
-	    int         etabin  = m_jet_systRpt_pt_eta->GetYaxis()->FindBin(std::abs( jet->eta()  ));
+	    int         etabin  = std::as_const(m_jet_systRpt_pt_eta)->GetYaxis()->FindBin(std::abs( jet->eta()  ));
 	    if(etabin>m_jet_systRpt_pt_eta->GetNbinsY()) etabin = m_jet_systRpt_pt_eta->GetNbinsY();
 	    float uncert_frac=(trkvec.sumpt())*(m_jet_systRpt_pt_eta->GetBinContent(phbin, etabin));
 
@@ -670,7 +628,7 @@ namespace met {
 					   softTerms.mpy * softTerms.mpy );
 
 
-    double const rand  = gRandom->Gaus(0.,1.);
+    double const rand  = getTLSRandomGen()->Gaus(0.,1.);
     double const shift = softTermsMet<1e-9 ? 0. : rand*smearedSigma / softTermsMet;
 
     ATH_MSG_VERBOSE("caloSyst_reso: shift = " << shift);
@@ -722,13 +680,13 @@ namespace met {
     SG::ReadHandle<xAOD::MissingETContainer> truthCont(m_TruthContKey);
     if (!truthCont.isValid()) {
 
-      ATH_MSG_ERROR(m_truthCont<<" container empty or doesn't exist, calcPtHard returning zero.");
+      ATH_MSG_ERROR( m_TruthContKey.key() << " container empty or doesn't exist, calcPtHard returning zero.");
       return missingEt();
     }
 
     xAOD::MissingETContainer::const_iterator truthiter = truthCont->find(MissingETBase::Source::truthNonInt());
     if(truthiter == truthCont->end()){
-      ATH_MSG_ERROR( m_truthObj << " is not in " << m_truthCont << ". calcPtHard returing zero." );
+      ATH_MSG_ERROR( "NonInt is not in " << m_TruthContKey.key() << ". calcPtHard returing zero." );
       return missingEt();
     }
     const xAOD::MissingET& truthmet = **truthiter;
@@ -777,14 +735,14 @@ namespace met {
     if(m_useDevArea) { configpath += "dev/"; }
 
     switch(type){
-    case SOFTCALO   :  configfile += m_configSoftCaloFile;
-      configpath  = PathResolverFindCalibFile(m_configPrefix+m_configSoftCaloFile);//, "CALIBPATH", PathResolver::RecursiveSearch) ;
+    case SOFTCALO   :  configfile += m_configSoftCaloFile.value();
+      configpath  = PathResolverFindCalibFile(m_configPrefix.value()+m_configSoftCaloFile.value());//, "CALIBPATH", PathResolver::RecursiveSearch) ;
         break;
-    case SOFTTRK    :  configfile += m_configSoftTrkFile;
-      configpath  = PathResolverFindCalibFile(m_configPrefix+m_configSoftTrkFile);//, "CALIBPATH", PathResolver::RecursiveSearch) ;
+    case SOFTTRK    :  configfile += m_configSoftTrkFile.value();
+      configpath  = PathResolverFindCalibFile(m_configPrefix.value()+m_configSoftTrkFile.value());//, "CALIBPATH", PathResolver::RecursiveSearch) ;
         break;
-    case JETTRK :   configfile += m_configJetTrkFile;
-      configpath = PathResolverFindCalibFile(m_configPrefix+m_configJetTrkFile);//, "CALIBPATH", PathResolver::RecursiveSearch) ;
+    case JETTRK :   configfile += m_configJetTrkFile.value();
+      configpath = PathResolverFindCalibFile(m_configPrefix.value()+m_configJetTrkFile.value());//, "CALIBPATH", PathResolver::RecursiveSearch) ;
       break;
     default     :  configpath = "";
     }
@@ -909,9 +867,18 @@ namespace met {
     return NPV;
   }
 
+  TRandom3* METSystematicsTool::getTLSRandomGen() const {
+    TRandom3* random = m_rand_tls.get();
+    if (!random) {
+      random = new TRandom3();
+      m_rand_tls.reset(random);
+    }
+    return random;
+  }
+
   void METSystematicsTool::setRandomSeed(int seed) const {
     ATH_MSG_VERBOSE(__PRETTY_FUNCTION__);
-    m_rand.SetSeed(seed);
+    getTLSRandomGen()->SetSeed(seed);
   }
 }
 

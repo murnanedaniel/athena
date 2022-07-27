@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef ALFAGEOMODEL_ALFADETECTORFACTORY_H
@@ -29,9 +29,9 @@ typedef struct _ALFAPHYSVOLUME {
 } ALFAPHYSVOLUME, *PALFAPHYSVOLUME;
 
 typedef struct _ALIGNPARAMETERS {
-	double fYOffset[RPOTSCNT];
-	double fXOffset[RPOTSCNT];
-	double fTheta[RPOTSCNT];
+        double fYOffset[RPOTSCNT] = {};
+        double fXOffset[RPOTSCNT] = {};
+        double fTheta[RPOTSCNT] = {};
 } ALIGNPARAMETERS, *PALIGNPARAMETERS;
 
 enum eTransformDeltaType { ETDT_RPTRANSFORM };
@@ -82,7 +82,7 @@ class ALFA_DetectorFactory : public GeoVDetectorFactory
 
 		eMetrologyType m_eRequestedMetrologyType;
 		CONFIGURATION m_Config;
-		ALFA_GeometryReader* m_pGeoReader;
+                std::unique_ptr<ALFA_GeometryReader> m_pGeoReader;
 		std::list<eRPotName> m_ListExistingRPots;
 		std::map<std::string,const GeoMaterial*> m_MapMaterials;
 
@@ -106,7 +106,7 @@ class ALFA_DetectorFactory : public GeoVDetectorFactory
   
 	private:
 		void SaveGeometry();
-		void DefineMaterials (const StoredMaterialManager* pMaterialManager);
+		void DefineMaterials (StoredMaterialManager* pMaterialManager);
 		void ConstructUFiberCladdings(const eRPotName eRPName, GeoFullPhysVol* pMotherVolume, const HepGeom::Transform3D& MotherTransform, GeoAlignableTransform* pDetTransform);
 		void ConstructVFiberCladdings(const eRPotName eRPName, GeoFullPhysVol* pMotherVolume, const HepGeom::Transform3D& MotherTransform, GeoAlignableTransform* pDetTransform);
 		void ConstructODFiberCladdings(const eRPotName eRPName, GeoFullPhysVol* pPhysMotherVolume, const HepGeom::Transform3D& MotherTransform, GeoAlignableTransform* pDetTransform);

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // T/P converter for PRD_MultiTruthCollection.
@@ -14,7 +14,7 @@
 
 
 namespace {
-  HepMcParticleLinkCnv_p1 particleLinkConverter;
+  const HepMcParticleLinkCnv_p1 particleLinkConverter;
 }
 
 
@@ -25,10 +25,9 @@ void PRD_MultiTruthCollectionCnv_p1::persToTrans( const Trk::PRD_MultiTruthColle
 {
   msg<<MSG::DEBUG<<"PRD_MultiTruthCollectionCnv_p1::persToTrans()"<<endmsg;
   
-  for(Trk::PRD_MultiTruthCollection_p1::CollectionType::const_iterator i=pers->m_entries.begin(); i!=pers->m_entries.end(); i++) {
+  for (const Trk::PRD_MultiTruthCollection_p1::Entry& ent : pers->m_entries) {
     HepMcParticleLink link;
-    particleLinkConverter.persToTrans(&i->particle, &link, msg);
-    //trans->insert(trans->end(), std::make_pair(Identifier(i->id), link) );
+    particleLinkConverter.persToTrans(&ent.particle, &link, msg);
 
     if(!m_isInitialized) {
       if (this->initialize(msg) != StatusCode::SUCCESS) {
@@ -37,11 +36,11 @@ void PRD_MultiTruthCollectionCnv_p1::persToTrans( const Trk::PRD_MultiTruthColle
     }
 
     Identifier chanId;
-    if (m_pixId->is_shortened_pixel_id(i->id)) {
-     chanId = m_pixId->pixel_id_from_shortened(i->id);
+    if (m_pixId->is_shortened_pixel_id(ent.id)) {
+     chanId = m_pixId->pixel_id_from_shortened(ent.id);
     }
     else {
-      chanId = i->id;
+      chanId = ent.id;
     }
     trans->insert(trans->end(), std::make_pair(chanId, link) );
   }
@@ -57,10 +56,10 @@ void PRD_MultiTruthCollectionCnv_p1::transToPers( const PRD_MultiTruthCollection
 
   pers->m_entries.reserve(trans->size());
 
-  for(PRD_MultiTruthCollection::const_iterator i=trans->begin(); i!=trans->end(); i++) {
+  for (const auto& p : *trans) {
     HepMcParticleLink_p1 link;
-    particleLinkConverter.transToPers(&i->second, &link, msg);
-    pers->m_entries.push_back(Trk::PRD_MultiTruthCollection_p1::Entry(i->first.get_compact(), link));
+    particleLinkConverter.transToPers(&p.second, &link, msg);
+    pers->m_entries.push_back(Trk::PRD_MultiTruthCollection_p1::Entry(p.first.get_compact(), link));
   }
 
   msg<<MSG::DEBUG<<"PRD_MultiTruthCollectionCnv_p1::transToPers() DONE"<<endmsg;

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 
@@ -16,9 +16,6 @@
 #include "StoreGate/ReadCondHandleKey.h"
 #include "StoreGate/WriteCondHandleKey.h"
 
-
-#include "GaudiKernel/ICondSvc.h"
-
 #include <vector>
 
 namespace InDet {
@@ -32,9 +29,9 @@ namespace InDet {
     ///////////////////////////////////////////////////////////////////
     // Public methods:
     ///////////////////////////////////////////////////////////////////
-      
+
   public:
-      
+
     ///////////////////////////////////////////////////////////////////
     // Standard tool methods
     ///////////////////////////////////////////////////////////////////
@@ -43,19 +40,17 @@ namespace InDet {
     virtual ~TRT_DetElementsRoadCondAlg_xk() = default;
     virtual StatusCode initialize() override;
     virtual StatusCode execute(const EventContext& ctx) const override;
-    /** Make this algorithm clonable. */
-    virtual bool isClonable() const override { return true; };
+    virtual bool isReEntrant() const override final { return false; }
 
     void printStraw(const InDetDD::TRT_BaseElement * elementCS, unsigned int strawNum) const;
 
   private:
-      
+
     ///////////////////////////////////////////////////////////////////
     // Private Data
     ///////////////////////////////////////////////////////////////////
     SG::ReadCondHandleKey<InDetDD::TRT_DetElementContainer> m_trtDetEleContKey{this, "TRTDetEleContKey", "TRT_DetElementContainer", "Key of TRT_DetElementContainer"};
     SG::WriteCondHandleKey<TRT_DetElementsRoadData_xk> m_writeKey{this, "WriteKey", "TRT_DetElementsRoadData_xk", "Key of TRT_DetElementsRoadData_xk"};
-    ServiceHandle<ICondSvc> m_condSvc;
 
     ///////////////////////////////////////////////////////////////////
     // Methods

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "RPC_CondCabling/CMAparameters.h"
@@ -12,12 +12,6 @@
 #include "MuonCablingTools/RPCdecoder.h"
 #include "RPC_CondCabling/CMAprogram.h"
 
-int CMAparameters::s_Layer = 0;
-
-void CMAparameters::setLayerToShow(int Layer) {
-    if (Layer < 0 || Layer > 1) return;
-    s_Layer = Layer;
-}
 bool CMAparameters::isAtlas() const { return m_conf_type == Atlas; }
 
 const CMAidentity& CMAparameters::id() const { return *m_id; }
@@ -68,14 +62,18 @@ unsigned int CMAparameters::last_highPt_code() const { return m_last_highPt_code
 
 CMAparameters::CMAconfiguration CMAparameters::conf_type() const { return m_conf_type; }
 
-CMAparameters::CMAparameters(CMAparameters::parseParams parse) :
-    CablingObject(parse, CMAidentity::name(parse.view, parse.coverage)), m_params{parse} {
-    m_id = std::make_unique<CMAidentity>(parse);
+CMAparameters::CMAparameters(const CMAparameters::parseParams& parse) :
+    CablingObject(parse, CMAidentity::name(parse.view, parse.coverage)),
+    m_params{parse},
+    m_id (std::make_unique<CMAidentity>(parse))
+{
 }
 
-CMAparameters::CMAparameters(const CMAparameters& cma) : CablingObject(cma), m_params{cma.m_params} {
-    m_id = std::make_unique<CMAidentity>(cma.id());
-
+CMAparameters::CMAparameters(const CMAparameters& cma)
+  : CablingObject(cma),
+    m_params{cma.m_params},
+    m_id (std::make_unique<CMAidentity>(cma.id()))
+{
     const CMAprogram* proglow = cma.lowPt_program();
     const CMAprogram* proghigh = cma.highPt_program();
     if (proglow) { m_lowPt_program = std ::make_unique<CMAprogram>(*proglow); }
@@ -292,7 +290,7 @@ CMAparameters& CMAparameters::operator+=(const CMAparameters& cma) {
     return *this;
 }
 
-void CMAparameters::showDt(std::ostream& stream) const {
+void CMAparameters::showDt(std::ostream& stream, int layer) const {
     // Set the chracters used for matrix display
     unsigned int finish = 164;
 
@@ -310,7 +308,7 @@ void CMAparameters::showDt(std::ostream& stream) const {
 
     // Show Low Pt connections
     stream << std::endl << "Low Pt matrix connections:" << std::endl << std::endl;
-    showMt(displow, ln, Low);
+    showMt(displow, ln, Low, layer);
 
     // Dumping memory on output stream
     for (int i = 0; i < ln; ++i)
@@ -325,7 +323,7 @@ void CMAparameters::showDt(std::ostream& stream) const {
 
     char(*disphi)[90] = new char[ln][90];
 
-    showMt(disphi, ln, High);
+    showMt(disphi, ln, High, layer);
 
     // Dumping memory on output stream
     for (int i = 0; i < ln; ++i)
@@ -338,7 +336,7 @@ void CMAparameters::showDt(std::ostream& stream) const {
     stream << std::endl;
 }
 
-void CMAparameters::showMt(char display[][90], int ln, TrigType type) const {
+void CMAparameters::showMt(char display[][90], int ln, TrigType type, int layer) const {
     // Set the chracters used for matrix display
     unsigned int up = 19;
     unsigned int left = 22;
@@ -383,8 +381,8 @@ void CMAparameters::showMt(char display[][90], int ln, TrigType type) const {
         for (int j = 0; j < pivot_loop; ++j) {
             if (j) *disp[i] << "|";
             (*disp[i]).fill(48);
-            if (m_pivot[j][s_Layer][pivot_channels - i] >= 0) {
-                *disp[i] << std::setw(5) << m_pivot[j][s_Layer][pivot_channels - i];
+            if (m_pivot[j][layer][pivot_channels - i] >= 0) {
+                *disp[i] << std::setw(5) << m_pivot[j][layer][pivot_channels - i];
             } else
                 *disp[i] << "*****";
         }
@@ -431,8 +429,8 @@ void CMAparameters::showMt(char display[][90], int ln, TrigType type) const {
 
         for (int j = 0; j < 5; ++j)
             for (int ch = 0; ch < confirm_channels; ++ch) {
-                if (conf[i][s_Layer][ch] >= 0) {
-                    (std::ostream&)*disp[start + j] << (conf[i][s_Layer][ch] / static_cast<int>(pow(10., j))) % 10;
+                if (conf[i][layer][ch] >= 0) {
+                    (std::ostream&)*disp[start + j] << (conf[i][layer][ch] / static_cast<int>(pow(10., j))) % 10;
                 } else
                     (std::ostream&)*disp[start + j] << "*";
             }
@@ -448,7 +446,8 @@ void CMAparameters::showMt(char display[][90], int ln, TrigType type) const {
     delete[] disp;
 }
 
-void CMAparameters::Print(std::ostream& stream, bool detail) const {
+void CMAparameters::Print(std::ostream& stream, bool detail, int layer) const
+{
     stream << id();
 
     stream << "  I/O " << m_params.pivotStation << ",";
@@ -471,7 +470,12 @@ void CMAparameters::Print(std::ostream& stream, bool detail) const {
     stream << " " << std::setw(2) << highPt_stop_ch() << ":";
     stream << std::setw(2) << highPt_stop_st() << ">" << std::endl;
     stream.fill(32);
-    if (detail) showDt(stream);
+    if (detail) showDt(stream, layer);
+}
+
+void CMAparameters::Print(std::ostream& stream, bool detail) const
+{
+  Print (stream, detail, 0);
 }
 
 std::string CMAparameters::noMoreChannels(const std::string& stat) {

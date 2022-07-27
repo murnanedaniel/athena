@@ -1,11 +1,12 @@
-# Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # Pythonized version of MadGraph steering executables
 #    written by Zach Marshall <zach.marshall@cern.ch>
 #    updates for aMC@NLO by Josh McFayden <mcfayden@cern.ch>
+#    updates to LHE handling and SUSY functionality by Emma Kuwertz <ekuwertz@cern.ch>
 #  Attempts to remove path-dependence of MadGraph
 
-import os,time,subprocess,shutil,glob,re
+import os,time,subprocess,glob,re
 from AthenaCommon import Logging
 mglog = Logging.logging.getLogger('MadGraphUtils')
 
@@ -20,9 +21,16 @@ MADGRAPH_CATCH_ERRORS=True
 # PDF setting (global setting)
 MADGRAPH_PDFSETTING=None
 MADGRAPH_COMMAND_STACK = []
+
+if 'PYTHONPATH' in os.environ and '/cvmfs/atlas.cern.ch/repo/sw/Generators/madgraph/models/latest/shutil_patch' not in os.environ['PYTHONPATH']:
+    # add shutil_patch in first place so that the patched version of shutil.py is picked up by MG instead of original version
+    # the patched version does not throw the errors that has made running MG and this code impossible on some file systems
+    os.environ['PYTHONPATH'] = '/cvmfs/atlas.cern.ch/repo/sw/Generators/madgraph/models/latest/shutil_patch:'+os.environ['PYTHONPATH']
+    MADGRAPH_COMMAND_STACK += ['export PYTHONPATH=/cvmfs/atlas.cern.ch/repo/sw/Generators/madgraph/models/latest/shutil_patch:${PYTHONPATH}']
+import shutil
+
 from MadGraphControl.MadGraphUtilsHelpers import checkSettingExists,checkSetting,checkSettingIsTrue,getDictFromCard,get_runArgs_info,get_physics_short,is_version_or_newer
 from MadGraphControl.MadGraphParamHelpers import do_PMG_updates,check_PMG_updates
-
 
 def stack_subprocess(command,**kwargs):
     global MADGRAPH_COMMAND_STACK
@@ -461,8 +469,13 @@ def generate(process_dir='PROC_mssm_0', grid_pack=False, gridpack_compile=False,
     new_opts.close()
     mglog.info('Make file hacking complete.')
 
+    # Change directories
     currdir=os.getcwd()
     os.chdir(process_dir)
+    # Record the change
+    global MADGRAPH_COMMAND_STACK
+    MADGRAPH_COMMAND_STACK += [ 'cd ${MGaMC_PROCESS_DIR}' ]
+
 
     # Check the run card
     run_card_consistency_check(isNLO=isNLO)
@@ -471,7 +484,7 @@ def generate(process_dir='PROC_mssm_0', grid_pack=False, gridpack_compile=False,
     print_cards_from_dir(process_dir=os.getcwd())
 
     # Check the param card
-    code = check_PMG_updates(process_dir)
+    code = check_PMG_updates(process_dir=os.getcwd())
     if requirePMGSettings and code!=0:
         raise RuntimeError('Settings are not compliant with PMG defaults! Please use do_PMG_updates function to get PMG default params.')
 
@@ -489,7 +502,7 @@ def generate(process_dir='PROC_mssm_0', grid_pack=False, gridpack_compile=False,
     # Special handling for mode 1
     if mode==1:
         mglog.info('Setting up cluster running')
-        modify_config_card(process_dir=process_dir,settings={'run_mode':1})
+        modify_config_card(process_dir=os.getcwd(),settings={'run_mode':1})
         if cluster_type=='pbs':
             mglog.info('Modifying bin/internal/cluster.py for PBS cluster running')
             os.system("sed -i \"s:text += prog:text += './'+prog:g\" bin/internal/cluster.py")
@@ -498,9 +511,7 @@ def generate(process_dir='PROC_mssm_0', grid_pack=False, gridpack_compile=False,
     elif mode==0:
         mglog.info('Setting up serial generation.')
 
-    generate_prep(process_dir)
-    global MADGRAPH_COMMAND_STACK
-    MADGRAPH_COMMAND_STACK += [ 'cd ${MGaMC_PROCESS_DIR}' ]
+    generate_prep(process_dir=os.getcwd())
     global MADGRAPH_CATCH_ERRORS
     generate = stack_subprocess(command,stdin=subprocess.PIPE, stderr=subprocess.PIPE if MADGRAPH_CATCH_ERRORS else None)
     (out,err) = generate.communicate()
@@ -1661,28 +1672,57 @@ define susyv~ = sve~ svm~ svt~
 """
 
 
-def get_SUSY_variations( masses , syst_mod , ktdurham = None ):
+def get_SUSY_variations( process , masses , syst_mod , ktdurham = None ):
+    # Don't override an explicit setting from the run card!
     if ktdurham is None:
-        strong_ids = ['1000001','1000002','1000003','1000004','1000005','1000006','2000001','2000002','2000003','2000004','2000005','2000006','1000021']
-        weak_ids = ['1000023','1000024','1000025','1000011','1000013','1000015','2000011','2000013','2000015','1000012','1000014','1000016']
-        # First check the lightest of the heavy sparticles - all squarks and gluino
-        my_mass = min([abs(float(masses[x])) for x in strong_ids if x in masses])
-        # Now check if strong production was not the key mode
-        if my_mass>10000.:
-            # This is a little tricky, but: we want the heaviest non-decoupled mass
-            my_mass = max([abs(float(masses[x])) for x in weak_ids if x in masses and float(masses[x])<10000.])
-        # Final check for N1N1 with everything else decoupled
-        if my_mass>10000. and '1000022' in masses:
-            my_mass = masses['1000022']
-        if my_mass>10000.:
-            raise RuntimeError('Could not understand which mass to use for matching cut in '+str(masses))
+        prod_particles = []
+        if process is not None:
+            id_map = {'go':'1000021','dl':'1000001','ul':'1000002','sl':'1000003','cl':'1000004','b1':'1000005','t1':'1000006',
+                      'dr':'2000001','ur':'2000002','sr':'2000003','cr':'2000004','b2':'2000005','t2':'2000006',
+                      'n1':'1000022','n2':'1000023','x1':'1000024','x2':'1000037','n3':'1000025','n4':'1000035',
+                      'el':'1000011','mul':'1000013','ta1':'1000015','sve':'1000012','svm':'1000014','svt':'1000016',
+                      'er':'2000011','mur':'2000013','ta2':'2000015'}
+            for l in process:
+                if 'generate' in l or 'add process' in l:
+                    clean_proc = l.replace('generate','').replace('+','').replace('-','').replace('~','').replace('add process','').split('>')[1].split(',')[0]
+                    for particle in clean_proc.split():
+                        if particle not in id_map:
+                            mglog.info(f'Particle {particle} not found in PDG ID map - skipping')
+                        else:
+                            prod_particles += id_map[particle]
+        # If we don't specify a process, then all we can do is guess based on available masses
+        # Same if we failed to identify the right particles
+        my_mass = 10000.
+        if len(prod_particles)>0:
+            for x in prod_particles:
+                if x in masses:
+                    my_mass = min(my_mass,abs(float(masses[x])))
+                else:
+                    mglog.info(f'Seem to ask for production of PDG ID {x}, but {x} not in mass dictionary?')
+        if my_mass>9999.:
+            strong_ids = ['1000001','1000002','1000003','1000004','1000005','1000006','2000001','2000002','2000003','2000004','2000005','2000006','1000021']
+            weak_ids = ['1000023','1000024','1000025','1000011','1000013','1000015','2000011','2000013','2000015','1000012','1000014','1000016']
+            # First check the lightest of the heavy sparticles - all squarks and gluino
+            my_mass = min([abs(float(masses[x])) for x in strong_ids if x in masses])
+            # Now check if strong production was not the key mode
+            if my_mass>10000.:
+                # This is a little tricky, but: we want the heaviest non-decoupled mass
+                my_mass = max([abs(float(masses[x])) for x in weak_ids if x in masses and float(masses[x])<10000.])
+            # Final check for N1N1 with everything else decoupled
+            if my_mass>10000. and '1000022' in masses:
+                my_mass = masses['1000022']
+            if my_mass>10000.:
+                raise RuntimeError('Could not understand which mass to use for matching cut in '+str(masses))
 
         # Now set the matching scale accordingly
         ktdurham = min(my_mass*0.25,500)
+        # Should not be weirdly low - can't imagine a situation where you'd really want the scale below 15 GeV
+        ktdurham = max(ktdurham,15)
         if syst_mod is not None and 'qup' in syst_mod.lower():
             ktdurham = ktdurham*2.
         elif syst_mod is not None and 'qdown' in syst_mod.lower():
             ktdurham = ktdurham*0.5
+
     mglog.info('For matching, will use ktdurham of '+str(ktdurham))
 
     alpsfact = 1.0
@@ -1739,7 +1779,7 @@ def SUSY_Generation(runArgs = None, process=None,\
         usePMGSettings (bool): See :py:func:`new_process`. Will set SM parameters to the appropriate values. Default: True.
     """
     ktdurham = run_settings['ktdurham'] if 'ktdurham' in run_settings else None
-    ktdurham , alpsfact , scalefact = get_SUSY_variations( params['MASS'] , syst_mod , ktdurham=ktdurham )
+    ktdurham , alpsfact , scalefact = get_SUSY_variations( process, params['MASS'] , syst_mod , ktdurham=ktdurham )
 
     process_dir = MADGRAPH_GRIDPACK_LOCATION
     if not is_gen_from_gridpack():
@@ -2483,9 +2523,20 @@ def fix_fks_makefile(process_dir):
     shutil.move(makefile_fks,makefile_fks+'_orig')
     fin=open(makefile_fks+'_orig')
     fout=open(makefile_fks,'w')
+    edit=False
     for line in fin:
-        fout.write(line.replace('FKSParams.mod','FKSParams.o'))
-        if 'BinothLHA.o:' in line:
+        if 'FKSParams.mod' in line:
+            fout.write(line.replace('FKSParams.mod','FKSParams.o'))
+            edit=True
+        elif edit and 'driver_mintFO' in line:
+            fout.write('driver_mintFO.o: weight_lines.o mint_module.o FKSParams.o\n')
+        elif edit and 'genps_fks.o' in line:
+            fout.write('genps_fks.o: mint_module.o FKSParams.o\n')
+        elif edit and 'test_soft_col_limits' in line:
+            fout.write(line)
             fout.write('madfks_plot.o: mint_module.o\n')
+            fout.write('cluster.o: weight_lines.o\n')
+        else:
+            fout.write(line)
     fin.close()
     fout.close()

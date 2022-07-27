@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /// @author Nils Krumnack
@@ -9,20 +9,19 @@
 #define SELECTION_HELPERS_SELECTION_READ_HANDLE_H
 
 #include <AthContainers/AuxElement.h>
-#include <AsgMessaging/MsgStream.h>
 #include <memory>
 
 class StatusCode;
 
 namespace CP
 {
-  class ISelectionAccessor;
+  class ISelectionReadAccessor;
 
   /// \brief a data handle for reading selection properties from
   /// objects
   ///
   /// Essentially this is just a wrapper around \ref
-  /// ISelectionAccessor to make it easier to use in an algorithm.
+  /// ISelectionReadAccessor to make it easier to use in an algorithm.
   /// Since we are now using this a lot, it seems like a good idea to
   /// streamline this as much as possible.
 
@@ -70,20 +69,8 @@ namespace CP
 
     /// \brief the accessor we use
   private:
-    std::unique_ptr<ISelectionAccessor> m_accessor;
+    std::unique_ptr<ISelectionReadAccessor> m_accessor;
 
-
-    /// \brief the message stream we use
-  private:
-    MsgStream *m_msg {nullptr};
-
-    /// \brief helper for message macros
-  private:
-    MsgStream& msg( ) const;
-
-    /// \brief helper for message macros
-  private:
-    MsgStream& msg( const MSG::Level lvl ) const;
   };
 }
 

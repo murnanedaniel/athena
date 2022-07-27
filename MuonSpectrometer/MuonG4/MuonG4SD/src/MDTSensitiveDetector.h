@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /** @class MDTSensitiveDetector
@@ -96,11 +96,11 @@ public:
     G4bool ProcessHits(G4Step* aStep, G4TouchableHistory* ROhist) override final;
     
 private:
-    int  GetIdentifier(G4TouchableHistory* touchHist);
+    int  GetIdentifier(const G4TouchableHistory* touchHist);
                  
     /** member data */
     SG::WriteHandle<MDTSimHitCollection> m_MDTHitColl;
-    MdtHitIdHelper*            m_muonHelper;
+    const MdtHitIdHelper*      m_muonHelper;
 
     double                     m_driftRadius;
     double                     m_globalTime;

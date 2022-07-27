@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef TAURECTOOLS_TAURECTOOLBASE_H
@@ -16,6 +16,7 @@
 
 #include "tauRecTools/ITauToolBase.h"
 #include "AsgTools/AsgTool.h"
+#include "AsgTools/PropertyWrapper.h"
 
 class TauRecToolBase : public asg::AsgTool, virtual public ITauToolBase {
  public:
@@ -57,7 +58,7 @@ class TauRecToolBase : public asg::AsgTool, virtual public ITauToolBase {
   virtual StatusCode executeVertexVariables(xAOD::TauJet& pTau, xAOD::VertexContainer& vertexContainer ) const override;  
   virtual StatusCode executePi0ClusterScaler(xAOD::TauJet& pTau, xAOD::PFOContainer& neutralPFOContainer, xAOD::PFOContainer& chargedPFOContainer ) const override;  
   virtual StatusCode executePi0nPFO(xAOD::TauJet& pTau, xAOD::PFOContainer& neutralPFOContainer) const override;
-  virtual StatusCode executePanTau(xAOD::TauJet& pTau, xAOD::ParticleContainer& particleContainer) override;
+  virtual StatusCode executePanTau(xAOD::TauJet& pTau, xAOD::ParticleContainer& particleContainer) const override;
 
   //-----------------------------------------------------------------
   //! Event finalizer - called at the end of each event
@@ -73,13 +74,16 @@ class TauRecToolBase : public asg::AsgTool, virtual public ITauToolBase {
   virtual StatusCode readConfig() override;
 
  protected:
-  bool m_in_trigger = false;
-  std::string m_tauRecToolsTag;
+  Gaudi::Property<bool>        m_in_trigger     {this, "inTrigger",   false,                     "Indicate if the tool is running on trigger"};
+  Gaudi::Property<bool>        m_in_AOD         {this, "inAOD",       false,                     "Indicate if the tool is running on AOD"};
+  Gaudi::Property<std::string> m_tauRecToolsTag {this, "calibFolder", "tauRecTools/R22_preprod", "CVMFS path to the tau calibration folder"};
 
   bool inTrigger() const;
+  bool inAOD() const;
 
 };
 
 inline bool TauRecToolBase::inTrigger() const { return m_in_trigger; }
+inline bool TauRecToolBase::inAOD() const { return m_in_AOD; }
 
 #endif // TAURECTOOLS_TAURECTOOLBASE_H

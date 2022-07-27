@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef GEOMODELINTERFACES_STOREDMATERIALMANAGER_H
@@ -35,16 +35,16 @@ class StoredMaterialManager
   virtual ~StoredMaterialManager() {};
 
   // Query the material:
-  virtual const GeoMaterial* getMaterial(const std::string& name) const = 0;
+  virtual const GeoMaterial* getMaterial(const std::string& name) = 0;
 
   // Query the elements:
-  virtual const GeoElement* getElement(const std::string& name) const = 0;
+  virtual const GeoElement* getElement(const std::string& name) = 0;
 
   // Query the elements (by atomic number):
-  virtual const GeoElement* getElement(unsigned int atomicNumber) const = 0;
+  virtual const GeoElement* getElement(unsigned int atomicNumber) = 0;
 
   // Add new material
-  virtual void addMaterial(const std::string& space, GeoMaterial* material) const = 0;
+  virtual void addMaterial(const std::string& space, GeoMaterial* material) = 0;
 
   // Return iterators
   virtual MaterialMapIterator begin() const = 0;

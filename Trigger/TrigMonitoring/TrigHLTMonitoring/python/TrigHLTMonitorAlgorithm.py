@@ -16,10 +16,15 @@ def createHLTDQConfigFlags():
     # need to (temporarily) block signature monitoring by default when it is
     # running on bytestream. Remove when ATR-23720 is completed
     from AthenaConfiguration.Enums import Format
+    from AthenaConfiguration.Enums import BeamType
     acf.addFlag('DQ.Steering.HLT.doGeneral', True)
-    acf.addFlag('DQ.Steering.HLT.doBjet', lambda flags: flags.Input.Format is Format.POOL)
+
+    # b-jets disabled for cosmics following ATR-25036
+    acf.addFlag('DQ.Steering.HLT.doBjet', lambda flags: flags.Input.Format is Format.POOL and flags.Beam.Type is BeamType.Collisions)
+
+    acf.addFlag('DQ.Steering.HLT.doInDet', lambda flags: flags.Input.Format is Format.POOL)
     acf.addFlag('DQ.Steering.HLT.doBphys', lambda flags: flags.Input.Format is Format.POOL)
-    acf.addFlag('DQ.Steering.HLT.doCalo', lambda flags: flags.Input.Format is Format.POOL)
+    acf.addFlag('DQ.Steering.HLT.doCalo', True) #Switched to true to enable monitoring
     acf.addFlag('DQ.Steering.HLT.doEgamma', lambda flags: flags.Input.Format is Format.POOL)
     acf.addFlag('DQ.Steering.HLT.doJet', lambda flags: flags.Input.Format is Format.POOL)
     acf.addFlag('DQ.Steering.HLT.doMET', lambda flags: flags.Input.Format is Format.POOL)
@@ -47,6 +52,10 @@ def TrigHLTMonTopConfig(inputFlags):
         if inputFlags.DQ.Steering.HLT.doGeneral:
             from TrigHLTMonitoring.TrigGeneralMonitorAlgorithm import TrigGeneralMonConfig
             result.merge(TrigGeneralMonConfig(inputFlags))
+
+        if inputFlags.DQ.Steering.HLT.doInDet:
+            from TrigInDetMonitoring.TIDAMonitoring import TrigInDetMonConfig
+            result.merge(TrigInDetMonConfig(inputFlags))
 
         if inputFlags.DQ.Steering.HLT.doBjet:
             from TrigBjetMonitoring.TrigBjetMonitorAlgorithm import TrigBjetMonConfig
@@ -77,7 +86,7 @@ def TrigHLTMonTopConfig(inputFlags):
             result.merge(TrigMinBias(inputFlags))
 
         if inputFlags.DQ.Steering.HLT.doMuon:
-            from TrigMuonMonitoringMT.TrigMuonMonitoringMTConfig import TrigMuonMonConfig
+            from TrigMuonMonitoring.TrigMuonMonitoringConfig import TrigMuonMonConfig
             result.merge(TrigMuonMonConfig(inputFlags))
 
         if inputFlags.DQ.Steering.HLT.doTau:

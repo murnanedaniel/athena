@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "PanTauAlgs/Tool_ModeDiscriminator.h"
@@ -11,7 +11,6 @@
 #include "TString.h"
 #include "TFile.h"
 #include "TTree.h"
-#include <string>
 #include <memory>
 
 PanTau::Tool_ModeDiscriminator::Tool_ModeDiscriminator(const std::string& name) :
@@ -59,20 +58,14 @@ StatusCode PanTau::Tool_ModeDiscriminator::initialize() {
     
   // consistency check:
   // Number of feature names and feature default values has to match
-  if( m_List_BDTVariableDefaultValues.size() != m_List_BDTVariableNames.size() ) {
+  if ( m_List_BDTVariableDefaultValues.size() != m_List_BDTVariableNames.size() ) {
     ATH_MSG_ERROR("Number of variable names does not match number of default values! Check jobOptions!");
     return StatusCode::FAILURE;
   }
-    
-  // Create list of BDT variables to link to the reader    
-  m_List_BDTVariableValues = std::vector<float*>(0);
-  for(unsigned int iVar=0; iVar<m_List_BDTVariableNames.size(); iVar++) {
-    m_List_BDTVariableValues.push_back(new float(0));
-  }
-    
+  
   // Create reader for each pT Bin    
   unsigned int nPtBins = m_BinEdges_Pt.size() - 1; // nBins =  Edges-1
-  for(unsigned int iPtBin=0; iPtBin<nPtBins; iPtBin++) {
+  for (unsigned int iPtBin=0; iPtBin<nPtBins; iPtBin++) {
         
     double bin_lowerVal         = m_BinEdges_Pt[iPtBin];
     double bin_upperVal         = m_BinEdges_Pt[iPtBin+1];
@@ -93,23 +86,21 @@ StatusCode PanTau::Tool_ModeDiscriminator::initialize() {
 
     std::string resolvedWeightFileName = PathResolverFindCalibFile(curWeightFile);
 
-    if(resolvedWeightFileName == "") {
+    if (resolvedWeightFileName.empty()) {
       ATH_MSG_ERROR("Weight file " << curWeightFile << " not found!");
       return StatusCode::FAILURE;
     }
     
-    // TMVA Readers        
-    //setup variables for reader
-    for(unsigned int iVar=0; iVar<m_List_BDTVariableNames.size(); iVar++) {
-      TString variableNameForReader = "tau_pantauFeature_" + m_Name_InputAlg + "_" + m_List_BDTVariableNames[iVar];
-    }//end loop over variables
-
+    // MVAUtils BDT       
     std::unique_ptr<TFile> fBDT = std::make_unique<TFile>( resolvedWeightFileName.c_str() );
     TTree* tBDT = dynamic_cast<TTree*> (fBDT->Get("BDT"));
-    MVAUtils::BDT* curBDT = new MVAUtils::BDT(tBDT);
-    curBDT->SetPointers(m_List_BDTVariableValues);
+    std::unique_ptr<MVAUtils::BDT> curBDT = std::make_unique<MVAUtils::BDT>(tBDT);
+    if (curBDT == nullptr) {
+      ATH_MSG_ERROR( "Failed to create MVAUtils::BDT for " << resolvedWeightFileName );
+      return StatusCode::FAILURE;
+    }
 
-    m_MVABDT_List.push_back(curBDT);
+    m_MVABDT_List.push_back(std::move(curBDT));
         
   }//end loop over pt bins to get weight files, reference hists and MVAUtils::BDT objects
     
@@ -117,22 +108,7 @@ StatusCode PanTau::Tool_ModeDiscriminator::initialize() {
 }
 
 
-StatusCode PanTau::Tool_ModeDiscriminator::finalize() {
-    
-  //delete the readers
-  for(unsigned int iReader=0; iReader<m_MVABDT_List.size(); iReader++) {
-    MVAUtils::BDT* curBDT = m_MVABDT_List[iReader];
-    if(curBDT != 0) delete curBDT;
-  }
-  m_MVABDT_List.clear();
-  for( float* f : m_List_BDTVariableValues ) delete f;
-  m_List_BDTVariableValues.clear();
-
-  return StatusCode::SUCCESS;
-}
-
-
-void PanTau::Tool_ModeDiscriminator::updateReaderVariables(PanTau::PanTauSeed* inSeed) {
+void PanTau::Tool_ModeDiscriminator::updateReaderVariables(PanTau::PanTauSeed* inSeed, std::vector<float>& list_BDTVariableValues) const {
     
   //update features used in MVA with values from current seed
   // use default value for feature if it is not present in current seed
@@ -140,30 +116,32 @@ void PanTau::Tool_ModeDiscriminator::updateReaderVariables(PanTau::PanTauSeed* i
   //      [If this for loop is skipped, it is not guaranteed that all details are set to their proper default value]
   PanTau::TauFeature* seedFeatures = inSeed->getFeatures();
 
-  for(unsigned int iVar=0; iVar<m_List_BDTVariableNames.size(); iVar++) {
+  for (unsigned int iVar=0; iVar<m_List_BDTVariableNames.size(); iVar++) {
     std::string curVar = m_Name_InputAlg + "_" + m_List_BDTVariableNames[iVar];
         
     bool isValid;
     double newValue = seedFeatures->value(curVar, isValid);
-    if(isValid == false) {
+    if (!isValid) {
       ATH_MSG_DEBUG("\tUse default value as the feature (the one below this line) was not calculated");
       newValue = m_List_BDTVariableDefaultValues[iVar];
       //add this feature with its default value for the details later
       seedFeatures->addFeature(curVar, newValue);
     }
         
-    *(m_List_BDTVariableValues[iVar]) = (float)newValue;
-  }//end loop over BDT vars for update
+    list_BDTVariableValues[iVar] = static_cast<float>(newValue);
+  }//end loop over BDT vars
     
   return;
 }
 
 
-double PanTau::Tool_ModeDiscriminator::getResponse(PanTau::PanTauSeed* inSeed, bool& isOK) {
+double PanTau::Tool_ModeDiscriminator::getResponse(PanTau::PanTauSeed* inSeed, bool& isOK) const {
     
-  updateReaderVariables(inSeed);
+  std::vector<float> list_BDTVariableValues(m_List_BDTVariableNames.size());
+
+  updateReaderVariables(inSeed, list_BDTVariableValues);
     
-  if(inSeed->isOfTechnicalQuality(PanTau::PanTauSeed::t_BadPtValue) == true) {
+  if (inSeed->isOfTechnicalQuality(PanTau::PanTauSeed::t_BadPtValue)) {
     ATH_MSG_DEBUG("WARNING Seed has bad pt value! " << inSeed->getTauJet()->pt() << " MeV");
     isOK = false;
     return -2;
@@ -171,29 +149,22 @@ double PanTau::Tool_ModeDiscriminator::getResponse(PanTau::PanTauSeed* inSeed, b
     
   //get the pt bin of input Seed
   //NOTE: could be moved to decay mode determinator tool...
-  double          seedPt  = inSeed->p4().Pt();
-  int             ptBin   = -1;
-  for(unsigned int iPtBin=0; iPtBin<m_BinEdges_Pt.size()-1; iPtBin++) {
-    if(seedPt > m_BinEdges_Pt[iPtBin] && seedPt < m_BinEdges_Pt[iPtBin+1]) {
+  double seedPt = inSeed->p4().Pt();
+  int ptBin = -1;
+  for (unsigned int iPtBin=0; iPtBin<m_BinEdges_Pt.size()-1; iPtBin++) {
+    if (seedPt > m_BinEdges_Pt[iPtBin] && seedPt < m_BinEdges_Pt[iPtBin+1]) {
       ptBin = iPtBin;
       break;
     }
   }
-  if(ptBin == -1) {
+  if (ptBin == -1) {
     ATH_MSG_WARNING("Could not find ptBin for tau seed with pt " << seedPt);
     isOK = false;
     return -2.;
   }
     
   //get mva response
-  MVAUtils::BDT* curBDT = m_MVABDT_List[ptBin];
-  if(curBDT == 0) {
-    ATH_MSG_ERROR("MVAUtils::BDT object for current tau seed points to 0");
-    isOK = false;
-    return -2.;
-  }
-    
-  double mvaResponse = curBDT->GetGradBoostMVA(m_List_BDTVariableValues);
+  double mvaResponse = m_MVABDT_List[ptBin]->GetGradBoostMVA(list_BDTVariableValues);
     
   isOK = true;
   return mvaResponse;

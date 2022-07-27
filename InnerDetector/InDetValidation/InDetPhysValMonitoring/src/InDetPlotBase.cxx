@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /**
@@ -8,7 +8,7 @@
  **/
 
 #include "InDetPlotBase.h"
-// bring Gaudi utilities in scope
+// bring Athena/Gaudi utilities in scope
 #include "GaudiKernel/Bootstrap.h"
 #include "GaudiKernel/ISvcLocator.h"
 #include "GaudiKernel/Service.h"
@@ -38,7 +38,7 @@ namespace {
 
 
 InDetPlotBase::InDetPlotBase(InDetPlotBase* pParent, const std::string& dirName) :
-  PlotBase(pParent, dirName), m_msg("InDetPlotBase"), m_histoDefSvc(nullptr) {
+  PlotBase(pParent, dirName), AthMessaging("InDetPlotBase"), m_histoDefSvc(nullptr) {
   // nop
 }
 
@@ -73,7 +73,11 @@ InDetPlotBase::book(TH2*& pHisto, const SingleHistogramDefinition& hd) {
 void
 InDetPlotBase::book(TEfficiency*& pHisto, const SingleHistogramDefinition& hd) {
   if (hd.isValid()) {
-    pHisto = BookTEfficiency(hd.name, hd.allTitles, hd.nBinsX, hd.xAxis.first, hd.xAxis.second, false);
+    if(hd.nBinsY==0) {
+      pHisto = BookTEfficiency(hd.name, hd.allTitles, hd.nBinsX, hd.xAxis.first, hd.xAxis.second, false);
+    } else {
+      pHisto = BookTEfficiency(hd.name, hd.allTitles, hd.nBinsX, hd.xAxis.first, hd.xAxis.second, hd.nBinsY, hd.yAxis.first, hd.yAxis.second, false);
+    }
   }
   }
 
@@ -133,6 +137,13 @@ void
 InDetPlotBase::fillHisto(TEfficiency* pTeff,  const float value, const bool accepted, float weight) {
   if (pTeff and validArguments(value)) {
     pTeff->FillWeighted(accepted, weight, value);
+  }
+}
+
+void
+InDetPlotBase::fillHisto(TEfficiency* eff2d, const float xvalue, const float yvalue, const bool accepted, const float weight) {
+  if (eff2d and validArguments(xvalue, yvalue)) {
+    eff2d->FillWeighted(accepted, weight, xvalue, yvalue);
   }
 }
 

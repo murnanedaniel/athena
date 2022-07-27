@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /**
@@ -9,14 +9,10 @@
  * 
  * @author RD Schaffer <R.D.Schaffer@cern.ch>
  * 
- * $Id: AthenaPoolTestMapDataLink.h,v 1.4 2009-02-15 12:56:15 schaffer Exp $
  */
 
 #ifndef ATHENAPOOLTESTDATA_ATHENAPOOLTESTMAPDATALINK_H
 # define ATHENAPOOLTESTDATA_ATHENAPOOLTESTMAPDATALINK_H
-
-//<<<<<< INCLUDES                                                       >>>>>>
-//<<<<<< CLASS DECLARATIONS                                             >>>>>>
 
 /**
  * @class AthenaPoolTestMapDataLink 
@@ -64,7 +60,7 @@ public:
 	unsigned short m_evtIndex;
     };
 private:
-    mutable MyDummyClass* m_particle; /* transient */
+    MyDummyClass* m_particle; /* transient */
     ExtendedBarCode m_extBarcode;
 };
 

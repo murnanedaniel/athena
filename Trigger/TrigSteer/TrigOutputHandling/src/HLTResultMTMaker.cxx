@@ -10,6 +10,7 @@
 #include <unistd.h> // gethostname
 #include <limits.h> // HOST_NAME_MAX
 #include <sstream>
+#include <algorithm>
 
 // Local helpers
 namespace {
@@ -132,51 +133,55 @@ StatusCode HLTResultMTMaker::finalize() {
 }
 
 // =============================================================================
-// The main method of the tool
+// Create, record and fill a new result
 // =============================================================================
 StatusCode HLTResultMTMaker::makeResult(const EventContext& eventContext) const {
-  auto monTime =  Monitored::Timer<std::chrono::duration<float, std::milli>>("TIME_makeResult");
-
-  // Create and record the HLTResultMT object
   auto hltResult = SG::makeHandle(m_hltResultWHKey,eventContext);
   ATH_CHECK( hltResult.record(std::make_unique<HLT::HLTResultMT>()) );
   ATH_MSG_DEBUG("Recorded HLTResultMT with key " << m_hltResultWHKey.key());
+  ATH_CHECK(fillResult(*hltResult, eventContext));
+  return StatusCode::SUCCESS;
+}
+
+// =============================================================================
+// The main method of the tool
+// =============================================================================
+StatusCode HLTResultMTMaker::fillResult(HLT::HLTResultMT& hltResult, const EventContext& eventContext) const {
+  auto monTime =  Monitored::Timer<std::chrono::duration<float, std::milli>>("TIME_fillResult");
 
   // Save HLT runtime metadata
   SG::WriteHandle<xAOD::TrigCompositeContainer> runtimeMetadataOutput = TrigCompositeUtils::createAndStore(m_runtimeMetadataWHKey, eventContext);
-  
-  xAOD::TrigComposite* tc = new xAOD::TrigComposite();
-  runtimeMetadataOutput->push_back(tc);
+  runtimeMetadataOutput->push_back(std::make_unique<xAOD::TrigComposite>());
   char hostname [HOST_NAME_MAX];
   bool errcode = !gethostname(hostname, HOST_NAME_MAX); // returns 0 on success and -1 on failure, casted to false on success, true on failure
   std::string hostnameString = std::string(hostname); // setDetail needs a reference
-  errcode &= tc->setDetail("hostname", hostnameString);
+  errcode &= runtimeMetadataOutput->back()->setDetail("hostname", hostnameString);
   if (!errcode) ATH_MSG_WARNING("Failed to append hostname to HLT Runtime Metadata TC");
 
   // Fill the stream tags
   StatusCode finalStatus = StatusCode::SUCCESS;
-  if (m_streamTagMaker.isEnabled() && m_streamTagMaker->fill(*hltResult, eventContext).isFailure()) {
+  if (m_streamTagMaker.isEnabled() && m_streamTagMaker->fill(hltResult, eventContext).isFailure()) {
     ATH_MSG_ERROR(m_streamTagMaker->name() << " failed");
     finalStatus = StatusCode::FAILURE;
   }
 
   // Fill the result using all other tools if the event was accepted
-  if (hltResult->isAccepted()) {
+  if (hltResult.isAccepted()) {
     for (auto& maker: m_makerTools) {
       ATH_MSG_DEBUG("Calling " << maker->name() << " for accepted event");
-      if (StatusCode sc = maker->fill(*hltResult, eventContext); sc.isFailure()) {
+      if (StatusCode sc = maker->fill(hltResult, eventContext); sc.isFailure()) {
         ATH_MSG_ERROR(maker->name() << " failed");
         finalStatus = sc;
       }
     }
 
-    if (!m_skipValidatePEBInfo) validatePEBInfo(*hltResult);
+    if (!m_skipValidatePEBInfo) validatePEBInfo(hltResult);
   }
   else {
     ATH_MSG_DEBUG("Rejected event, further result filling skipped after stream tag maker");
   }
 
-  ATH_MSG_DEBUG(*hltResult);
+  ATH_MSG_DEBUG(hltResult);
 
   Monitored::Group(m_monTool, monTime);
   return finalStatus;
@@ -186,7 +191,11 @@ StatusCode HLTResultMTMaker::makeResult(const EventContext& eventContext) const 
 // Private method removing disabled ROBs/SubDets from StreamTags
 // =============================================================================
 void HLTResultMTMaker::validatePEBInfo(HLT::HLTResultMT& hltResult) const {
+  std::vector<eformat::helper::StreamTag> streamTagsToRemove;
   for (eformat::helper::StreamTag& st : hltResult.getStreamTagsNonConst()) {
+    // Skip full event building stream tags immediately
+    if (st.robs.empty() && st.dets.empty()) {continue;}
+
     std::set<uint32_t> removedROBs = removeDisabled(st.robs,m_enabledROBs);
     if (!removedROBs.empty())
       ATH_MSG_WARNING("StreamTag " << st.type << "_" << st.name << " requested disabled ROBs: " << format(removedROBs)
@@ -200,6 +209,24 @@ void HLTResultMTMaker::validatePEBInfo(HLT::HLTResultMT& hltResult) const {
                       << " - these SubDets were removed from the StreamTag by " << name());
     else
       ATH_MSG_VERBOSE("No disabled SubDets were requested by StreamTag " << st.type << "_" << st.name);
+
+    // If the PEB list now became empty, it would turn PEB into FEB - prevent this and drop the stream tag (ATR-24378)
+    if (st.robs.empty() && st.dets.empty()) {
+      bool printed{false};
+      if (m_emptyPEBInfoErrorPrinted.compare_exchange_strong(printed, true, std::memory_order_relaxed)) {
+        ATH_MSG_ERROR("Event accepted to stream " << st.type << "_" << st.name << " but the streaming to this stream "
+                      << "is forcibly prevented, because all requested ROBs/SubDets in the PEB list are disabled. "
+                      << "ROBs: " << format(removedROBs) << ", SubDets: " << format(removedSubDets));
+      }
+      streamTagsToRemove.push_back(st);
+    }
+  }
+  for (const eformat::helper::StreamTag& st : streamTagsToRemove) {
+    auto it = 
+      std::remove(hltResult.getStreamTagsNonConst().begin(),
+                  hltResult.getStreamTagsNonConst().end(),
+                  st);
+    hltResult.getStreamTagsNonConst().resize (it - hltResult.getStreamTagsNonConst().begin());
   }
 }
 

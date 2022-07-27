@@ -1,12 +1,13 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "ALFA_LocRec/ALFA_ODTracking.h"
 
 using namespace std;
 
-ALFA_ODTracking::ALFA_ODTracking()
+ALFA_ODTracking::ALFA_ODTracking() :
+    AthMessaging("ALFA_ODTracking")
 {
 	m_listResults.clear();
 
@@ -329,7 +330,6 @@ void ALFA_ODTracking::FindingPosition(Int_t iRPot, std::map<int, FIBERS> &MapLay
 
 void ALFA_ODTracking::GetData(Int_t (&iFibSel)[ODSIDESCNT][ODPLATESCNT])
 {
-	//MsgStream LogStream(Athena::getMessageSvc(), "ALFA_ODTracking::GetData()");
 	ATH_MSG_DEBUG("begin ALFA_ODTracking::GetData()");
 
 

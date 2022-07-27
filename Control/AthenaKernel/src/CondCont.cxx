@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 /**
  * @file AthenaKernel/src/CondCont.cpp
@@ -678,6 +678,34 @@ StatusCode CondContBase::inserted (const EventContext& ctx)
 
 
 /**
+ * @brief Declare other conditions containers that depend on this one.
+ * @param deps Conditions containers that depend on this one.
+ */
+void CondContBase::addDeps (const std::vector<CondContBase*>& deps)
+{
+  if (deps.empty()) return;
+  std::scoped_lock lock (m_depMutex);
+  m_deps.insert (m_deps.end(), deps.begin(), deps.end());
+
+  // Remove duplicates.
+  std::sort (m_deps.begin(), m_deps.end());
+  auto it = std::unique (m_deps.begin(), m_deps.end());
+  m_deps.resize (it - m_deps.begin());
+}
+
+
+/**
+ * @brief Return the list of conditions containers that depend on this one.
+ */
+std::vector<CondContBase*> CondContBase::getDeps()
+{
+  std::scoped_lock lock (m_depMutex);
+  return m_deps;
+}
+
+
+
+/**
  * @brief Allow overriding the name of the global conditions cleaner
  *        service (for testing purposes).
  * @param name The name of the global conditions cleaner service.
@@ -1040,16 +1068,11 @@ CondContMixedBase::insertMixed (const EventIDRange& r,
 
   // Only test start timestamp.  stop timestamp may be missing
   // for open-ended ranges.
-  if (!r.start().isTimeStamp() )
-  {
-    MsgStream msg (Athena::getMessageSvc(), title());
-    msg << MSG::ERROR << "CondContMixedBase::insertMixed: "
-        << "Range does not have start timestamp defined."
-        << endmsg;
-    return StatusCode::FAILURE;
+  key_type start_key=0; //If there is no TimeStamp in start, assume infinite range
+  if (r.start().isTimeStamp() ) {
+    start_key = keyFromTimestamp (r.start());
   }
 
-  key_type start_key = keyFromTimestamp (r.start());
   key_type stop_key  = keyFromTimestamp (r.stop());
 
   StatusCode sc = StatusCode::SUCCESS;
@@ -1210,18 +1233,4 @@ CondContMixedBase::findMixed (const EventIDBase& t,
 CondContBase::delete_function* CondContMixedBase::payloadDelfcn() const
 {
   return m_payloadDelfcn;
-}
-
-
-/**
- * @brief Do pointer conversion for the payload type.
- * @param clid CLID for the desired pointer type.
- * @param ptr Pointer of type @c T*.
- *
- * This just aborts, since we don't currently implement inheritance
- * for mixed types.
- */
-const void* CondContMixedBase::doCast (CLID /*clid*/, const void* /*ptr*/) const
-{
-  std::abort();
 }

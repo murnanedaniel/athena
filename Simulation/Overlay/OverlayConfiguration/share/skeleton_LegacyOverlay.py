@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # -------------------------------------
 # Common data and MC overlay skeleton
@@ -15,8 +15,10 @@ logOverlay.info(str(overlayArgs))
 
 # PerfMon
 from PerfMonComps.PerfMonFlags import jobproperties as pm
-pm.PerfMonFlags.doMonitoring = True  # to enable monitoring
-pm.PerfMonFlags.doFastMon = True     # to only enable a lightweight monitoring
+pm.PerfMonFlags.doFastMonMT = (overlayArgs.perfmon == 'fastmonmt')
+pm.PerfMonFlags.doFullMonMT = (overlayArgs.perfmon == 'fullmonmt')
+pm.PerfMonFlags.OutputJSON  = "permonmt_Overlay.json"
+include( "PerfMonComps/PerfMonMTSvc_jobOptions.py" ) # noqa F821
 
 # Pre-exec
 if hasattr(overlayArgs, 'preExec') and overlayArgs.preExec != 'NONE':
@@ -102,11 +104,25 @@ if hasattr(overlayArgs, 'detectors'):
 else:
     overlayDetectors = None
 
+# runNumber is MC channel number in reco
+if hasattr(overlayArgs, 'runNumber'):
+    # always set it in legacy config
+    athenaCommonFlags.MCChannelNumber.set_Value(overlayArgs.runNumber)
+    logOverlay.info('Got MC channel number %d from runNumber', athenaCommonFlags.MCChannelNumber())
+
 # Digitization flags
 if hasattr(overlayArgs, 'digiSeedOffset1'):
     digitizationFlags.rndmSeedOffset1 = int(overlayArgs.digiSeedOffset1)
+else:
+    logOverlay.warning('digiSeedOffset1 not set')
+    digitizationFlags.rndmSeedOffset1 = 1
+
 if hasattr(overlayArgs, 'digiSeedOffset2'):
     digitizationFlags.rndmSeedOffset2 = int(overlayArgs.digiSeedOffset2)
+else:
+    logOverlay.warning('digiSeedOffset2 not set')
+    digitizationFlags.rndmSeedOffset2 = 2
+
 if hasattr(overlayArgs, 'samplingFractionDbTag'):
     digitizationFlags.physicsList = overlayArgs.samplingFractionDbTag
 if hasattr(overlayArgs, 'digiRndmSvc'):
@@ -152,7 +168,7 @@ if not MuonGeometryFlags.hasCSC():
 if not MuonGeometryFlags.hasSTGC():
     DetFlags.sTGC_setOff()
 if not MuonGeometryFlags.hasMM():
-    DetFlags.Micromegas_setOff()
+    DetFlags.MM_setOff()
 
 # TODO: need to do it better
 # DetFlags.makeRIO.all_setOff() # needed for MT TRT conditions
@@ -219,11 +235,14 @@ if DetFlags.overlay.pixel_on() or DetFlags.overlay.SCT_on() or DetFlags.overlay.
 if DetFlags.overlay.LAr_on() or DetFlags.overlay.Tile_on():
     include('EventOverlayJobTransforms/CaloOverlay_jobOptions.py')  # noqa F821
 
-if (MuonGeometryFlags.hasCSC() and DetFlags.overlay.CSC_on()) or DetFlags.overlay.MDT_on() or DetFlags.overlay.RPC_on() or DetFlags.overlay.TGC_on() or (MuonGeometryFlags.hasSTGC() and DetFlags.overlay.sTGC_on()) or (MuonGeometryFlags.hasMM() and DetFlags.overlay.Micromegas_on()):
+if (MuonGeometryFlags.hasCSC() and DetFlags.overlay.CSC_on()) or DetFlags.overlay.MDT_on() or DetFlags.overlay.RPC_on() or DetFlags.overlay.TGC_on() or (MuonGeometryFlags.hasSTGC() and DetFlags.overlay.sTGC_on()) or (MuonGeometryFlags.hasMM() and DetFlags.overlay.MM_on()):
     include('EventOverlayJobTransforms/MuonOverlay_jobOptions.py')  # noqa F821
 
 if DetFlags.overlay.LVL1_on():
     include('EventOverlayJobTransforms/Level1Overlay_jobOptions.py')  # noqa F821
+
+if overlayFlags.doTrackOverlay():
+    include('EventOverlayJobTransforms/TrackOverlay_jobOptions.py') # noqa F821
 
 # Run calculation of weight for the beam spot size reweighting
 if digitizationFlags.doBeamSpotSizeReweighting() and digitizationFlags.OldBeamSpotZSize() > 0:

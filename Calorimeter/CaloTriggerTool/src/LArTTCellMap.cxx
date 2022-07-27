@@ -7,7 +7,6 @@
 #include "CaloIdentifier/LArEM_ID.h"
 #include "CaloIdentifier/LArHEC_ID.h"
 #include "CaloIdentifier/LArFCAL_ID.h"
-#include "AthenaKernel/getMessageSvc.h"
 #include "GaudiKernel/MsgStream.h"
 #include "GaudiKernel/ServiceHandle.h"
 
@@ -16,7 +15,7 @@
 #include <iostream>
 
 LArTTCellMap::LArTTCellMap( )
-  : AthMessaging (Athena::getMessageSvc(), "LArTTCellMap")
+  : AthMessaging ("LArTTCellMap")
 {
 }
 
@@ -195,6 +194,11 @@ LArTTCellMap::createCellIDvec(const Identifier & sid) const
  static const std::vector<Identifier> v;
  return  v ;
 
+}
+
+const LArTTCell_P* LArTTCellMap::getP() const
+{
+  return &m_persData;
 }
 
 LArTTCell_P* LArTTCellMap::getP()

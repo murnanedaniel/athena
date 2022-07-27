@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "InDetServMatGeoModel/SCT_ServMatFactoryFS.h"
@@ -27,19 +27,16 @@
 #include "RDBAccessSvc/IRDBRecord.h"
 #include "RDBAccessSvc/IRDBRecordset.h"
 #include "RDBAccessSvc/IRDBAccessSvc.h"
-
-
 #include "GeoModelUtilities/DecodeVersionKey.h"
-#include "GaudiKernel/Bootstrap.h"
 #include "GaudiKernel/SystemOfUnits.h"
 
 #include <sstream>
 #include <iostream>
 
 SCT_ServMatFactoryFS::SCT_ServMatFactoryFS(StoreGateSvc *detStore,ServiceHandle<IRDBAccessSvc>& pRDBAccess) :
+  AthMessaging("SCT_ServMatFactoryFS"),
   m_detStore(detStore),
-  m_rdbAccess(pRDBAccess),
-  m_msg("SCT_ServMatFactoryFS")
+  m_rdbAccess(pRDBAccess)
 {
 }
 
@@ -54,7 +51,7 @@ SCT_ServMatFactoryFS::~SCT_ServMatFactoryFS()
 void SCT_ServMatFactoryFS::create(GeoPhysVol *motherP,GeoPhysVol *motherM)
 {
 
-  msg(MSG::DEBUG) << "Building SCT Service Material" << endmsg;
+  ATH_MSG_DEBUG("Building SCT Service Material");
 
 
   DecodeVersionKey atlasVersionKey("ATLAS");

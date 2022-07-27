@@ -32,9 +32,14 @@ def CaloRecoCfg(configFlags, clustersname=None):
         from TileRecUtils.TileRawChannelMakerConfig import TileRawChannelMakerCfg
         result.merge(TileRawChannelMakerCfg(configFlags))
 
-    if not configFlags.Input.isMC:
+    if not configFlags.Input.isMC and not configFlags.Common.isOnline:
         from LArCellRec.LArTimeVetoAlgConfig import LArTimeVetoAlgCfg
         result.merge(LArTimeVetoAlgCfg(configFlags))
+
+    if not configFlags.Input.isMC and not configFlags.Overlay.DataOverlay:
+        from LArROD.LArFebErrorSummaryMakerConfig import LArFebErrorSummaryMakerCfg
+        result.merge(LArFebErrorSummaryMakerCfg(configFlags))
+
 
     #Configure cell-building
     from CaloRec.CaloCellMakerConfig import CaloCellMakerCfg
@@ -52,10 +57,6 @@ def CaloRecoCfg(configFlags, clustersname=None):
     from LArCellRec.LArNoisyROSummaryConfig import LArNoisyROSummaryCfg
     result.merge(LArNoisyROSummaryCfg(configFlags))
 
-    if not configFlags.Input.isMC and not configFlags.Overlay.DataOverlay:
-        from LArROD.LArFebErrorSummaryMakerConfig import LArFebErrorSummaryMakerCfg
-        result.merge(LArFebErrorSummaryMakerCfg(configFlags))
-
     #Configure TileLookForMuAlg
     from TileMuId.TileMuIdConfig import TileLookForMuAlgCfg
     result.merge(TileLookForMuAlgCfg(configFlags))
@@ -72,6 +73,11 @@ def CaloRecoCfg(configFlags, clustersname=None):
         from TileRecAlgs.MBTSTimeDiffEventInfoAlgConfig import MBTSTimeDiffEventInfoAlgCfg
         result.merge(MBTSTimeDiffEventInfoAlgCfg(configFlags))
 
+
+    #Configure AOD Cell-Thinning based on samplings:
+    from CaloRec.CaloThinCellsBySamplingAlgConfig import CaloThinCellsBySamplingAlgCfg
+    result.merge(CaloThinCellsBySamplingAlgCfg(configFlags,'StreamAOD', ['TileGap3']))
+    
 
     return result
 
@@ -93,8 +99,6 @@ if __name__=="__main__":
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
     from AthenaCommon.Logging import log
     from AthenaCommon.Constants import DEBUG,WARNING
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior=1
     log.setLevel(DEBUG)
 
     ConfigFlags.Input.Files = ["/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/Tier0ChainTests/data17_13TeV.00330470.physics_Main.daq.RAW._lb0310._SFO-1._0001.data",]

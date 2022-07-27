@@ -31,7 +31,7 @@ namespace MuonCombined {
         ATH_CHECK(m_trackFitter.retrieve());
         ATH_CHECK(m_trackAmbiguityResolver.retrieve());
         // trigger does not use primary vertex
-        if (!m_vertexKey.empty()) ATH_CHECK(m_vertexKey.initialize());
+        ATH_CHECK(m_vertexKey.initialize(!m_vertexKey.empty()));
         ATH_CHECK(m_trackSummaryTool.retrieve());
         if (!m_recoValidationTool.empty()) ATH_CHECK(m_recoValidationTool.retrieve());
         return StatusCode::SUCCESS;
@@ -89,7 +89,7 @@ namespace MuonCombined {
                 ATH_MSG_VERBOSE("Failed to get layer data");
                 continue;
             }
-            m_segmentFinder->find(layer_intersect, segments, layerPrepRawData, ctx);
+            m_segmentFinder->find(ctx, layer_intersect, layerPrepRawData, segments);
             if (segments.empty()) continue;
 
             // fill validation content
@@ -99,7 +99,7 @@ namespace MuonCombined {
 
             // match segments to intersection
             std::vector<std::shared_ptr<const Muon::MuonSegment>> selectedSegments;
-            m_segmentMatchingTool->select(layer_intersect, segments, selectedSegments);
+            m_segmentMatchingTool->select(ctx, layer_intersect, segments, selectedSegments);
             if (selectedSegments.empty()) continue;
 
             // fill validation content
@@ -191,7 +191,7 @@ namespace MuonCombined {
                                        const Muon::MuonCandidate& candidate, std::unique_ptr<Trk::Track>& selectedTrack,
                                        TrackCollection* combTracks, TrackCollection* meTracks, Trk::SegmentCollection* segments) const {
         const xAOD::TrackParticle& idTrackParticle = indetCandidate.indetTrackParticle();
-        float bs_x{0.}, bs_y{0.}, bs_z{0.};
+        Amg::Vector3D origin{0., 0., 0.};
 
         const xAOD::Vertex* matchedVertex = nullptr;
         if (!m_vertexKey.empty()) {
@@ -211,16 +211,13 @@ namespace MuonCombined {
             }
         }
         if (matchedVertex) {
-            bs_x = matchedVertex->x();
-            bs_y = matchedVertex->y();
-            bs_z = matchedVertex->z();
-            ATH_MSG_DEBUG(" found matched vertex  bs_x " << bs_x << " bs_y " << bs_y << " bs_z " << bs_z);
+            origin = Amg::Vector3D{matchedVertex->x(), matchedVertex->y(), matchedVertex->z()};
+            ATH_MSG_DEBUG(" found matched vertex " << origin);
         } else {
-            // take for beamspot point of closest approach of ID track in  x y z
-            bs_x = idTrackParticle.d0() * std::cos(idTrackParticle.phi()) + idTrackParticle.vx();
-            bs_y = idTrackParticle.d0() * std::sin(idTrackParticle.phi()) + idTrackParticle.vy();
-            bs_z = idTrackParticle.z0() + idTrackParticle.vz();
-            ATH_MSG_DEBUG(" NO matched vertex  take track perigee  x " << bs_x << " y " << bs_y << " z " << bs_z);
+            origin = Amg::Vector3D{-idTrackParticle.d0() * std::sin(idTrackParticle.phi()) + idTrackParticle.vx(),
+                                   idTrackParticle.d0() * std::cos(idTrackParticle.phi()) + idTrackParticle.vy(),
+                                   idTrackParticle.z0() + idTrackParticle.vz()};
+            ATH_MSG_DEBUG(" NO matched vertex  take track perigee " << origin);
         }
 
         ATH_MSG_VERBOSE("selectedTrack:");
@@ -235,21 +232,17 @@ namespace MuonCombined {
                 }
             }
         }
-        // get segments
-        using SegLink_t = ElementLink<Trk::SegmentCollection>;
 
-        std::vector<SegLink_t> segLinks;
+        std::vector<const Muon::MuonSegment*> segLinks;
         for (const Muon::MuonLayerIntersection& layer : candidate.layerIntersections) {
-            segments->push_back(new Muon::MuonSegment(*layer.segment));
-            SegLink_t sLink(*segments, segments->size() - 1);
-            segLinks.push_back(std::move(sLink));
+            std::unique_ptr<Muon::MuonSegment> copy = std::make_unique<Muon::MuonSegment>(*layer.segment);
+            segLinks.push_back(copy.get());
+            segments->push_back(std::move(copy));
         }
-        /// Sort the segments here
-
-        std::sort(segLinks.begin(), segLinks.end(), [this](const SegLink_t& a, const SegLink_t& b) -> bool {
+        /// Sort the segments here; note the lifetime of 'copy' is still valid here as it exists inside 'segments'
+        //cppcheck-suppress invalidLifetime
+        std::sort(segLinks.begin(), segLinks.end(), [this](const Muon::MuonSegment* seg_a, const Muon::MuonSegment* seg_b) -> bool {
             using chamIdx = Muon::MuonStationIndex::ChIndex;
-            const Muon::MuonSegment* seg_a = dynamic_cast<const Muon::MuonSegment*>(*a);
-            const Muon::MuonSegment* seg_b = dynamic_cast<const Muon::MuonSegment*>(*b);
             chamIdx ch_a = m_idHelperSvc->chamberIndex(m_edmHelperSvc->chamberId(*seg_a));
             chamIdx ch_b = m_idHelperSvc->chamberIndex(m_edmHelperSvc->chamberId(*seg_b));
             Muon::MuonStationIndex::StIndex st_a = Muon::MuonStationIndex::toStationIndex(ch_a);
@@ -263,8 +256,7 @@ namespace MuonCombined {
 
         if (msgLevel(MSG::DEBUG)) {
             std::stringstream sstr;
-            for (const SegLink_t& seg : segLinks) {
-                const Muon::MuonSegment* muo_seg = dynamic_cast<const Muon::MuonSegment*>(*seg);
+            for (const Muon::MuonSegment* muo_seg : segLinks) {
                 auto chIdx = m_idHelperSvc->chamberIndex(m_edmHelperSvc->chamberId(*muo_seg));
                 auto thIdx = m_idHelperSvc->technologyIndex(m_edmHelperSvc->chamberId(*muo_seg));
                 sstr << Muon::MuonStationIndex::chName(chIdx) << "  (" << Muon::MuonStationIndex::technologyName(thIdx) << "), ";
@@ -273,7 +265,7 @@ namespace MuonCombined {
         }
 
         // perform standalone refit
-        std::unique_ptr<Trk::Track> standaloneRefit{m_trackFitter->standaloneRefit(*selectedTrack, ctx, bs_x, bs_y, bs_z)};
+        std::unique_ptr<Trk::Track> standaloneRefit{m_trackFitter->standaloneRefit(ctx, *selectedTrack, origin)};
 
         combTracks->push_back(std::move(selectedTrack));
         ElementLink<TrackCollection> comblink(*combTracks, combTracks->size() - 1);

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include <algorithm>
@@ -14,9 +14,9 @@
 
 namespace Trk {
 
-  VKalVrtControlBase::VKalVrtControlBase(const baseMagFld* baseFld,   const addrMagHandler addrFld, 
+  VKalVrtControlBase::VKalVrtControlBase(baseMagFld* baseFld,   const addrMagHandler addrFld, 
                                          const basePropagator* baseP, const addrPropagator addrP,
-                                         const IVKalState* istate): 
+                                         IVKalState* istate): 
        vk_objMagFld(baseFld),
        vk_funcMagFld(addrFld),
        vk_objProp(baseP), 
@@ -24,21 +24,24 @@ namespace Trk {
        vk_istate(istate)
   {}
 
-  VKalVrtControl::VKalVrtControl(const VKalVrtControlBase & base): VKalVrtControlBase(base), vk_forcft() { 
-    m_fullCovariance=nullptr;
-    m_vrtMassTot=-1.;
-    m_vrtMassError=-1.;
-    m_cascadeEvent=nullptr;
+  VKalVrtControl::VKalVrtControl(const VKalVrtControlBase & base)
+    : VKalVrtControlBase(base),
+      m_vrtMassTot(-1),
+      m_vrtMassError(-1),
+      m_cascadeEvent(nullptr),
+      vk_forcft()
+  { 
   }
-  VKalVrtControl::VKalVrtControl(const VKalVrtControl & src) : VKalVrtControlBase(src) { 
-    m_fullCovariance=nullptr; 
-    vk_forcft=src.vk_forcft;
-    m_vrtMassTot=src.m_vrtMassTot;
-    m_vrtMassError=src.m_vrtMassError;
-    m_cascadeEvent=src.m_cascadeEvent;
+  VKalVrtControl::VKalVrtControl(const VKalVrtControl & src)
+    : VKalVrtControlBase(src),
+      m_vrtMassTot(src.m_vrtMassTot),
+      m_vrtMassError(src.m_vrtMassError),
+      m_cascadeEvent(src.m_cascadeEvent),
+      vk_forcft(src.vk_forcft)
+  { 
   }
 
-  VKTrack::VKTrack(long int iniId, double Perigee[], double Covariance[], VKVertex * vk, double m):
+  VKTrack::VKTrack(long int iniId, const double Perigee[], const double Covariance[], VKVertex * vk, double m):
   Chi2(0), m_mass(m)
   {
      Id = iniId; Charge=1; if(Perigee[4]<0)Charge=-1;
@@ -48,10 +51,10 @@ namespace Trk {
      m_originVertex = vk;
   }
 
-  void VKTrack::setCurrent(double Perigee[], double Weight[])
+  void VKTrack::setCurrent(const double Perigee[], const double Weight[])
   {  for(int i=0; i<5;  i++) Perig[i]=Perigee[i];
      for(int i=0; i<15; i++) WgtM[i]=WgtM_save[i]=Weight[i];  }
-  void VKTrack::setReference(double Perigee[], double Covariance[])
+  void VKTrack::setReference(const double Perigee[], const double Covariance[])
   {  for(int i=0; i<5;  i++) refPerig[i]=Perigee[i];
      for(int i=0; i<15; i++) refCovar[i]=Covariance[i]; }
   void VKTrack::restoreCurrentWgt()

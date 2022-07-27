@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # art-description: Test running only L1 result decoding with forks=2, threads=2, concurrent_events=2
 # art-type: build                                                                  
-# art-include: master/Athena                                                       
+# art-include: master/Athena
+# art-include: 22.0/Athena                                                       
 
 from TrigValTools.TrigValSteering import Test, ExecStep, CheckSteps
 
@@ -14,7 +15,7 @@ ex.input = 'data'
 ex.forks = 2
 ex.threads = 2
 ex.concurrent_events = 2
-ex.args = '-c "setMenu=\'Dev_pp_run3_v1\';doL1Sim=False;doEmptyMenu=True;forceEnableAllChains=True;BFieldAutoConfig=False;"'
+ex.args = '-c "setMenu=\'Dev_pp_run3_v1\';doL1Sim=False;enableL1MuonPhase1=False;doEmptyMenu=True;forceEnableAllChains=True;BFieldAutoConfig=False;"'
 ex.args += ' --dump-config-reload'
 
 test = Test.Test()

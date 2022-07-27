@@ -11,7 +11,7 @@
 #include "GaudiKernel/EventContext.h"
 #include "TrkEventPrimitives/ParticleHypothesis.h"
 
-#include "ActsGeometry/ActsGeometryContext.h"
+#include "ActsGeometryInterfaces/ActsGeometryContext.h"
 #include "Acts/MagneticField/MagneticFieldContext.hpp"
 
 #include "Acts/Propagator/MaterialInteractor.hpp"
@@ -37,7 +37,7 @@ class IActsExtrapolationTool : virtual public IAlgTool {
   ActsPropagationOutput
   propagationSteps(const EventContext& ctx,
                    const Acts::BoundTrackParameters& startParameters,
-                   Acts::NavigationDirection navDir = Acts::forward,
+                   Acts::NavigationDirection navDir = Acts::NavigationDirection::Forward,
                    double pathLimit = std::numeric_limits<double>::max(),
                    Trk::ParticleHypothesis particleHypo = Trk::pion) const = 0;
 
@@ -45,7 +45,7 @@ class IActsExtrapolationTool : virtual public IAlgTool {
   std::unique_ptr<const Acts::CurvilinearTrackParameters>
   propagate(const EventContext& ctx,
             const Acts::BoundTrackParameters& startParameters,
-            Acts::NavigationDirection navDir = Acts::forward,
+            Acts::NavigationDirection navDir = Acts::NavigationDirection::Forward,
             double pathLimit = std::numeric_limits<double>::max(),
                    Trk::ParticleHypothesis particleHypo = Trk::pion) const = 0;
 
@@ -54,7 +54,7 @@ class IActsExtrapolationTool : virtual public IAlgTool {
   propagationSteps(const EventContext& ctx,
                    const Acts::BoundTrackParameters& startParameters,
                    const Acts::Surface& target,
-                   Acts::NavigationDirection navDir = Acts::forward,
+                   Acts::NavigationDirection navDir = Acts::NavigationDirection::Forward,
                    double pathLimit = std::numeric_limits<double>::max(),
                    Trk::ParticleHypothesis particleHypo = Trk::pion) const = 0;
 
@@ -63,7 +63,7 @@ class IActsExtrapolationTool : virtual public IAlgTool {
   propagate(const EventContext& ctx,
             const Acts::BoundTrackParameters& startParameters,
             const Acts::Surface& target,
-            Acts::NavigationDirection navDir = Acts::forward,
+            Acts::NavigationDirection navDir = Acts::NavigationDirection::Forward,
             double pathLimit = std::numeric_limits<double>::max(),
                    Trk::ParticleHypothesis particleHypo = Trk::pion) const = 0;
 

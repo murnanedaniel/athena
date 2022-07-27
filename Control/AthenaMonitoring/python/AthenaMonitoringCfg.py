@@ -1,7 +1,8 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from .AthenaMonitoringAODRecoCfg import AthenaMonitoringAODRecoCfg
+from AthenaConfiguration.Enums import LHCPeriod
 
 def AthenaMonitoringCfg(flags):
     import logging
@@ -13,7 +14,8 @@ def AthenaMonitoringCfg(flags):
 
     result.merge(AthenaMonitoringAODRecoCfg(flags))
 
-    if flags.DQ.Steering.doPixelMon:
+    if flags.DQ.Steering.doPixelMon and flags.GeoModel.Run is not LHCPeriod.Run1:
+        # Not run for Run-1 (see ATR-25274)
         info('Set up Pixel monitoring')
         from PixelMonitoring.PixelMonitoringConfig import PixelMonitoringConfig
         result.merge(PixelMonitoringConfig(flags))
@@ -114,11 +116,15 @@ def AthenaMonitoringCfg(flags):
         info('Set up LVL1Calo monitoring')
         from TrigT1CaloMonitoring.LVL1CaloMonitoringConfig import LVL1CaloMonitoringConfig
         result.merge(LVL1CaloMonitoringConfig(flags))
+        if flags.DQ.Steering.doLVL1InterfacesMon:
+            info('Set up LVL1Interfaces monitoring')
+            from TrigT1Monitoring.LVL1InterfacesMonitoringCfg import LVL1InterfacesMonitoringCfg
+            result.merge(LVL1InterfacesMonitoringCfg(flags))
 
-    if flags.DQ.Steering.doLVL1InterfacesMon:
-        info('Set up LVL1Interfaces monitoring')
-        from TrigT1Monitoring.LVL1InterfacesMonitoringCfg import LVL1InterfacesMonitoringCfg
-        result.merge(LVL1InterfacesMonitoringCfg(flags))
+    if flags.DQ.Steering.doCTPMon:
+        info('Set up CTP monitoring')
+        from TrigT1CTMonitoring.CTPMonitoringConfig import CTPMonitoringConfig
+        result.merge(CTPMonitoringConfig(flags))
 
     # Check for potentially duplicated histogram definitions
     definedhists = {}
@@ -137,4 +143,19 @@ def AthenaMonitoringCfg(flags):
 
     debug('Passed histogram duplication check')
         
+    return result
+
+def AthenaMonitoringPostprocessingCfg(flags):
+    from AthenaConfiguration.ComponentFactory import CompFactory
+    result = ComponentAccumulator()
+    asq = CompFactory.AthSequencer("AthEndSeq")
+    result.addSequence(asq)
+    from DataQualityUtils.DQPostProcessingAlg import DQPostProcessingAlg
+    ppa = DQPostProcessingAlg("DQPostProcessingAlg")
+    ppa.ExtraInputs = [( 'xAOD::EventInfo' , 'StoreGateSvc+EventInfo' )]
+    ppa.Interval = flags.DQ.postProcessingInterval
+    if flags.Common.isOnline:
+        ppa.FileKey = ((flags.DQ.FileKey + '/') if not flags.DQ.FileKey.endswith('/')
+                    else flags.DQ.FileKey)
+    result.addEventAlgo(ppa, "AthEndSeq")
     return result

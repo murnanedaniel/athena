@@ -220,7 +220,7 @@ public:
 
 
     /**
-     * @brief Test if this iterator is value.
+     * @brief Test if this iterator is valid.
      *
      * This should be the same as testing for != end().
      */
@@ -374,7 +374,7 @@ public:
 
 
   /**
-   * @break Add an element to the map.
+   * @brief Add an element to the map.
    * @param p The item to add.
    *          Should be a pair where first is the string key
    *          and second is the integer value.
@@ -440,7 +440,7 @@ private:
 
   /**
    * @brief Convert a string pointer to an underlying key value.
-   * @param val The string pointer.
+   * @param s The string pointer.
    */
   static val_t keyAsVal (const std::string* s);
 

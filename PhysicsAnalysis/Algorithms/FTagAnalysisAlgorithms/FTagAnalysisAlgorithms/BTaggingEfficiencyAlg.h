@@ -11,8 +11,7 @@
 #include <AnaAlgorithm/AnaAlgorithm.h>
 #include <FTagAnalysisInterfaces/IBTaggingEfficiencyTool.h>
 #include <SelectionHelpers/OutOfValidityHelper.h>
-#include <SelectionHelpers/ISelectionAccessor.h>
-#include <SelectionHelpers/SelectionReadHandle.h>
+#include <SelectionHelpers/SysReadSelectionHandle.h>
 #include <SystematicsHandles/SysReadHandle.h>
 #include <SystematicsHandles/SysWriteDecorHandle.h>
 #include <SystematicsHandles/SysListHandle.h>
@@ -55,7 +54,7 @@ namespace CP
 
     /// \brief the preselection we apply to our input
   private:
-    SelectionReadHandle m_preselection {
+    SysReadSelectionHandle m_preselection {
       this, "preselection", "", "the preselection to apply"};
 
     /// \brief the helper for OutOfValidity results
@@ -69,7 +68,7 @@ namespace CP
 
     /// \brief the decoration for the b-tagging selection
   private:
-    SelectionReadHandle m_selectionHandle {
+    SysReadSelectionHandle m_selectionHandle {
       this, "selectionDecoration", "", "the decoration for the asg selection"};
 
     /// \brief only run the inefficency for all jets

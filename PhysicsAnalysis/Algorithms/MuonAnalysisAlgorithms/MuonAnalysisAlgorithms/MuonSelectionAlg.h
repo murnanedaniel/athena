@@ -9,8 +9,8 @@
 
 #include <AnaAlgorithm/AnaAlgorithm.h>
 #include <MuonAnalysisInterfaces/IMuonSelectionTool.h>
-#include <SelectionHelpers/ISelectionAccessor.h>
-#include <SelectionHelpers/SelectionReadHandle.h>
+#include <SelectionHelpers/SysReadSelectionHandle.h>
+#include <SelectionHelpers/SysWriteSelectionHandle.h>
 #include <SystematicsHandles/SysListHandle.h>
 #include <SystematicsHandles/SysReadHandle.h>
 #include <xAODMuon/MuonContainer.h>
@@ -45,7 +45,7 @@ namespace CP
 
     /// \brief the preselection we apply to our input
   private:
-    SelectionReadHandle m_preselection {
+    SysReadSelectionHandle m_preselection {
       this, "preselection", "", "the preselection to apply"};
 
     /// \brief the particle continer we run on
@@ -55,19 +55,13 @@ namespace CP
 
     /// \brief the decoration for the quality selection
   private:
-    std::string m_selectionDecoration;
-
-    /// \brief the accessor for \ref m_selectionDecoration
-  private:
-    std::unique_ptr<ISelectionAccessor> m_selectionAccessor;
+    SysWriteSelectionHandle m_selectionHandle {
+      this, "selectionDecoration", "", "the decoration for the quality selection"};
 
     /// \brief the decoration for the bad muon veto
   private:
-    std::string m_badMuonVetoDecoration;
-
-    /// \brief the accessor for \ref m_selectionDecoration
-  private:
-    std::unique_ptr<ISelectionAccessor> m_badMuonVetoAccessor;
+    SysWriteSelectionHandle m_badMuonVetoHandle {
+      this, "badMuonVetoDecoration", "", "the decoration for the bad muon veto"};
 
     /// \brief the bits to set for an object failing the preselection
   private:

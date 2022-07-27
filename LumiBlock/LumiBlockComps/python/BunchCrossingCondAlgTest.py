@@ -1,12 +1,13 @@
 # Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
-from future import standard_library
-from AthenaConfiguration.ComponentFactory import CompFactory
-standard_library.install_aliases()
 
-import sys,os
+from AthenaConfiguration.ComponentFactory import CompFactory
 from LumiBlockComps.BunchCrossingCondAlgConfig import BunchCrossingCondAlgCfg
+from AthenaConfiguration.Enums import BunchStructureSource
+from IOVDbSvc.IOVDbSvcConfig import IOVDbSvcCfg
 from LumiBlockComps.dummyLHCFillDB import createSqlite,fillFolder
 
+import os
+import sys
 
 def createBCMask1():
     mask=[]
@@ -74,13 +75,11 @@ fillFolder(folder,d2,3*onesec,4*onesec)
 
 db.closeDatabase()
 
-from AthenaCommon.Configurable import Configurable
-Configurable.configurableRun3Behavior=1
-
 from AthenaConfiguration.AllConfigFlags import ConfigFlags
 from AthenaConfiguration.MainServicesConfig import MainServicesCfg
 ConfigFlags.Input.Files=[]
 ConfigFlags.Input.isMC=False
+ConfigFlags.Beam.BunchStructureSource=BunchStructureSource.FILLPARAMS
 ConfigFlags.IOVDb.DatabaseInstance="CONDBR2"
 ConfigFlags.IOVDb.GlobalTag="CONDBR2-BLKPA-2017-05"
 ConfigFlags.GeoModel.AtlasVersion="ATLAS-R2-2016-01-00-01"
@@ -88,31 +87,29 @@ ConfigFlags.lock()
 
 result=MainServicesCfg(ConfigFlags)
 
-McEventSelector=CompFactory.McEventSelector
-McCnvSvc=CompFactory.McCnvSvc
-EvtPersistencySvc=CompFactory.EvtPersistencySvc
-
-mcevtsel=McEventSelector(RunNumber=330470,
-                         EventsPerRun=1,
-                         FirstEvent=1183722158,
-                         FirstLB=310,
-                         EventsPerLB=1,
-                         #InitialTimeStamp=1500867637,
-                         InitialTimeStamp=1,
-                         TimeStampInterval=1
-                         )
+mcevtsel=CompFactory.McEventSelector(RunNumber=330470,
+                                     EventsPerRun=1,
+                                     FirstEvent=1183722158,
+                                     FirstLB=310,
+                                     EventsPerLB=1,
+                                     #InitialTimeStamp=1500867637,
+                                     InitialTimeStamp=1,
+                                     TimeStampInterval=1
+                                     )
 
 result.addService(mcevtsel)
 result.setAppProperty("EvtSel",mcevtsel.getFullJobOptName())
 
-mccnvsvc=McCnvSvc()
+mccnvsvc=CompFactory.McCnvSvc()
 result.addService(mccnvsvc)
 
 
-result.addService(EvtPersistencySvc("EventPersistencySvc",CnvServices=[mccnvsvc.getFullJobOptName(),]))
+result.addService(CompFactory.EvtPersistencySvc("EventPersistencySvc",CnvServices=[mccnvsvc.getFullJobOptName(),]))
 
 result.merge(BunchCrossingCondAlgCfg(ConfigFlags))
 
+print(ConfigFlags.Beam.BunchStructureSource)
+result.merge(IOVDbSvcCfg(ConfigFlags))
 result.getService("IOVDbSvc").Folders=["<db>sqlite://;schema=test.db;dbname=CONDBR2</db><tag>HEAD</tag>/TDAQ/OLC/LHC/FILLPARAMS"]
 result.getCondAlgo("BunchCrossingCondAlgDefault").OutputLevel=1
 

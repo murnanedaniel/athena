@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef INDETTRACKSUMMARYHELPERTOOL_H
@@ -8,7 +8,6 @@
 #include "AthenaBaseComps/AthAlgTool.h"
 #include "TrkToolInterfaces/IExtendedTrackSummaryHelperTool.h"
 
-#include "InDetRecToolInterfaces/IInDetTestBLayerTool.h"
 #include "TRT_ConditionsServices/ITRT_StrawStatusSummaryTool.h"
 #include "TrkEventPrimitives/ParticleHypothesis.h"
 #include "TrkToolInterfaces/IPRD_AssociationTool.h"
@@ -62,7 +61,6 @@ public:
   */
   using IExtendedTrackSummaryHelperTool::addDetailedTrackSummary;
   using IExtendedTrackSummaryHelperTool::analyse;
-  using IExtendedTrackSummaryHelperTool::updateExpectedHitInfo;
 
   virtual void analyse(
     const EventContext& ctx,
@@ -88,12 +86,6 @@ public:
                                        const Trk::Track&,
                                        Trk::TrackSummary&) const override final;
 
-  /** This method updates the expect... hit info*/
-  virtual void updateExpectedHitInfo(
-    const EventContext& ctx,
-    const Trk::Track& track,
-    Trk::TrackSummary& summary) const override final;
-
   /** Input : track, partHyp
       Output: Changes in information
       This method first calls the method getListOfHits to isolate the relevant
@@ -114,14 +106,6 @@ public:
     const Trk::Track& track,
     const Trk::PRDtoTrackMap* prd_to_track_map,
     Trk::TrackSummary& summary) const override final;
-
-  /** this method simply updaes the electron PID content - it is
-   * designed/optimised for track collection merging */
-  virtual void updateAdditionalInfo(Trk::TrackSummary& summary,
-                                    std::vector<float>& eprob,
-                                    float& dedx,
-                                    int& nclus,
-                                    int& noverflowclus) const override final;
 
 private:
   const Trk::ClusterSplitProbabilityContainer::ProbabilityInfo&
@@ -163,9 +147,6 @@ private:
   ToolHandle<Trk::IPixelToTPIDTool> m_pixeldedxtool{ this,
                                                      "PixelToTPIDTool",
                                                      "" };
-  ToolHandle<InDet::IInDetTestBLayerTool> m_testBLayerTool{ this,
-                                                            "TestBLayerTool",
-                                                            "" };
   ToolHandle<ITRT_StrawStatusSummaryTool> m_TRTStrawSummaryTool{
     this,
     "TRTStrawSummarySvc",

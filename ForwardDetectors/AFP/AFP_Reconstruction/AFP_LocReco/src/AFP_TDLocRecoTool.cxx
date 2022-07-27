@@ -22,7 +22,7 @@ StatusCode AFP_TDLocRecoTool::initialize()
 // track reconstruction tools
   if(m_recoToolsList.empty())
   {
-    ATH_MSG_ERROR("No track reconstruction tools set, check settings in AFP_LocReco/AFP_LocReco_joboption.py. Aborting.");
+    ATH_MSG_ERROR("No track reconstruction tools set, check settings in AFP_LocReco/AFP_LocReco.py. Aborting.");
     return StatusCode::FAILURE;
   }
   else
@@ -33,7 +33,7 @@ StatusCode AFP_TDLocRecoTool::initialize()
   // output containers for the track reconstruction tools
   if(m_arrayOfWriteHandleKeys.empty())
   {
-    ATH_MSG_ERROR("No output track containers provided, check settings in AFP_LocReco/AFP_LocReco_joboption.py. Aborting.");
+    ATH_MSG_ERROR("No output track containers provided, check settings in AFP_LocReco/AFP_LocReco.py. Aborting.");
     return StatusCode::FAILURE;
   }
   else
@@ -56,7 +56,7 @@ StatusCode AFP_TDLocRecoTool::initialize()
   listOfWHKeys.erase(std::unique(listOfWHKeys.begin(),listOfWHKeys.end()), listOfWHKeys.end());
   if(listOfWHKeys.size() != all_WHkeys)
   {
-    ATH_MSG_ERROR("It seems write handle keys do not have unique values, check settings in AFP_LocReco/AFP_LocReco_joboption.py. Aborting.");
+    ATH_MSG_ERROR("It seems write handle keys do not have unique values, check settings in AFP_LocReco/AFP_LocReco.py. Aborting.");
     return StatusCode::FAILURE;
   }
   // get names from track reco tools
@@ -111,6 +111,8 @@ StatusCode AFP_TDLocRecoTool::execute(const EventContext& ctx) const
     auto afpTrk=std::make_unique<xAOD::AFPToFTrackContainer>();
     auto afpTrkAux=std::make_unique<xAOD::AFPToFTrackAuxContainer>();
     afpTrk->setStore(afpTrkAux.get());
+
+    ATH_MSG_DEBUG("Number of AFP ToF tracks = " <<afpTrk->size());
 
     for(const auto &recoTool : m_recoToolsList)
     {

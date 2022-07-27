@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 /**
  * @file TrkEventTPCnv/test/TrackCnv_p4_test.cxx
@@ -172,10 +172,6 @@ void compare (const Trk::TrackSummary& p1,
     assert (p1.get(ii) == p2.get(ii));
   }
 
-  for (int i=0; i < Trk::eProbabilityType::numberOfeProbabilityTypes; i++) {
-    Trk::eProbabilityType ii = static_cast<Trk::eProbabilityType>(i);
-    assert (p1.getPID(ii) == p2.getPID(ii));
-  }
 }
 
 
@@ -242,10 +238,10 @@ void test1 ATLAS_NOT_THREAD_SAFE ()
   Trk::FitQuality fq (10, 20);
   Trk::MaterialEffectsOnTrack me (12.5, psurf);
 
-  Trk::TrackStateOnSurface tsos1 (new Trk::PseudoMeasurementOnTrack (pmeas),
-                                  new Trk::Perigee (perigee),
-                                  new Trk::FitQuality (fq),
-                                  new Trk::MaterialEffectsOnTrack (me),
+  Trk::TrackStateOnSurface tsos1 (std::make_unique<Trk::PseudoMeasurementOnTrack> (pmeas),
+                                  std::make_unique<Trk::Perigee> (perigee),
+                                  std::make_unique<Trk::FitQuality> (fq),
+                                  std::make_unique<Trk::MaterialEffectsOnTrack> (me),
                                   nullptr);
 
   DataVector<const Trk::TrackStateOnSurface> tsvec (SG::VIEW_ELEMENTS);

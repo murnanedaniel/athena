@@ -410,10 +410,6 @@ if rec.doTruth():
 from AthenaConfiguration.OldFlags2NewFlags import getNewConfigFlags
 ConfigFlags = getNewConfigFlags()
 
-# Apply additional changes to the ConfigFlags:
-if rec.doTrigger and globalflags.DataSource() == 'data' and globalflags.InputFormat == 'bytestream':
-    ConfigFlags.Trigger.readBS = True
-
 # For cosmics runs, we need to turn off doTIDE_Ambi to be consistent
 # with the settings in InDetJobProperties.py.
 # We used to do that there, but that doesn't work anymore
@@ -432,7 +428,11 @@ if recAlgs.doEFlow():
     if False == jobproperties.eflowRecFlags.usePFFlowElementAssoc:
         ConfigFlags.PF.useElPhotLinks = False
         ConfigFlags.PF.useMuLinks = False
-
+    elif not rec.doMuon:
+        ConfigFlags.PF.useMuLinks = False
+else:
+    ConfigFlags.Reco.EnablePFlow = False
+        
 HIDict = {}
 if rec.doHeavyIon():
     # This is copy from the old style to the new
@@ -482,22 +482,6 @@ if rec.doTrigger:
     from TriggerJobOpts.TriggerRecoGetter import TriggerRecoGetter
     triggerGetter = TriggerRecoGetter()
 
-    # ESDtoAOD Run-3 Trigger Outputs: Don't run any trigger - only pass the HLT contents from ESD to AOD
-    if rec.readESD() and rec.doAOD():
-        if ConfigFlags.Trigger.EDMVersion == 3:
-            # Add HLT output
-            from TriggerJobOpts.HLTTriggerResultGetter import HLTTriggerResultGetter
-            hltOutput = HLTTriggerResultGetter()
-            # Add Trigger menu metadata
-            if rec.doFileMetaData():
-                from RecExConfig.ObjKeyStore import objKeyStore
-                metadataItems = [ "xAOD::TriggerMenuContainer#TriggerMenu",
-                                "xAOD::TriggerMenuAuxContainer#TriggerMenuAux." ]
-                objKeyStore.addManyTypesMetaData( metadataItems )
-            # Add L1 output (to be consistent with R2)
-            from TrigEDMConfig.TriggerEDM import getLvl1AODList
-            objKeyStore.addManyTypesStreamAOD(getLvl1AODList())
-
 AODFix.AODFix_postTrigger()
 
 if globalflags.DataSource()=='geant4':
@@ -535,7 +519,7 @@ if rec.readRDO():
 #
 # Write beamspot information into xAOD::EventInfo.
 #
-if globalflags.InputFormat.is_bytestream():
+if globalflags.InputFormat.is_bytestream() and not athenaCommonFlags.isOnline():
     topSequence += CfgMgr.xAODMaker__EventInfoBeamSpotDecoratorAlg()
     pass
 
@@ -570,36 +554,13 @@ if rec.doWriteBS():
     include( "ByteStreamCnvSvc/RDP_ByteStream_jobOptions.py" )
     pass
 
-pdr.flag_domain('tagraw')
-## add in RawInfoSummaryForTagWriter
-if rec.doESD() and not rec.readESD() and (rec.doBeamBackgroundFiller() or rec.doTagRawSummary()):
-    try:
-        include("EventTagRawAlgs/RawInfoSummaryForTagWriter_jobOptions.py")
-    except Exception:
-        logRecExCommon_topOptions.warning("Could not load RawInfoSummaryForTagWriter_joboptions !" )
-        pass
-    pass
 # write the background word into EventInfo (Jamie Boyd)
 # need to go here for ordering reasons...
 if rec.doESD() and not rec.readESD() and rec.doBeamBackgroundFiller():
-    try:
-        from AthenaCommon.Configurable import Configurable
-        Configurable.configurableRun3Behavior=1
-        from AthenaConfiguration.ComponentAccumulator import appendCAtoAthena
-        from AthenaConfiguration.AllConfigFlags import ConfigFlags
-        from RecBackgroundAlgs.BackgroundAlgsConfig import BackgroundAlgsCfg
-        ca=BackgroundAlgsCfg(ConfigFlags)
-
-        for el in ca._allSequences:
-            el.name = "TopAlg"
-
-            appendCAtoAthena(ca)
-
-    except Exception:
-        treatException("Could not translate BackgroundAlgsCfg to old cfg")
-    finally:
-         Configurable.configurableRun3Behavior=0
-    pass
+    from AthenaConfiguration.ComponentAccumulator import CAtoGlobalWrapper
+    from AthenaConfiguration.AllConfigFlags import ConfigFlags
+    from RecBackgroundAlgs.BackgroundAlgsConfig import BackgroundAlgsCfg
+    CAtoGlobalWrapper(BackgroundAlgsCfg, ConfigFlags)
 
 
 # ----------------------------------------------------------------------------
@@ -1066,9 +1027,7 @@ if rec.doDPD():
             logRecExCommon_topOptions.debug("Calling CreateCutFlowSvc")
             CreateCutFlowSvc( svcName="CutFlowSvc", seq=topSequence, addMetaDataToAllOutputFiles=True )
 
-            from PyUtils.MetaReaderPeeker import convert_metadata_items
-            #Explicitely add file metadata from input and from transient store
-            MSMgr.AddMetaDataItemToAllStreams(convert_metadata_items(layout='#join'))
+            #Explicitly add file metadata from the transient store
             MSMgr.AddMetaDataItemToAllStreams(dfMetadataItemList())
             pass
         pass
@@ -1100,6 +1059,9 @@ if ( rec.doAOD() or rec.doWriteAOD()) and not rec.readAOD() :
                 addClusterToCaloCellAOD(egammaKeys.outputClusterKey())
                 addClusterToCaloCellAOD(egammaKeys.outputFwdClusterKey())
                 addClusterToCaloCellAOD(egammaKeys.outputEgammaLargeFWDClustersKey())
+                if InDetFlags.doR3LargeD0() and InDetFlags.storeSeparateLargeD0Container():
+                    addClusterToCaloCellAOD('LRT'+egammaKeys.outputClusterKey())
+                from PyUtils.MetaReaderPeeker import metadata
                 if "itemList" in metadata:
                     if ('xAOD::CaloClusterContainer', egammaKeys.EgammaLargeClustersKey()) in metadata["itemList"]:
                         # check first for priority if both keys are in metadata
@@ -1129,6 +1091,7 @@ if rec.doFileMetaData() or rec.OutputFileNameForRecoStep() == 'EVNTtoDAOD':
     # Add the needed stuff for cut-flow bookkeeping.
     # Only the configurables that are not already present will be created
     hasBookkeepers = False
+    from PyUtils.MetaReaderPeeker import metadata
     if 'metadata_items' in metadata:
         metadata_items = metadata['metadata_items']
         if 'xAOD::CutBookkeeperContainer_v1' in set(metadata_items.values()):
@@ -1184,8 +1147,8 @@ if rec.doWriteAOD():
             from ThinningUtils.ThinNegativeEnergyCaloClusters import ThinNegativeEnergyCaloClusters
             ThinNegativeEnergyCaloClusters()
         if rec.doCalo and AODFlags.ThinNegativeEnergyNeutralPFOs:
-            from ThinningUtils.ThinNegativeEnergyNeutralPFOs import ThinNegativeEnergyNeutralPFOs
-            ThinNegativeEnergyNeutralPFOs()
+            from ThinningUtils.ThinNegativeEnergyNeutralPFOCfg import ThinNegativeEnergyNeutralPFOCfg
+            CAtoGlobalWrapper(ThinNegativeEnergyNeutralPFOCfg, ConfigFlags , StreamName = "StreamAOD")
         from InDetRecExample.InDetJobProperties import InDetFlags
         if (AODFlags.ThinInDetForwardTrackParticles() and
             not (rec.readESD() and not objKeyStore.isInInput('xAOD::TrackParticleContainer',
@@ -1305,8 +1268,10 @@ if rec.doWriteBS():
     ServiceMgr.ByteStreamCnvSvc.IsSimulation = True
 
     # LVL1
-    from TrigT1ResultByteStream.TrigT1ResultByteStreamConfig import L1ByteStreamEncodersRecExSetup
-    L1ByteStreamEncodersRecExSetup()  # Configure BS encoder for RoIBResult
+    from AthenaConfiguration.ComponentAccumulator import CAtoGlobalWrapper
+    from TrigT1ResultByteStream.TrigT1ResultByteStreamConfig import L1TriggerByteStreamEncoderCfg
+    CAtoGlobalWrapper(L1TriggerByteStreamEncoderCfg, ConfigFlags)  # BS encoder for RoIBResult
+
     StreamBSFileOutput.ItemList += [ "ROIB::RoIBResult#*" ]
 
     StreamBSFileOutput.ItemList += [ "DataVector<LVL1::TriggerTower>#TriggerTowers" ]

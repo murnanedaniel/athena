@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 import glob
 import os
 
@@ -29,9 +29,7 @@ else:
 ###################################################
 from AthenaCommon.DetFlags import DetFlags
 DetFlags.detdescr.Muon_setOn()
-DetFlags.sTGC_setOn()
-DetFlags.Micromegas_setOn()
-DetFlags.digitize.Micromegas_setOn()
+DetFlags.digitize.MM_setOn()
 DetFlags.digitize.sTGC_setOn()
 DetFlags.Truth_setOn()
 DetFlags.Print()
@@ -56,6 +54,7 @@ include('TrigT1NSW/TrigT1NSW_jobOptions.py')
 
 #Switch on and off trigger simulaton components sTGC / MicroMegas
 topSequence.NSWL1Simulation.DosTGC=True
+topSequence.NSWL1Simulation.DoPad=True
 topSequence.NSWL1Simulation.DoStrip=True
 topSequence.NSWL1Simulation.UseLookup=False #use lookup table for the pad trigger
 topSequence.NSWL1Simulation.DoMM=True
@@ -80,6 +79,7 @@ topSequence.NSWL1Simulation.PadTriggerTool.OutputLevel=INFO
 topSequence.NSWL1Simulation.StripTdsTool.OutputLevel=INFO
 topSequence.NSWL1Simulation.StripClusterTool.OutputLevel=INFO
 topSequence.NSWL1Simulation.StripSegmentTool.OutputLevel=INFO
+topSequence.NSWL1Simulation.MMTriggerTool.OutputLevel=INFO
 
 if MuonGeometryFlags.hasSTGC():
   from MuonRegionSelector.MuonRegionSelectorConf import sTGC_RegSelCondAlg
@@ -91,20 +91,10 @@ if MuonGeometryFlags.hasSTGC():
 
   from RegionSelector.RegSelToolConfig import makeRegSelTool_sTGC
   tool =  makeRegSelTool_sTGC()
-  
+
 #-----------------------------------------------------------------------------
 # save ROOT histograms and Tuple
 #-----------------------------------------------------------------------------
-
-#S.I 2019 : Below code handles enabling/disabling of ntuples for the Tools according to the master flag (NSWL1Simulation)
-#in principle we wouldnt need the tuning here but ntuple making and the trigger code is quite tangled so this is just a workaround for now
-#ntuple code must be totally stripped off from trigger Tools. One way of doing is to create a separate tool and implement methods that takes
-#    std::vector<std::shared_ptr<PadData>> pads;
-#    std::vector<std::unique_ptr<PadTrigger>> padTriggers;
-#    std::vector<std::unique_ptr<StripData>> strips;
-#    std::vector< std::unique_ptr<StripClusterData> > clusters;
-#    as arguments (see NSWL1Simulation.cxx)
-
 if topSequence.NSWL1Simulation.DoNtuple:
 
     if not hasattr( ServiceMgr, "THistSvc" ):

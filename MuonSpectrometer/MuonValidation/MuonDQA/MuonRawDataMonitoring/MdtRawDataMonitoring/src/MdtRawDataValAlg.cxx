@@ -30,8 +30,8 @@
 #include "MdtCalibFitters/MTStraightLine.h"
 #include "MuonSegment/MuonSegment.h"
 
-#include "MdtRawDataMonitoring/MuonChamberIDSelector.h"
-#include "MdtRawDataMonitoring/MdtRawDataValAlg.h"
+#include "MuonChamberIDSelector.h"
+#include "MdtRawDataValAlg.h"
 #include "TrkEventPrimitives/FitQuality.h"
 
 #include "AnalysisTriggerEvent/LVL1_ROI.h"
@@ -1548,7 +1548,8 @@ StatusCode MdtRawDataValAlg::fillMDTHistograms( const Muon::MdtPrepData* mdtColl
   return sc;
 }
 
-StatusCode MdtRawDataValAlg::fillMDTSummaryHistograms( const Muon::MdtPrepData* mdtCollection, std::set<std::string>  chambers_from_tracks, bool &isNoiseBurstCandidate ) {
+StatusCode MdtRawDataValAlg::fillMDTSummaryHistograms( const Muon::MdtPrepData* mdtCollection, 
+                                                       const std::set<std::string>&  chambers_from_tracks, bool &isNoiseBurstCandidate ) {
 
   StatusCode sc = StatusCode::SUCCESS;
   Identifier digcoll_id = (mdtCollection)->identify();

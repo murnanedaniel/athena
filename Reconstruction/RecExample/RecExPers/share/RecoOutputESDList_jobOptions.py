@@ -46,15 +46,6 @@ fullESDList += CfgItemList( "EventAthenaPool",
 # DetectorStatus
 #obsolete fullESDList += [ "DetStatusMap#DetectorStatus" ]
 
-# RawInfoSummaryForTag
-try:
-    fullItemList = []
-    protectedInclude ( "EventTagAthenaPOOL/EventTagAthenaPOOLItemList_joboptions.py")
-    fullESDList += CfgItemList( "EventTagAthenaPOOL",
-                                items = fullItemList,
-                                allowWildCard = True )
-except Exception:
-    treatException("Could not include EventTagAthenaPOOL/EventTagAthenaPOOLItemList_joboptions.py")
     
 # MC Event Collection. Should be moved to a separate jobO
 if rec.doTruth():
@@ -160,7 +151,7 @@ except Exception:
 #isolation, EventShape containers for ED correction
 try:
     include("IsolationAlgs/IsoEventShapeOutputItemList_jobOptions.py")
-    fullESDList += CfgItemList( "Isolation", items = IsoAODESList)
+    fullESDList += CfgItemList( "Isolation", items = IsoESDList)
 except Exception:
     treatException("Could not load IsoEventShape item list")   
 
@@ -204,8 +195,6 @@ if rec.doCaloRinger():
     try:
         include ( "CaloRingerAlgs/CaloRingerOutputItemList_jobOptions.py" )
         fullESDList += CfgItemList( "caloRingerEsd", items = caloRingerESDList )
-        from RecExConfig.ObjKeyStore import objKeyStore
-        objKeyStore['metaData'] += CfgItemList( "caloRingerMeta" , items = caloRingerMetaDataList )
     except:
         treatException("Could not load CaloRinger ESD item list")
         pass
@@ -237,7 +226,9 @@ if rec.doHeavyIon():
 # remove decorations that might be created by monitoring
 if rec.doMonitoring():
     fullESDList += CfgItemList( "MonitoringEsd", 
-                                items = ["xAOD::JetAuxContainer#AntiKt4EMTopoJetsAux.-jetClean_LooseBad"]
+                                items = ["xAOD::JetAuxContainer#AntiKt4EMTopoJetsAux.-jetClean_LooseBad",
+                                         "xAOD::JetAuxContainer#AntiKt4EMTopoJetsAux.-passJvt",
+                                         "xAOD::JetAuxContainer#AntiKt4EMTopoJetsAux.-passOR"]
                               )
 
 ## StreamESD_Augmented.AddItem( "RecoTimingObj#RAWtoESD_timings" )

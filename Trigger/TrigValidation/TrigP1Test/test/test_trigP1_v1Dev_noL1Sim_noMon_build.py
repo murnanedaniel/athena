@@ -4,6 +4,7 @@
 # art-description: athenaHLT test of the Dev_pp_run3_v1 menu without monitoring (ATR-24655)
 # art-type: build
 # art-include: master/Athena
+# art-include: 22.0/Athena
 
 from TrigValTools.TrigValSteering import Test, ExecStep, CheckSteps, PyStep
 import json
@@ -13,7 +14,7 @@ ex1 = ExecStep.ExecStep('dumpConfig')
 ex1.type = 'athenaHLT'
 ex1.job_options = 'TriggerJobOpts/runHLT_standalone.py'
 ex1.input = 'data'
-ex1.args = '-c "setMenu=\'Dev_pp_run3_v1\';"'
+ex1.args = '-c "setMenu=\'Dev_pp_run3_v1\';enableL1MuonPhase1=False;forceEnableAllChains=True;"'
 ex1.args += ' --dump-config-exit'
 ex1.perfmon = False
 

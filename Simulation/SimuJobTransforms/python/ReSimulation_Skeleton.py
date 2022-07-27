@@ -28,7 +28,7 @@ def fromRunArgs(runArgs):
 
     log.info('**** Setting-up configuration flags')
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
-    from G4AtlasApps.SimEnums import SimulationFlavour
+    from SimulationConfig.SimEnums import SimulationFlavour
     commonRunArgsToFlags(runArgs, ConfigFlags)
 
     # Generate detector list
@@ -63,7 +63,7 @@ def fromRunArgs(runArgs):
     processPreExec(runArgs, ConfigFlags)
 
     # Common simulation runtime arguments
-    from G4AtlasApps.SimConfigFlags import simulationRunArgsToFlags
+    from SimulationConfig.SimConfigFlags import simulationRunArgsToFlags
     simulationRunArgsToFlags(runArgs, ConfigFlags)
 
     # Lock flags
@@ -88,6 +88,6 @@ def fromRunArgs(runArgs):
     tic = time.time()
     # Run the final accumulator
     sc = cfg.run()
-    log.info("Run ISF_MainConfigNew_Test in " + str(time.time()-tic) + " seconds")
+    log.info("Run resimulation in " + str(time.time()-tic) + " seconds")
 
     sys.exit(not sc.isSuccess())

@@ -1,6 +1,6 @@
 """Define methods to construct configured SCT Digitization tools and algorithms
 
-Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 """
 from AthenaCommon.Logging import logging
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
@@ -12,7 +12,7 @@ from Digitization.TruthDigitizationOutputConfig import TruthDigitizationOutputCf
 from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
 from SCT_ConditionsTools.ITkStripConditionsToolsConfig import ITkStripSiliconConditionsCfg
 #from SCT_ConditionsTools.ITkStripConditionsToolsConfig import ItkStripReadCalibChipDataCfg
-from SiLorentzAngleTool.ITkStripLorentzAngleConfig import ITkStripLorentzAngleCfg
+from SiLorentzAngleTool.ITkStripLorentzAngleConfig import ITkStripLorentzAngleToolCfg
 from SiPropertiesTool.ITkStripSiPropertiesConfig import ITkStripSiPropertiesCfg
 from StripGeoModelXml.ITkStripGeoModelConfig import ITkStripReadoutGeometryCfg
 
@@ -167,14 +167,14 @@ def ITkStripSurfaceChargesGeneratorCfg(flags, name="ITkStripSurfaceChargesGenera
     kwargs.setdefault("SmallStepLength", 5*Units.micrometer)
     kwargs.setdefault("DepletionVoltage", 70)
     kwargs.setdefault("BiasVoltage", 150)
-    kwargs.setdefault("isOverlay", flags.Common.ProductionStep == ProductionStep.Overlay)
+    kwargs.setdefault("isOverlay", flags.Common.isOverlay)
     # kwargs.setdefault("doTrapping", True) # ATL-INDET-INT-2016-019
     # experimental ITkStripDetailedSurfaceChargesGenerator config dropped here
     tool = CompFactory.ITk.StripSurfaceChargesGenerator(name, **kwargs)
     tool.RadDamageSummaryTool = CompFactory.SCT_RadDamageSummaryTool(name="ITkStripRadDamageSummaryTool")
     tool.SiConditionsTool = acc.popToolsAndMerge(ITkStripSiliconConditionsCfg(flags))
     tool.SiPropertiesTool = acc.popToolsAndMerge(ITkStripSiPropertiesCfg(flags, SiConditionsTool=tool.SiConditionsTool))
-    tool.LorentzAngleTool = acc.popToolsAndMerge(ITkStripLorentzAngleCfg(flags, SiConditionsTool=tool.SiConditionsTool))
+    tool.LorentzAngleTool = acc.popToolsAndMerge(ITkStripLorentzAngleToolCfg(flags))
     acc.setPrivateTools(tool)
     return acc
 
@@ -209,7 +209,7 @@ def ITkStripFrontEndCfg(flags, name="ITkStripFrontEnd", **kwargs):
     #    kwargs.setdefault("NoiseOn", True)
     #    kwargs.setdefault("AnalogueNoiseOn", True)
     # In overlay MC, only analogue noise is on (off for data). Noise hits are not added.
-    if flags.Common.ProductionStep == ProductionStep.Overlay:
+    if flags.Common.isOverlay:
         kwargs["NoiseOn"] = False
         kwargs["AnalogueNoiseOn"] = flags.Input.isMC
     # Use Calibration data from Conditions DB, still for testing purposes only
@@ -221,26 +221,15 @@ def ITkStripFrontEndCfg(flags, name="ITkStripFrontEnd", **kwargs):
     acc = ComponentAccumulator()
     
     # DataCompressionMode: 1 is level mode X1X (default), 2 is edge mode 01X, 3 is any hit mode (1XX|X1X|XX1)
-    #if flags.Common.ProductionStep == ProductionStep.PileUpPresampling:
-    #    kwargs.setdefault("DataCompressionMode", 3)
-    #elif flags.Common.ProductionStep == ProductionStep.Overlay and flags.Input.isMC:
-    #    kwargs.setdefault("DataCompressionMode", 2)
-    #elif flags.Beam.BunchSpacing <= 50:
-    #    kwargs.setdefault("DataCompressionMode", 1)
-    #else:
-    #    kwargs.setdefault("DataCompressionMode", 3)
+    if flags.Common.ProductionStep == ProductionStep.PileUpPresampling:
+        kwargs.setdefault("DataCompressionMode", 3)
+    else:
+        kwargs.setdefault("DataCompressionMode", 2)
     # DataReadOutMode: 0 is condensed mode and 1 is expanded mode
-    #if flags.Common.ProductionStep == ProductionStep.Overlay and flags.Input.isMC:
-    #    kwargs.setdefault("DataReadOutMode", 0)
-    #else:
-    #    Only condensed mode works for ITkStrip at the moment...
-    #    kwargs.setdefault("DataReadOutMode", 0)
-    
-    #Block above kept for future reference
-    #For ITkStrip initially we will just take the following for consistency
-    #with previous configuration in 21.9
-    kwargs.setdefault("DataReadOutMode", 0)
-    kwargs.setdefault("DataCompressionMode",2)
+    if flags.Common.ProductionStep == ProductionStep.PileUpPresampling:
+        kwargs.setdefault("DataReadOutMode", 1)
+    else:
+        kwargs.setdefault("DataReadOutMode", 0)
 
     kwargs.setdefault("SCT_Amp", acc.popToolsAndMerge(ITkStripAmpCfg(flags)))
 
@@ -300,6 +289,10 @@ def ITkStripDigitizationBasicCfg(flags, **kwargs):
 def ITkStripOverlayDigitizationBasicCfg(flags, **kwargs):
     """Return ComponentAccumulator with SCT Overlay digitization"""
     acc = ComponentAccumulator()
+    if flags.Common.ProductionStep != ProductionStep.FastChain:
+        from SGComps.SGInputLoaderConfig import SGInputLoaderCfg
+        acc.merge(SGInputLoaderCfg(flags, ["SiHitCollection#ITkStripHits"]))
+
     if "DigitizationTool" not in kwargs:
         tool = acc.popToolsAndMerge(ITkStripOverlayDigitizationToolCfg(flags))
         kwargs["DigitizationTool"] = tool
@@ -310,8 +303,7 @@ def ITkStripOverlayDigitizationBasicCfg(flags, **kwargs):
     # Set common overlay extra inputs
     kwargs.setdefault("ExtraInputs", flags.Overlay.ExtraInputs)
 
-    ITkStripDigitization = CompFactory.ITkStripDigitization
-    acc.addEventAlgo(ITkStripDigitization(name="ITkStripOverlayDigitization", **kwargs))
+    acc.addEventAlgo(CompFactory.SCT_Digitization(name="ITkStripOverlayDigitization", **kwargs))
     return acc
 
 

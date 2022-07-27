@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 
@@ -14,26 +14,18 @@
 #include "TrigT1TGC/TGCDatabaseManager.h"
 #include "PathResolver/PathResolver.h"
 
-#include "MuonCondInterface/ITGCTriggerDbTool.h"
-
-#include "GaudiKernel/ISvcLocator.h"
-#include "GaudiKernel/Bootstrap.h"
-#include "GaudiKernel/MsgStream.h"
-#include "GaudiKernel/IMessageSvc.h"
-
 #include "TrigT1TGC/TGCArguments.h"
 
 namespace LVL1TGCTrigger {
 
 
   TGCBIS78CoincidenceMap::TGCBIS78CoincidenceMap(TGCArguments* tgcargs,const std::string& version)
-    :m_verName(version),
+    :AthMessaging("TGCBIS78CoincidenceMap"),
+     m_verName(version),
      m_condDbTool("TGCTriggerDbTool"),
      m_tgcArgs(tgcargs)
   {
-
-    m_msg = Athena::MsgStreamMember("LVL1TGCTrigger::TGCBIS78CoincidenceMap::TGCBIS78CoincidenceMap");
-    m_msg.get().setLevel(tgcArgs()->MSGLEVEL());
+    setLevel(tgcArgs()->MSGLEVEL());
 
     if(!tgcArgs()->USE_BIS78()){return;}
 
@@ -60,18 +52,11 @@ namespace LVL1TGCTrigger {
     }
 
     if (this->readMap()) {
-      m_msg << MSG::INFO 
-	    << " TGC BIS78 CW version of " << m_verName << " is selected " << endmsg;
+      ATH_MSG_INFO("TGC BIS78 CW version of " << m_verName << " is selected");
     } else {
-      m_msg << MSG::INFO  
-	    << " NOT use BIS78 " << endmsg;
+      ATH_MSG_INFO("NOT using BIS78");
     }
   }
-
-  TGCBIS78CoincidenceMap::~TGCBIS78CoincidenceMap()
-  {
-  }
-
 
 
   //TGC-BIS78 Eta-Phi Coincidence
@@ -100,7 +85,7 @@ namespace LVL1TGCTrigger {
 					 const int sec,
 					 const int side) const
   {
-    if (side==0) return 0; // BIS78 only in A side
+    if (side!=0) return 0; // BIS78 only in A side
     if ((roi<0)||(roi>=N_ROI_IN_SSC)) return -1;
     if ((ssc<0)||(ssc>=N_Endcap_SSC)) return 0;
     if ((sec<0)||(sec>=N_EndcapSector)) return -1;

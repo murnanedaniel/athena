@@ -12,12 +12,10 @@ if __name__ == '__main__':
 
     from AthenaConfiguration.MainServicesConfig import MainServicesCfg
 
-    # Set up logging and config behaviour
+    # Set up logging
     from AthenaCommon.Logging import log
     from AthenaCommon.Constants import DEBUG
-    from AthenaCommon.Configurable import Configurable
     log.setLevel(DEBUG)
-    Configurable.configurableRun3Behavior = 1
 
 
     #import and set config flags
@@ -38,7 +36,7 @@ if __name__ == '__main__':
     #Sim ConfigFlags
     #ConfigFlags.Sim.WorldRRange = 15000
     #ConfigFlags.Sim.WorldZRange = 27000 #change defaults?
-    from G4AtlasApps.SimEnums import BeamPipeSimMode, CalibrationRun, CavernBackground, LArParameterization, SimulationFlavour, TruthStrategy
+    from SimulationConfig.SimEnums import BeamPipeSimMode, CalibrationRun, CavernBackground, LArParameterization, SimulationFlavour, TruthStrategy
     ConfigFlags.Sim.CalibrationRun = CalibrationRun.Off 
     ConfigFlags.Sim.RecordStepInfo = False
     ConfigFlags.Sim.CavernBackground = CavernBackground.Signal

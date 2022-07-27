@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "MuonHoughPatternTools/MuonLayerHoughTool.h"
@@ -51,13 +51,14 @@ namespace Muon {
             unsigned int i = 0;
             for (unsigned int tech = 0; tech < m_ntechnologies; ++tech) {
                 // check if technology is part of layout
-                if (tech == MuonStationIndex::CSC && !m_idHelperSvc->hasCSC())
+                using TechIdx = MuonStationIndex::TechnologyIndex;
+                if (tech == TechIdx::CSCI && !m_idHelperSvc->hasCSC())
                     continue;
-                else if (tech == MuonStationIndex::STGC && !m_idHelperSvc->hasSTgc())
+                else if (tech == TechIdx::STGC && !m_idHelperSvc->hasSTgc())
                     continue;
-                else if (tech == MuonStationIndex::MM && !m_idHelperSvc->hasMM())
+                else if (tech == TechIdx::MM && !m_idHelperSvc->hasMM())
                     continue;
-                std::string thisname = std::string(m_idHelperSvc->mdtIdHelper().technologyString(tech)) + postfix;
+                std::string thisname = std::string(m_idHelperSvc->mdtIdHelper().technologyString(tech)) + postfix;             
                 m_truthNames.emplace_back(thisname);
                 // since we need to access the elements of m_truthNames later on, we need to remember
                 // which technology is saved at which index of the vector
@@ -71,14 +72,9 @@ namespace Muon {
         if (!m_doTruth) { m_truthNames.clear(); }  // Nullify if not using collections
 
         ATH_CHECK(m_truthNames.initialize());
-        if (m_doNtuple && m_doTruth) {
-            ATH_CHECK(m_MuonTruthParticlesKey.initialize());
-            ATH_CHECK(m_MuonTruthSegmentsKey.initialize());
-        } else {
-            m_MuonTruthParticlesKey = "";
-            m_MuonTruthSegmentsKey = "";
-        }
-
+        ATH_CHECK(m_MuonTruthParticlesKey.initialize(m_doNtuple && m_doTruth));
+        ATH_CHECK(m_MuonTruthSegmentsKey.initialize(m_doNtuple && m_doTruth));
+     
         // initialize cuts, if only one cut, use make_pair to avoid compiler issues, format is (position, cut)
         m_selectors.resize(MuonStationIndex::ChIndexMax);
         m_selectors[MuonStationIndex::BIS] =
@@ -450,18 +446,17 @@ namespace Muon {
                                         std::unique_ptr<HoughDataPerSectorVec>& houghDataPerSectorVec,
                                         std::vector<MuonLayerHoughTool::Road>& roads) const {
         // sort maxima according to hits
-        std::stable_sort(
-            seedMaxima.begin(), seedMaxima.end(),
-            [](const std::shared_ptr<MuonHough::MuonLayerHough::Maximum>& m1, 
-               const std::shared_ptr<MuonHough::MuonLayerHough::Maximum>& m2) { return m1->max > m2->max; });
+        std::stable_sort(seedMaxima.begin(), seedMaxima.end(),
+                         [](const std::shared_ptr<MuonHough::MuonLayerHough::Maximum>& m1,
+                            const std::shared_ptr<MuonHough::MuonLayerHough::Maximum>& m2) { return m1->max > m2->max; });
         // loop over seed maxima (which are maxima) that pass certain thresholds detailed in cut_values
-        std::set<std::shared_ptr< MuonHough::MuonLayerHough::Maximum>> associatedMaxima;
-        for ( const auto&  seed : seedMaxima) {
+        std::set<std::shared_ptr<MuonHough::MuonLayerHough::Maximum>> associatedMaxima;
+        for (const auto& seed : seedMaxima) {
             // if this maximum is already in the set of associated maxima, do not do anything
             if (associatedMaxima.count(seed)) continue;
 
             // maximum becomes our new seed
-            
+
             // decomposing the locality information for the seed
             int sector = seed->hough->m_descriptor.sector;
             MuonStationIndex::ChIndex chIndex = seed->hough->m_descriptor.chIndex;
@@ -471,17 +466,17 @@ namespace Muon {
             // creating new road with said seed
             Road road(seed);
             ATH_MSG_DEBUG(" New seed: sector " << seed->hough->m_descriptor.sector << " " << Muon::MuonStationIndex::regionName(region)
-                                               << " " << Muon::MuonStationIndex::layerName(layer) << " maximum " << seed->max << " position "
-                                               << seed->pos << " angle " << seed->theta << " ptr " << seed.get());
+                                               << " " << Muon::MuonStationIndex::layerName(layer) << " maximum " << seed->max
+                                               << " position " << seed->pos << " angle " << seed->theta << " ptr " << seed.get());
             /// In the NSW setup it can happen that the hits in the collection are only
             /// made up of TGCHits which are clustered beforehand and hence have no
             /// associated prd. In order to prevent later a crash in bool isNSW = ...
             /// let's first find a hit with associated PRD
-            MuonHough::HitVec::const_iterator ref_itr =
-                std::find_if(seed->hits.begin(), seed->hits.end(), [](const std::shared_ptr<MuonHough::Hit>& hit) -> bool { return hit->prd; });
+            MuonHough::HitVec::const_iterator ref_itr = std::find_if(
+                seed->hits.begin(), seed->hits.end(), [](const std::shared_ptr<MuonHough::Hit>& hit) -> bool { return hit->prd; });
 
             const bool isNSW = ref_itr != seed->hits.end() &&
-                         (m_idHelperSvc->issTgc((*ref_itr)->prd->identify()) || m_idHelperSvc->isMM((*ref_itr)->prd->identify()));
+                               (m_idHelperSvc->issTgc((*ref_itr)->prd->identify()) || m_idHelperSvc->isMM((*ref_itr)->prd->identify()));
             // extend seed within the current sector
             // sector indices have an offset of -1 because the numbering of the sectors are from 1 to 16 but the indices in the vertices are
             // of course 0 to 15
@@ -527,7 +522,7 @@ namespace Muon {
 
             if (msgLevel(MSG::DEBUG)) {
                 ATH_MSG_DEBUG(" New road " << road.maxima.size());
-                for (const auto&  max : road.maxima) {
+                for (const auto& max : road.maxima) {
                     MuonStationIndex::ChIndex chIndex = max->hough->m_descriptor.chIndex;
                     MuonStationIndex::LayerIndex layer = Muon::MuonStationIndex::toLayerIndex(chIndex);
                     MuonStationIndex::DetectorRegionIndex region = max->hough->m_descriptor.region;
@@ -587,7 +582,7 @@ namespace Muon {
         ATH_MSG_VERBOSE("Merging phi maxima " << road.phiMaxima.size());
         std::set<MuonHough::MuonPhiLayerHough::Maximum*> associatedPhiMaxima;
         for (auto pit = road.phiMaxima.begin(); pit != road.phiMaxima.end(); ++pit) {  // loop over phi maxima
-            if (associatedPhiMaxima.count( (*pit).get())) continue;                             // check if maximum is already in associatedPhiMaxima
+            if (associatedPhiMaxima.count((*pit).get())) continue;                     // check if maximum is already in associatedPhiMaxima
             associatedPhiMaxima.insert((*pit).get());
             MuonHough::MuonPhiLayerHough::Maximum phiMaximum = **pit;
             ATH_MSG_VERBOSE("  phi maxima " << phiMaximum.pos << " val " << phiMaximum.max);
@@ -613,17 +608,18 @@ namespace Muon {
                                                              const MuonHough::PhiHit* h2 ){ return h1->layer < h2->layer; } );
                 */
 
-                std::stable_sort(hits.begin(), hits.end(), [](const std::shared_ptr<MuonHough::PhiHit>& h1, const std::shared_ptr<MuonHough::PhiHit>& h2) {
-                    if (h1->layer != h2->layer)   return h1->layer < h2->layer;
-                    if (h1->w != h2->w)  return h1->w > h2->w;
-                    if (h1->r != h2->r)  return h1->r < h2->r;
-                    
-                    const double dPhi1 = std::abs(h1->phimax - h1->phimin);
-                    const double dPhi2 = std::abs(h2->phimax - h2->phimin);
-                    if (dPhi1 != dPhi2) return dPhi1 < dPhi2;
-                    if (h1->phimin == h2->phimin) return h1->phimax < h2->phimax;
-                    return h1->phimin < h2->phimin;
-                });
+                std::stable_sort(hits.begin(), hits.end(),
+                                 [](const std::shared_ptr<MuonHough::PhiHit>& h1, const std::shared_ptr<MuonHough::PhiHit>& h2) {
+                                     if (h1->layer != h2->layer) return h1->layer < h2->layer;
+                                     if (h1->w != h2->w) return h1->w > h2->w;
+                                     if (h1->r != h2->r) return h1->r < h2->r;
+
+                                     const double dPhi1 = std::abs(h1->phimax - h1->phimin);
+                                     const double dPhi2 = std::abs(h2->phimax - h2->phimin);
+                                     if (dPhi1 != dPhi2) return dPhi1 < dPhi2;
+                                     if (h1->phimin == h2->phimin) return h1->phimax < h2->phimax;
+                                     return h1->phimin < h2->phimin;
+                                 });
 
                 ATH_MSG_VERBOSE("  updating phi maximum " << phiMaximum.pos << " bin " << phiMaximum.binpos << " val " << phiMaximum.max
                                                           << " number of hits " << hits.size());
@@ -746,7 +742,7 @@ namespace Muon {
         std::set<const TgcClusterObj3D*> tgcClusters;
         std::set<Identifier> triggerLayers;
         const MaximumVec& maxima = road.maxima;
-        for (const auto&  maximum : maxima) {
+        for (const auto& maximum : maxima) {
             if (maximum->hough->m_descriptor.sector != sectorData.sector)
                 continue;  // skip cases where a maximum on the road does not belong to the currently examined sector
 
@@ -767,7 +763,7 @@ namespace Muon {
         // gather phiHits in sector that match the etaHits of the maximum
         PhiHitVec phiHitsInMaximum;
         PhiHitVec& phiHits = sectorData.phiHitVec[region];
-        for (const auto & phiHit: phiHits) {
+        for (const auto& phiHit : phiHits) {
             if (phiHit->tgc) {
                 if (tgcClusters.find(phiHit->tgc) != tgcClusters.end()) phiHitsInMaximum.push_back(phiHit);
             } else if (phiHit->prd) {
@@ -802,9 +798,9 @@ namespace Muon {
         if (!road.seed) return;
 
         // loop over phi maxima
-        for ( const auto& pmaximum :phiMaxima) {
+        for (const auto& pmaximum : phiMaxima) {
             // reference to phi maximum
-         
+
             ATH_MSG_DEBUG(" new phi maximum " << pmaximum->max << " hits " << pmaximum->hits.size());
 
             // precalculate the layers + TGC clusters and add them to a set for easy access
@@ -828,7 +824,7 @@ namespace Muon {
                         triggerLayersPhiMinMax[gpId] = std::make_pair(phiHit->phimin, phiHit->phimax);
                     else {
                         mit->second.first = std::min(phiHit->phimin, mit->second.first);
-                        mit->second.second = std::max(phiHit->phimax,mit->second.second);
+                        mit->second.second = std::max(phiHit->phimax, mit->second.second);
                     }
                 }
             }
@@ -856,7 +852,7 @@ namespace Muon {
             // overlap counters
             int noverlaps = 0;
             int nNoOverlaps = 0;
-            float phimin {10}, phimax{-10};
+            float phimin{10}, phimax{-10};
 
             // loop over all maxima found on road
             for (const auto& road_max : road.maxima) {
@@ -864,14 +860,14 @@ namespace Muon {
                 MuonStationIndex::StIndex stIndex = MuonStationIndex::toStationIndex(road_max->hough->m_descriptor.chIndex);
 
                 // loop over eta hits
-                for (const auto& etaHit: road_max->hits) {
+                for (const auto& etaHit : road_max->hits) {
                     if (etaHit->tgc) {
                         if (etaHit->tgc->etaCluster.hitList.empty())
                             ATH_MSG_WARNING(" TGC 3D cluster without eta hits ");
                         else {
                             if (tgcClusters[stIndex].count(etaHit->tgc)) {
                                 // now loop over phi maximum and find phi hit
-                                for (const auto& phiHit: pmaximum->hits) {
+                                for (const auto& phiHit : pmaximum->hits) {
                                     if (phiHit->tgc == etaHit->tgc) {
                                         phimin = std::min(phiHit->phimin, phimin);
                                         phimax = std::max(phiHit->phimax, phimax);
@@ -949,7 +945,7 @@ namespace Muon {
                 // loop over maxima in layer
                 for (const auto& maximum : maxima) {
                     // reference to maximum
-                   
+
                     if (!maximum->hough) {
                         ATH_MSG_WARNING("Maximum without associated hough transform! ");
                         continue;
@@ -969,8 +965,9 @@ namespace Muon {
                                       maximum->hough->m_descriptor.referencePosition;
                         double dist = rcor - maximumN->pos;
                         ATH_MSG_DEBUG(" maximumN->hough " << maximumN->hough->m_descriptor.referencePosition << " maximum->hough "
-                                                         << maximum->hough->m_descriptor.referencePosition << " maximumN->pos "
-                                                         << maximumN->pos << " maximum->pos " << maximum->pos << rcor << " distance " << dist);
+                                                          << maximum->hough->m_descriptor.referencePosition << " maximumN->pos "
+                                                          << maximumN->pos << " maximum->pos " << maximum->pos << rcor << " distance "
+                                                          << dist);
                         if (std::abs(dist) > 100) continue;
                         houghData.maxAssociationMap[maximum.get()].push_back(maximumN);
                         houghDataN.associatedToOtherSector.insert(maximumN.get());
@@ -985,7 +982,7 @@ namespace Muon {
                             const auto& maxi = nn == 0 ? maximum : maximumN;
                             const auto& maxi2 = nn == 0 ? maximumN : maximum;
                             ATH_MSG_VERBOSE(" Maximum " << nn << " hits " << maxi->hits.size());
-                            for (auto & hit : maxi->hits) {
+                            for (auto& hit : maxi->hits) {
                                 if (hit->debugInfo()) {
                                     hit->debugInfo()->phn = maxi2->max;
                                     Identifier id = hit->tgc ? hit->tgc->etaCluster.hitList.front()->identify() : hit->prd->identify();
@@ -1009,7 +1006,7 @@ namespace Muon {
 
         ATH_MSG_DEBUG("associateMaximaToPhiMaxima in sector " << houghData.sector << ": phi maxima " << phiMaxima.size());  // !!!!
         // loop over phi maxima
-        for (const auto& phiMaximum :  phiMaxima) {
+        for (const auto& phiMaximum : phiMaxima) {
             // reference to phi maximum
 
             ATH_MSG_DEBUG(" Considering phi maximum " << phiMaximum->max << " hits " << phiMaximum->hits.size());  // !!!!
@@ -1024,7 +1021,6 @@ namespace Muon {
 
             // loop over hits
             for (const auto& phiHit : phiMaximum->hits) {
-           
                 if (phiHit->tgc) {
                     if (phiHit->tgc->phiCluster.hitList.empty())
                         ATH_MSG_WARNING(" TGC 3D cluster without phi hits ");
@@ -1038,7 +1034,7 @@ namespace Muon {
             }
             if (msgLvl(MSG::DEBUG)) {
                 ATH_MSG_DEBUG("Trigger layers " << triggerLayers.size() << " tgc layers " << tgcClusters.size());
-                for (const Identifier&  id : triggerLayers) { ATH_MSG_VERBOSE("  " << m_idHelperSvc->toString(id)); }
+                for (const Identifier& id : triggerLayers) { ATH_MSG_VERBOSE("  " << m_idHelperSvc->toString(id)); }
 
                 std::map<MuonStationIndex::StIndex, std::set<const TgcClusterObj3D*>>::const_iterator stit = tgcClusters.begin();
                 std::map<MuonStationIndex::StIndex, std::set<const TgcClusterObj3D*>>::const_iterator stit_end = tgcClusters.end();
@@ -1063,7 +1059,7 @@ namespace Muon {
                 MuonStationIndex::StIndex stIndex = MuonStationIndex::toStationIndex(region, layer);
 
                 // loop over maxima per layer
-                for ( const auto & maximum: maxima) {
+                for (const auto& maximum : maxima) {
                     // skip maxima that were already associated to a neighbouring sector
                     if (houghData.associatedToOtherSector.count(maximum.get())) continue;
 
@@ -1072,7 +1068,7 @@ namespace Muon {
                     int ntrigconfirm = 0;
                     MaximumAssociationMap::iterator pos = houghData.maxAssociationMap.find(maximum.get());
                     if (pos != houghData.maxAssociationMap.end()) {
-                        for (const auto& max_itr :  pos->second) {
+                        for (const auto& max_itr : pos->second) {
                             totmax = std::max(max_itr->max, totmax);
                             ntrigconfirm += max_itr->triggerConfirmed;
                         }
@@ -1085,8 +1081,8 @@ namespace Muon {
                                                         << ntrigconfirm);
 
                     // overlap counters
-                    int nmmHits {0}, ntgcOverlaps {0},  nrpcOverlaps {0}, nstgcOverlaps{0}, 
-                        ntgcNoOverlaps {0}, nrpcNoOverlaps {0}, nstgcNoOverlaps{0};
+                    int nmmHits{0}, ntgcOverlaps{0}, nrpcOverlaps{0}, nstgcOverlaps{0}, ntgcNoOverlaps{0}, nrpcNoOverlaps{0},
+                        nstgcNoOverlaps{0};
 
                     // loop over hits
                     for (const auto& etaHit : maximum->hits) {
@@ -1279,12 +1275,12 @@ namespace Muon {
             std::map<Identifier, std::set<const Trk::PrepRawData*>> phiHitsPerChamber;
 
             // loop over hits
-            for (const auto & hit :pit->first->hits) {
+            for (const auto& hit : pit->first->hits) {
                 if (hit->tgc) {
                     const Identifier chId = m_idHelperSvc->chamberId(hit->tgc->phiCluster.hitList.front()->identify());
                     phiHitsPerChamber[chId].insert(hit->tgc->phiCluster.hitList.begin(), hit->tgc->phiCluster.hitList.end());
                 } else if (hit->prd) {
-                    const  Identifier chId = m_idHelperSvc->chamberId(hit->prd->identify());
+                    const Identifier chId = m_idHelperSvc->chamberId(hit->prd->identify());
                     phiHitsPerChamber[chId].insert(hit->prd);
                 }
             }
@@ -1300,7 +1296,7 @@ namespace Muon {
             std::map<MuonStationIndex::ChIndex, std::pair<Amg::Vector3D, Amg::Vector3D>> directionsPerChamberLayer;
 
             // loop over eta maxima
-            for (const auto & max : pit->second) {
+            for (const auto& max : pit->second) {
                 ATH_MSG_DEBUG("  new maximum  " << max->max << " hits " << max->hits.size());
 
                 if (!max->hough) { ATH_MSG_WARNING("Maximum without associated Hough Transform"); }
@@ -1340,8 +1336,7 @@ namespace Muon {
                             refPlane = hit->prd->detectorElement()->surface(hit->prd->identify()).center().perp();
                         else
                             refPlane = hit->prd->detectorElement()->surface(hit->prd->identify()).center().z();
-                            
-                        
+
                         double r = isBarrel ? refPlane : maxpos;
                         double z = isBarrel ? maxpos : refPlane;
                         double theta = max->theta;
@@ -1588,7 +1583,7 @@ namespace Muon {
                     //++nmaxima;
                     continue;
                 } else {
-                    maxima.push_back(std::make_shared< MuonHough::MuonPhiLayerHough::Maximum>(maximum));
+                    maxima.push_back(std::make_shared<MuonHough::MuonPhiLayerHough::Maximum>(maximum));
                     ++nmaxima;
                 }
             } else {
@@ -1643,15 +1638,14 @@ namespace Muon {
     }
 
     void MuonLayerHoughTool::updateHits(MuonLayerHoughTool::PhiHitVec& hits, MuonHough::MuonPhiLayerHough& hough) const {
-        for (const auto & hit : hits) {
+        for (const auto& hit : hits) {
             if (hit->debugInfo()) {
                 float max = hough.maximum(hit->r, hit->phimin, hit->phimax, hit->debugInfo()->binpos);
                 if (max > 100) ATH_MSG_WARNING(" Maximum value too large" << max);
                 hit->debugInfo()->ph = max;
                 hit->debugInfo()->rot = -99999.;
             } else {
-                ATH_MSG_DEBUG("Failed to update hit: " << hit->r << " " << hit->phimin << " lay " << hit->layer
-                                                       << " no debugInfo ");
+                ATH_MSG_DEBUG("Failed to update hit: " << hit->r << " " << hit->phimin << " lay " << hit->layer << " no debugInfo ");
             }
         }
     }
@@ -1659,8 +1653,7 @@ namespace Muon {
     void MuonLayerHoughTool::updateHits(MuonLayerHoughTool::HitVec& hits, MuonHough::MuonLayerHough& hough) const {
         for (const auto& hit : hits) {
             if (hit->debugInfo()) {
-                std::pair<float, float> max =
-                    hough.maximum(hit->x, hit->ymin, hit->debugInfo()->binpos, hit->debugInfo()->bintheta);
+                std::pair<float, float> max = hough.maximum(hit->x, hit->ymin, hit->debugInfo()->binpos, hit->debugInfo()->bintheta);
                 hit->debugInfo()->ph = max.first;
                 hit->debugInfo()->rot = max.second;
             } else {
@@ -1674,7 +1667,7 @@ namespace Muon {
         typedef PRD_MultiTruthCollection::const_iterator iprdt;
         std::pair<iprdt, iprdt> range = truthCol.equal_range(id);
         // Loop over particles contributing to this cluster
-        for (iprdt i = range.first; i != range.second; i++) {
+        for (iprdt i = range.first; i != range.second; ++i) {
             if (!i->second.isValid()) {
                 ATH_MSG_WARNING("Unexpected invalid HepMcParticleLink in PRD_MultiTruthCollection");
             } else {
@@ -1730,7 +1723,7 @@ namespace Muon {
 
     void MuonLayerHoughTool::fill(const EventContext& ctx, std::set<Identifier>& truthHits, const CscPrepDataCollection& cscs, HitVec& hits,
                                   PhiHitVec& phiHits) const {
-        /// CSCs were not part of the pattern finding yet.. 
+        /// CSCs were not part of the pattern finding yet..
         if (true || cscs.empty()) return;
         auto truthCollections = m_truthNames.makeHandles(ctx);
         Identifier chid = cscs.identify();
@@ -1955,11 +1948,13 @@ namespace Muon {
                     continue;
                 }
                 float r = rCor(*prd);
-                MuonHough::PhiHit* phiHit =
-                    new MuonHough::PhiHit(sublayer, r, std::min(phi1c, phi2c), std::max(phi1c, phi2c), 1, debug.release(), prd);
-                ATH_MSG_VERBOSE("Phi hit " << m_idHelperSvc->toString(id) << " r " << r << " phi min " << phiHit->phimin << " phi max "
-                                           << phiHit->phimax << " bc " << debug->barcode << " chw " << chWidth << " trigC "
+                float phiMin = std::min(phi1c, phi2c);
+                float phiMax = std::max(phi1c, phi2c);
+                ATH_MSG_VERBOSE("Phi hit " << m_idHelperSvc->toString(id) << " r " << r << " phi min " << phiMin << " phi max "
+                                           << phiMax << " bc " << debug->barcode << " chw " << chWidth << " trigC "
                                            << debug->trigConfirm << " g phi " << phi1 << " " << phi2);
+                MuonHough::PhiHit* phiHit =
+                    new MuonHough::PhiHit(sublayer, r, phiMin, phiMax, 1, debug.release(), prd);
                 phiHits.emplace_back(phiHit);
             }
         }

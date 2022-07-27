@@ -32,6 +32,21 @@ const std::map<std::string, std::string> LHPointToConfFile = {
   { "TightLHElectron",
     "ElectronPhotonSelectorTools/offline/mc20_20210514/"
     "ElectronLikelihoodTightOfflineConfig2017_Smooth.conf" },
+  { "VeryLooseLHElectron_Run2",
+    "ElectronPhotonSelectorTools/offline/mc20_20210514/"
+    "ElectronLikelihoodVeryLooseOfflineConfig2017_Smooth.conf" },
+  { "LooseLHElectron_Run2",
+    "ElectronPhotonSelectorTools/offline/mc20_20210514/"
+    "ElectronLikelihoodLooseOfflineConfig2017_Smooth.conf" },
+  { "LooseBLLHElectron_Run2",
+    "ElectronPhotonSelectorTools/offline/mc20_20210514/"
+    "ElectronLikelihoodLooseOfflineConfig2017_CutBL_Smooth.conf" },
+  { "MediumLHElectron_Run2",
+    "ElectronPhotonSelectorTools/offline/mc20_20210514/"
+    "ElectronLikelihoodMediumOfflineConfig2017_Smooth.conf" },
+  { "TightLHElectron_Run2",
+    "ElectronPhotonSelectorTools/offline/mc20_20210514/"
+    "ElectronLikelihoodTightOfflineConfig2017_Smooth.conf" },
 };
 const std::map<std::string, std::string> PhotonCutPointToConfFile = {
   { "LoosePhoton",
@@ -42,6 +57,9 @@ const std::map<std::string, std::string> PhotonCutPointToConfFile = {
     "PhotonIsEMMediumSelectorCutDefs.conf" },
   { "TightPhoton",
     "ElectronPhotonSelectorTools/offline/20180825/"
+    "PhotonIsEMTightSelectorCutDefs.conf" },
+  { "TightPhotonWithMu",
+    "ElectronPhotonSelectorTools/offline/mc16_20220621/"
     "PhotonIsEMTightSelectorCutDefs.conf" },
 };
 const std::map<std::string, std::string> ForwardLHPointToConfFile = {
@@ -80,6 +98,7 @@ const std::map<std::string, unsigned int> PhotonCutPointToMask = {
   { "LoosePhoton", egammaPID::PhotonLoose },
   { "MediumPhoton", egammaPID::PhotonMedium },
   { "TightPhoton", egammaPID::PhotonTight },
+  { "TightPhotonWithMu", egammaPID::PhotonTight },
 };
 const std::map<std::string, std::string> ElectronDNNPointToConfFile = {
   { "LooseDNNElectron",

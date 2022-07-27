@@ -13,16 +13,11 @@
 #define TIDAEXAMPLE_TRIGR3MON_H
 
 #include "GaudiKernel/ToolHandle.h"
-#include "Gaudi/Property.h"
-#include "AthenaBaseComps/AthAlgorithm.h"
 #include "AthenaMonitoringKernel/GenericMonitoringTool.h"
-
+#include "AthenaMonitoring/AthMonitorAlgorithm.h"
 #include "AthenaMonitoringKernel/Monitored.h"
 
 #include <string>
-
-
-// #include "AthenaMonitoring/ManagedMonitorToolBase.h"
 
 #include "TrigInDetAnalysis/TrackFilter.h"
 #include "TrigInDetAnalysis/TIDARoiDescriptor.h"
@@ -36,12 +31,10 @@
 #include "TrigInDetAnalysisUtils/TrackMatchDeltaR.h"
 #include "TrigInDetAnalysisUtils/TrackMatchDeltaRCosmic.h"
 
-// #include "TrigInDetAnalysisExample/SigAnalysis.h"
-// #include "TrigInDetAnalysisExample/TrackEfficiency.h"
 #include "TrigInDetAnalysisExample/AnalysisConfig_Tier0.h"
 
 
-class TrigR3Mon : public AthAlgorithm {
+class TrigR3Mon : public AthMonitorAlgorithm {
 
 
 public:
@@ -50,9 +43,9 @@ public:
 
   virtual ~TrigR3Mon();
 
-  virtual StatusCode initialize();
-  virtual StatusCode execute();
-  virtual StatusCode finalize();
+  virtual StatusCode initialize() override;
+  virtual StatusCode fillHistograms(const EventContext &context) const override;
+  virtual StatusCode finalize() override;
 
   virtual StatusCode bookHistograms();
 
@@ -95,32 +88,24 @@ protected:
   int   m_trtHitsOffline; // high threshold hits
   int m_strawHitsOffline; // total number of straws
 
-  // roi size
-  //  double m_phiWidth;
-  //  double m_etaWidth;
-  //  double m_zedWidth;
-
   // matching parameters
   double m_matchR;   // for DeltaR matcher
   double m_matchPhi; // for DeltaPhi matcher
 
   ToolHandle<Trig::TrigDecisionTool> m_tdt;
 
-
-  TIDARoiDescriptor m_roiInfo;
-
   std::vector<TrackFilter*>  m_filters;
   std::vector<TrackAssociator*>                 m_associators;
 
-  /// dpo we need this ??? why not the base class ???
-  std::vector<T_AnalysisConfig<AthAlgorithm>*>   m_sequences;
+  /// do we need this ??? why not the base class ???
+  std::vector<T_AnalysisConfig<AthReentrantAlgorithm>*>   m_sequences;
 
   std::vector<std::string> m_chainNames;
   std::vector<std::string> m_ntupleChainNames;
   std::string              m_releaseMetaData;
 
   bool m_buildNtuple;
-  bool m_mcTruth;
+  bool m_mcTruthIn;
 
   std::string m_analysis_config;
   std::string m_outputFileName;
@@ -128,10 +113,12 @@ protected:
   bool        m_genericFlag;
 
   bool        m_initialisePerRun;
-  bool        m_firstRun;
+  mutable bool        m_firstRun;
 
   //pdgId
   int m_selectTruthPdgId;
+
+  int m_selectParentTruthPdgId;
 
   /// kepp events even if they fail the requested trigger chains
   bool  m_keepAllEvents;
@@ -140,7 +127,7 @@ protected:
   bool m_fileopen;
 
   /// is this the first event
-  bool m_first; 
+  mutable bool m_first; 
 
   /// use only the highest pt tracks
   bool m_useHighestPT;
@@ -166,7 +153,14 @@ protected:
 
   bool         m_legacy;
 
-  //  ToolHandleArray<GenericMonitoringTool> m_monTool { this, "MonTools", "", "chain monitor tool handles" };
+  /// ntuple building variables
+
+  double       m_fiducial_radius;
+
+  bool         m_requireDecision;
+
+  bool         m_filter_on_roi;
+
   ToolHandleArray<GenericMonitoringTool> m_monTools { this, "MonTools", {} }; // insane configuration paradigm ?
 
 };

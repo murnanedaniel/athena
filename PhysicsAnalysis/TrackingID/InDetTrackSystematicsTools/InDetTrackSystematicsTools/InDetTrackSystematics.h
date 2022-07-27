@@ -1,6 +1,6 @@
 // -*- c++ -*-
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef INDETTRACKSYSTEMATICSTOOLS_INDETTRACKSYSTEMATICS_H
@@ -10,7 +10,7 @@
 #include <unordered_map>
 
 namespace InDet {
-  
+
   enum TrackSystematic {
     // resolution smearing systematics from material and dead sensors
     TRK_RES_D0_MEAS,
@@ -19,8 +19,6 @@ namespace InDet {
     TRK_RES_Z0_MEAS_UP,
     TRK_RES_D0_MEAS_DOWN,
     TRK_RES_Z0_MEAS_DOWN,
-    TRK_RES_D0Z0_MEAS,
-    TRK_RES_D0Z0Corl_MEAS,
     TRK_RES_D0_DEAD,
     TRK_RES_Z0_DEAD,
     // weak mode alignment systematics
@@ -40,13 +38,18 @@ namespace InDet {
     TRK_EFF_TIGHT_IBL,
     TRK_EFF_TIGHT_PP0,
     TRK_EFF_TIGHT_PHYSMODEL,
+    TRK_EFF_LARGED0_GLOBAL,
     // uncertainty for tracking efficiency in jets
-    TRK_EFF_LOOSE_TIDE
+    TRK_EFF_LOOSE_TIDE,
+    // uncertainties for tracking fake rates in jets
+    TRK_FAKE_RATE_TIGHT_TIDE,
+    TRK_FAKE_RATE_LOOSE_TIDE,
+    TRK_FAKE_RATE_LOOSE_ROBUST
   };
 
   // without getting too crafty with macros, this map needs to be maintained with the enum above
   // using macros to prevent a bug that's popped up twice now, in which the key did not march the target
-  static std::unordered_map< InDet::TrackSystematic, CP::SystematicVariation, std::hash<int> >
+  static const std::unordered_map< InDet::TrackSystematic, CP::SystematicVariation, std::hash<int> >
     TrackSystematicMap = {
 #define DEF_SYST( NAME ) {TRK_##NAME, CP::SystematicVariation("TRK_" #NAME )}
     DEF_SYST( RES_D0_MEAS ),
@@ -55,9 +58,6 @@ namespace InDet {
     {TRK_RES_Z0_MEAS_UP,         CP::SystematicVariation("TRK_RES_Z0_MEAS", 1)},
     {TRK_RES_D0_MEAS_DOWN,       CP::SystematicVariation("TRK_RES_D0_MEAS", -1)},
     {TRK_RES_Z0_MEAS_DOWN,       CP::SystematicVariation("TRK_RES_Z0_MEAS", -1)},
-    DEF_SYST( RES_D0Z0_MEAS ),
-    DEF_SYST( RES_D0Z0Corl_MEAS ),
-    DEF_SYST( RES_Z0_DEAD ),
     DEF_SYST( RES_D0_DEAD ),
     DEF_SYST( RES_Z0_DEAD ),
     DEF_SYST( BIAS_D0_WM ),
@@ -73,7 +73,11 @@ namespace InDet {
     DEF_SYST( EFF_TIGHT_IBL ),
     DEF_SYST( EFF_TIGHT_PP0 ),
     DEF_SYST( EFF_TIGHT_PHYSMODEL ),
-    DEF_SYST( EFF_LOOSE_TIDE )
+    DEF_SYST( EFF_LOOSE_TIDE ),
+    DEF_SYST( EFF_LARGED0_GLOBAL ),
+    DEF_SYST( FAKE_RATE_TIGHT_TIDE ),
+    DEF_SYST( FAKE_RATE_LOOSE_TIDE ),
+    DEF_SYST( FAKE_RATE_LOOSE_ROBUST )
 #undef DEF_SYST
   };
 

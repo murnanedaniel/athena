@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # art-description: Test of cosmic P1+Tier0 workflow, runs athenaHLT with Cosmic_run3_v1 menu followed by offline reco and monitoring
 # art-type: build
 # art-include: master/Athena
+# art-include: 22.0/Athena
 
 from TrigValTools.TrigValSteering import Test, ExecStep, CheckSteps
 from TrigValTools.TrigValSteering.Common import find_file
@@ -17,7 +18,15 @@ hlt.threads = 4
 hlt.concurrent_events = 4
 hlt.input = 'data_cos'
 hlt.max_events = 50
-hlt.args = '-c "setMenu=\'Cosmic_run3_v1\';doCosmics=True;doL1Sim=True;rewriteLVL1=True;"'
+hltPrecommand = ''.join([
+  "setMenu='Cosmic_run3_v1';",
+  "doCosmics=True;",
+  "doL1Sim=True;",
+  "rewriteLVL1=True;",
+  "setDetDescr='ATLAS-R3S-2021-01-00-02';",
+  "condOverride={'/MDT/Onl/T0BLOB':'MDTT0-RUN3-Onl-UPD1-01-BLOB'};"  # TODO: use R3 HLT cond tag when available
+])
+hlt.args = f'-c "{hltPrecommand}"'
 hlt.args += ' -o output'
 
 # Extract the physics_Main stream out of the BS file with many streams
@@ -32,7 +41,6 @@ tzrecoPreExec = ' '.join([
   "from AthenaConfiguration.AllConfigFlags import ConfigFlags;",
   "ConfigFlags.Trigger.triggerMenuSetup=\'Cosmic_run3_v1\';",
   "ConfigFlags.Trigger.AODEDMSet=\'AODFULL\';",
-  "ConfigFlags.Trigger.enableL1MuonPhase1=True;",
   "ConfigFlags.Trigger.enableL1CaloPhase1=True;",
 ])
 
@@ -45,8 +53,10 @@ tzreco.explicit_input = True
 tzreco.max_events = 50
 tzreco.args = '--inputBSFile=' + find_file('*.physics_Main*._athenaHLT*.data')  # output of the previous step
 tzreco.args += ' --outputESDFile=ESD.pool.root --outputAODFile=AOD.pool.root'
-tzreco.args += ' --conditionsTag=\'CONDBR2-BLKPA-RUN2-06\' --geometryVersion=\'ATLAS-R2-2016-01-00-01\''
+tzreco.args += ' --geometryVersion=\'ATLAS-R3S-2021-01-00-02\''
+tzreco.args += ' --conditionsTag=\'CONDBR2-BLKPA-RUN2-09\''  # TODO: use R3 BLK cond tag when available
 tzreco.args += ' --preExec="{:s}"'.format(tzrecoPreExec)
+tzreco.args += ' --postExec="conddb.addOverride(\'/MDT/T0BLOB\',\'MDTT0-RUN3-01-00\')"'  # TODO: use R3 BLK cond tag when available
 tzreco.args += ' --postInclude="TriggerTest/disableChronoStatSvcPrintout.py"'
 
 # Tier-0 monitoring step (AOD->HIST)

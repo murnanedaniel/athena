@@ -9,6 +9,7 @@
 #include "InDetReadoutGeometry/SiDetectorElement.h"
 #include "InDetTestPixelLayer/InDetTestPixelLayerTool.h"
 #include "PixelReadoutGeometry/PixelModuleDesign.h"
+#include "PixelReadoutGeometry/PixelFEUtils.h"
 #include "TrkMeasurementBase/MeasurementBase.h"
 #include "TrkParameters/TrackParameters.h"
 #include "TrkParticleBase/TrackParticleBase.h"
@@ -24,28 +25,24 @@
 #include "InDetIdentifier/PixelID.h"
 #include "TrkTrackSummary/TrackSummary.h"
 
-#include <iostream>
-#include <sstream>
-
 namespace InDet {
 
 InDetTestPixelLayerTool::InDetTestPixelLayerTool(const std::string& name,
                                                  const std::string& n,
                                                  const IInterface* p)
   : AthAlgTool(name, n, p)
-  , m_extrapolator("Trk::Extrapolator/InDetExtrapolator")
   , m_idHelper(nullptr)
   , m_pixelId(nullptr)
   , m_configured(false)
 {
   declareInterface<IInDetTestPixelLayerTool>(this);
-  declareProperty("Extrapolator", m_extrapolator);
   declareProperty("CheckActiveAreas", m_checkActiveAreas = false);
   declareProperty("CheckDeadRegions", m_checkDeadRegions = false);
   declareProperty("CheckDisabledFEs", m_checkDisabledFEs = false);
   declareProperty("PhiRegionSize", m_phiRegionSize = 3.);
   declareProperty("EtaRegionSize", m_etaRegionSize = 3.);
   declareProperty("GoodFracCut", m_goodFracCut = 0.5);
+  declareProperty("OuterRadius" ,m_outerRadius = 230.);
 }
 
 StatusCode
@@ -82,7 +79,11 @@ InDetTestPixelLayerTool::initialize()
     }
   }
 
-  ATH_CHECK(m_pixelCondSummaryTool.retrieve());
+  ATH_CHECK(m_pixelCondSummaryTool.retrieve( DisableTool{!m_pixelDetElStatus.empty() && !VALIDATE_STATUS_ARRAY_ACTIVATED} ));
+  ATH_CHECK(m_pixelDetElStatus.initialize( !m_pixelDetElStatus.empty()) );
+  if (!m_pixelDetElStatus.empty()) {
+     ATH_CHECK(m_pixelReadout.retrieve() );
+  }
 
   if (!m_configured) {
     msg(MSG::INFO) << "you are using an unconfigured tool" << endmsg;
@@ -98,40 +99,11 @@ InDetTestPixelLayerTool::initialize()
 }
 
 bool
-InDet::InDetTestPixelLayerTool::expectHitInPixelLayer(const Trk::Track* track,
+InDet::InDetTestPixelLayerTool::expectHitInPixelLayer(const EventContext& ctx,
+                                                      const Trk::Track* track,
                                                       int pixel_layer,
-                                                      bool recompute) const
+                                                      bool checkBarrelOnly) const
 {
-  int ehbl = -1;
-  const Trk::TrackSummary* ts = track->trackSummary();
-  if (ts) {
-    ehbl = ts->get(Trk::expectInnermostPixelLayerHit);
-  }
-
-  if (!recompute && pixel_layer == 0) {
-    if (ts) {
-      ehbl = ts->get(Trk::expectInnermostPixelLayerHit);
-      if (0 == ehbl || 1 == ehbl) {
-        ATH_MSG_DEBUG("Found expectHitInPixelLayer info in TrackSummary: "
-                      "return cached value");
-        return (bool)ehbl;
-      }
-    }
-  } else {
-    ATH_MSG_DEBUG("Forced to recompute expectHitInPixelLayer info");
-  }
-
-  // now check to see if the previous computation exists - if so, and if we
-  // already know there's a hole, then don't bother.
-  if (ehbl == 0 && pixel_layer == 0) {
-    ATH_MSG_DEBUG("Found expectHitInPixelLayer info in TrackSummary, and hole "
-                  "known to exist.  Returning cached value.");
-    return (bool)ehbl;
-  }
-
-  // Otherwise, go ahead and check again for holes in that area, e.g. in dead
-  // chips
-
   ATH_MSG_DEBUG("computing expectHitInPixelLayer info");
 
   const Trk::Perigee* mp = track->perigeeParameters();
@@ -142,18 +114,18 @@ InDet::InDetTestPixelLayerTool::expectHitInPixelLayer(const Trk::Track* track,
     return false;
   } else {
     ATH_MSG_DEBUG("Track perigee parameters");
-    return this->expectHitInPixelLayer(mp, pixel_layer);
+    return this->expectHitInPixelLayer(ctx, mp, pixel_layer, checkBarrelOnly);
   }
 }
 
 bool
 InDet::InDetTestPixelLayerTool::expectHitInPixelLayer(
+  const EventContext& ctx,
   const Trk::TrackParticleBase* track,
-  int pixel_layer,
-  bool recompute) const
+  int pixel_layer) const
 {
 
-  // Need to (re)compute iff we do expect a B-layer hit.  If the previous
+  // Need to compute if we do expect a B-layer hit.  If the previous
   // calculation already determined that we don't expect a hit, then we still
   // won't expect one.
 
@@ -162,35 +134,6 @@ InDet::InDetTestPixelLayerTool::expectHitInPixelLayer(
       "Not a valid TrackParticle: no b-layer info will be provided");
     return false;
   }
-
-  int ehbl = -1;
-  const Trk::TrackSummary* ts = track->trackSummary();
-  if (ts) {
-    ehbl = ts->get(Trk::expectInnermostPixelLayerHit);
-  }
-
-  if (!recompute && pixel_layer == 0) {
-    if (ts) {
-      if (0 == ehbl || 1 == ehbl) {
-        ATH_MSG_DEBUG("Found expectHitInPixelLayer info in TrackSummary: "
-                      "return cached value");
-        return (bool)ehbl;
-      }
-    }
-  } else {
-    ATH_MSG_DEBUG("Forced to recompute expectHitInPixelLayer info");
-  }
-
-  // now check to see if the previous computation exists - if so, and if we
-  // already know there's a hole, then don't bother.
-  if (ehbl == 0 && pixel_layer == 0) {
-    ATH_MSG_DEBUG("Found expectHitInPixelLayer info in TrackSummary, and hole "
-                  "known to exist.  Returning cached value.");
-    return (bool)ehbl;
-  }
-
-  // Otherwise, go ahead and check again for holes in that area, e.g. in dead
-  // chips
 
   ATH_MSG_DEBUG("computing expectHitInPixelLayer info");
 
@@ -203,51 +146,33 @@ InDet::InDetTestPixelLayerTool::expectHitInPixelLayer(
   } else {
     ATH_MSG_DEBUG("TrackParticle perigee parameters");
     //	  mp->dump(mLog);
-    return (this->expectHitInPixelLayer(mp, pixel_layer));
+    return (this->expectHitInPixelLayer(ctx, mp, pixel_layer));
   }
 }
 
 bool
 InDet::InDetTestPixelLayerTool::expectHitInPixelLayer(
+  const EventContext& ctx,
   const Trk::TrackParameters* trackpar,
-  int pixel_layer) const
+  int pixel_layer,
+  bool checkBarrelOnly) const
 {
+
   if (!m_configured) {
     ATH_MSG_WARNING(
       "Unconfigured tool, unable to compute expectHitInPixelLayer");
     return false;
   }
 
-  bool expect_hit =
-    false; /// will be set to true if at least one good module is passed
+  bool expect_hit = false; /// will be set to true if at least one good module is passed
 
   std::vector<std::unique_ptr<const Trk::TrackParameters>> pixelLayerParam;
-  if (!this->getPixelLayerParameters(trackpar, pixelLayerParam)) {
-    ATH_MSG_WARNING("Failed to get pixel layer parameters!");
+  if (!this->getPixelLayerParameters(ctx, trackpar, pixelLayerParam)) {
+    ATH_MSG_DEBUG("Failed to get pixel layer parameters!");
     return false;
   }
 
-  // now, figure out which layer we're supposed to be checking.
-  PixelIDVec pixvec;
-  for (std::unique_ptr<const Trk::TrackParameters>& p : pixelLayerParam) {
-    if (!(p->associatedSurface().associatedDetectorElement()))
-      continue;
-    Identifier id =
-      p->associatedSurface().associatedDetectorElement()->identify();
-    pixvec.push_back(id);
-  }
-  std::sort(pixvec.begin(), pixvec.end(), PixelIDLayerComp(m_pixelId));
-
-  // if we're asking for a layer that doesn't exist in the extrapolation, then
-  // return.
-  if (pixel_layer >= (int)pixvec.size()) {
-    ATH_MSG_DEBUG("Asked for info on pixel layer "
-                  << pixel_layer << " but extrapolator only found "
-                  << pixvec.size()
-                  << " layers.  Track eta = " << trackpar->eta());
-    return expect_hit;
-  }
-
+  SG::ReadHandle<InDet::SiDetectorElementStatus> pixelDetElStatus(getPixelDetElStatus(ctx));
   for (std::unique_ptr<const Trk::TrackParameters>& p : pixelLayerParam) {
 
     if (!(p->associatedSurface().associatedDetectorElement()))
@@ -255,11 +180,13 @@ InDet::InDetTestPixelLayerTool::expectHitInPixelLayer(
     Identifier id =
       p->associatedSurface().associatedDetectorElement()->identify();
 
-    // need to check that this is the "correct" pixel layer....
-    if (!IsInCorrectLayer(id, pixvec, pixel_layer))
-      continue;
+    if (checkBarrelOnly && !m_pixelId->is_barrel(id)) continue;
+    if (m_pixelId->layer_disk(id) != pixel_layer) continue;
 
-    if (m_pixelCondSummaryTool->isGood(id, InDetConditions::PIXEL_MODULE)) {
+    VALIDATE_STATUS_ARRAY(!m_pixelDetElStatus.empty(),pixelDetElStatus->isGood(p->associatedSurface().associatedDetectorElement()->identifyHash()), m_pixelCondSummaryTool->isGood(id, InDetConditions::PIXEL_MODULE));
+
+    if ( (!m_pixelDetElStatus.empty() && pixelDetElStatus->isGood(p->associatedSurface().associatedDetectorElement()->identifyHash()))
+         || (m_pixelDetElStatus.empty() && m_pixelCondSummaryTool->isGood(id, InDetConditions::PIXEL_MODULE))) {
 
       if (m_checkActiveAreas) {
 
@@ -268,7 +195,7 @@ InDet::InDetTestPixelLayerTool::expectHitInPixelLayer(
           if (m_checkDeadRegions) {
 
             double fracGood =
-              getFracGood(p.get(), m_phiRegionSize, m_etaRegionSize);
+               getFracGood(p.get(), m_phiRegionSize, m_etaRegionSize, !m_pixelDetElStatus.empty() ? pixelDetElStatus.cptr() : nullptr);
             if (fracGood > m_goodFracCut && fracGood >= 0) {
               ATH_MSG_DEBUG("Condition Summary: b-layer good");
               expect_hit =
@@ -306,7 +233,7 @@ InDet::InDetTestPixelLayerTool::expectHitInPixelLayer(
 
 bool
 InDet::InDetTestPixelLayerTool::expectHit(
-  const Trk::TrackParameters* trackpar) const
+   const Trk::TrackParameters* trackpar) const
 {
   bool expect_hit =
     false; /// will be set to true if at least one good module is passed
@@ -314,11 +241,15 @@ InDet::InDetTestPixelLayerTool::expectHit(
   Identifier id =
     trackpar->associatedSurface().associatedDetectorElement()->identify();
 
-  if (m_pixelCondSummaryTool->isGood(id, InDetConditions::PIXEL_MODULE)) {
+  SG::ReadHandle<InDet::SiDetectorElementStatus> pixelDetElStatus(getPixelDetElStatus(Gaudi::Hive::currentContext()));
+
+  VALIDATE_STATUS_ARRAY(!m_pixelDetElStatus.empty(),pixelDetElStatus->isGood(trackpar->associatedSurface().associatedDetectorElement()->identifyHash()), m_pixelCondSummaryTool->isGood(id, InDetConditions::PIXEL_MODULE));
+    if ( (!m_pixelDetElStatus.empty() && pixelDetElStatus->isGood(trackpar->associatedSurface().associatedDetectorElement()->identifyHash()))
+       || (m_pixelDetElStatus.empty() && m_pixelCondSummaryTool->isGood(id, InDetConditions::PIXEL_MODULE))) {
 
     if (m_checkDeadRegions) {
 
-      double fracGood = getFracGood(trackpar, m_phiRegionSize, m_etaRegionSize);
+      double fracGood = getFracGood(trackpar, m_phiRegionSize, m_etaRegionSize, !m_pixelDetElStatus.empty() ? pixelDetElStatus.cptr() : nullptr);
       if (fracGood > m_goodFracCut && fracGood >= 0) {
         ATH_MSG_DEBUG("Condition Summary: b-layer good");
         expect_hit = true; /// pass good module -> hit is expected on pixelLayer
@@ -371,20 +302,25 @@ InDet::InDetTestPixelLayerTool::getFracGood(
     return -5.;
 
   // now, figure out which layer we're supposed to be checking.
-  PixelIDVec pixvec;
+  bool found_layer = false;
   for (std::unique_ptr<const Trk::TrackParameters>& p : pixelLayerParam) {
     if (!(p->associatedSurface().associatedDetectorElement()))
       continue;
     Identifier id =
       p->associatedSurface().associatedDetectorElement()->identify();
-    pixvec.push_back(id);
+
+    if (m_pixelId->layer_disk(id) == pixel_layer){
+      found_layer = true;
+      break;
+    }
   }
-  std::sort(pixvec.begin(), pixvec.end(), PixelIDLayerComp(m_pixelId));
 
   // if we're asking for a layer that doesn't exist in the extrapolation, then
   // return.
-  if (pixel_layer >= (int)pixvec.size())
+  if (!found_layer)
     return -7.;
+
+  SG::ReadHandle<InDet::SiDetectorElementStatus> pixelDetElStatus(getPixelDetElStatus(Gaudi::Hive::currentContext()));
 
   for (std::unique_ptr<const Trk::TrackParameters>& p : pixelLayerParam) {
 
@@ -393,14 +329,16 @@ InDet::InDetTestPixelLayerTool::getFracGood(
     Identifier id =
       p->associatedSurface().associatedDetectorElement()->identify();
 
-    if (!IsInCorrectLayer(id, pixvec, pixel_layer))
+    if (m_pixelId->layer_disk(id) != pixel_layer)
       continue;
 
-    if (m_pixelCondSummaryTool->isGood(id, InDetConditions::PIXEL_MODULE)) {
+    VALIDATE_STATUS_ARRAY(!m_pixelDetElStatus.empty(),pixelDetElStatus->isGood(trackpar->associatedSurface().associatedDetectorElement()->identifyHash()), m_pixelCondSummaryTool->isGood(id, InDetConditions::PIXEL_MODULE));
+      if (  (!m_pixelDetElStatus.empty() && pixelDetElStatus->isGood(p->associatedSurface().associatedDetectorElement()->identifyHash()))
+        || (m_pixelDetElStatus.empty() && m_pixelCondSummaryTool->isGood(id, InDetConditions::PIXEL_MODULE))) {
 
       if (isActive(p.get())) {
 
-        return getFracGood(p.get(), m_phiRegionSize, m_etaRegionSize);
+        return getFracGood(p.get(), m_phiRegionSize, m_etaRegionSize, !m_pixelDetElStatus.empty() ? pixelDetElStatus.cptr() : nullptr);
 
       } else {
         ATH_MSG_DEBUG(
@@ -506,7 +444,9 @@ InDet::InDetTestPixelLayerTool::getTrackStateOnPixelLayerInfo(
 bool
 InDet::InDetTestPixelLayerTool::getTrackStateOnPixelLayerInfo(
   const Trk::TrackParameters* trackpar,
-  std::vector<TrackStateOnPixelLayerInfo>& infoList) const
+  std::vector<TrackStateOnPixelLayerInfo>& infoList,
+  int pixel_layer,
+  bool checkBarrelOnly) const
 {
 
   infoList.clear();
@@ -520,17 +460,22 @@ InDet::InDetTestPixelLayerTool::getTrackStateOnPixelLayerInfo(
   if (!getPixelLayerParameters(trackpar, pixelLayerParam))
     return false;
 
+  SG::ReadHandle<InDet::SiDetectorElementStatus> pixelDetElStatus(getPixelDetElStatus(Gaudi::Hive::currentContext()));
+
   for (std::unique_ptr<const Trk::TrackParameters>& trkParam :
        pixelLayerParam) {
     TrackStateOnPixelLayerInfo pixelLayerInfo;
 
     double fracGood =
-      getFracGood(trkParam.get(), m_phiRegionSize, m_etaRegionSize);
+      getFracGood(trkParam.get(), m_phiRegionSize, m_etaRegionSize, !m_pixelDetElStatus.empty() ? pixelDetElStatus.cptr() : nullptr);
     pixelLayerInfo.goodFraction(fracGood);
 
     Identifier id =
       trkParam->associatedSurface().associatedDetectorElement()->identify();
     pixelLayerInfo.moduleId(id);
+
+    if (checkBarrelOnly && !m_pixelId->is_barrel(id)) continue;
+    if (m_pixelId->layer_disk(id) != pixel_layer) continue;
 
     const InDetDD::SiDetectorElement* sielem =
       dynamic_cast<const InDetDD::SiDetectorElement*>(
@@ -586,8 +531,10 @@ InDet::InDetTestPixelLayerTool::getTrackStateOnPixelLayerInfo(
     pixelLayerInfo.errLocalX(error_locx);
     pixelLayerInfo.errLocalY(error_locy);
 
+    VALIDATE_STATUS_ARRAY(!m_pixelDetElStatus.empty(),pixelDetElStatus->isGood(trkParam->associatedSurface().associatedDetectorElement()->identifyHash()), m_pixelCondSummaryTool->isGood(id, InDetConditions::PIXEL_MODULE));
     bool isgood =
-      m_pixelCondSummaryTool->isGood(id, InDetConditions::PIXEL_MODULE);
+      (  (!m_pixelDetElStatus.empty() && pixelDetElStatus->isGood(trkParam->associatedSurface().associatedDetectorElement()->identifyHash()))
+       || (m_pixelDetElStatus.empty() && m_pixelCondSummaryTool->isGood(id, InDetConditions::PIXEL_MODULE)));
 
     double phitol = 2.5;
     double etatol = 5.;
@@ -620,6 +567,7 @@ InDet::InDetTestPixelLayerTool::getTrackStateOnPixelLayerInfo(
 
 bool
 InDet::InDetTestPixelLayerTool::getPixelLayerParameters(
+  const EventContext& ctx,
   const Trk::TrackParameters* trackpar,
   std::vector<std::unique_ptr<const Trk::TrackParameters>>& pixelLayerParam)
   const
@@ -628,12 +576,12 @@ InDet::InDetTestPixelLayerTool::getPixelLayerParameters(
   ATH_MSG_DEBUG("Trying to extrapolate to pixelLayer");
   Amg::Transform3D surfTrans;
   surfTrans.setIdentity();
-  Trk::CylinderSurface BiggerThanPixelLayerSurface(surfTrans, 230.0, 10000.0);
+  Trk::CylinderSurface BiggerThanPixelLayerSurface(surfTrans, m_outerRadius, 10000.0);
 
   // extrapolate stepwise to this parameter (be careful, sorting might be wrong)
   std::vector<std::unique_ptr<Trk::TrackParameters>> paramList =
-    m_extrapolator->extrapolateStepwise(Gaudi::Hive::currentContext(),
-      *trackpar, BiggerThanPixelLayerSurface, Trk::alongMomentum, false);
+    m_extrapolator->extrapolateStepwise(
+      ctx, *trackpar, BiggerThanPixelLayerSurface, Trk::alongMomentum, false);
 
   if (paramList.empty()) {
     ATH_MSG_DEBUG("No parameter returned by propagator ");
@@ -672,14 +620,18 @@ double
 InDet::InDetTestPixelLayerTool::getFracGood(
   const Trk::TrackParameters* trkParam,
   double phiRegionSize,
-  double etaRegionSize) const
+  double etaRegionSize,
+  const InDet::SiDetectorElementStatus *pixelDetElStatus) const
 {
 
   Identifier moduleid =
     trkParam->associatedSurface().associatedDetectorElement()->identify();
   IdentifierHash id_hash = m_pixelId->wafer_hash(moduleid);
 
-  if (!m_pixelCondSummaryTool->isGood(id_hash))
+  VALIDATE_STATUS_ARRAY(pixelDetElStatus,pixelDetElStatus->isGood(id_hash), m_pixelCondSummaryTool->isGood(id_hash));
+  bool is_good (  ( pixelDetElStatus && pixelDetElStatus->isGood(id_hash))
+                || (!pixelDetElStatus && m_pixelCondSummaryTool->isGood(id_hash)));
+  if (!is_good)
     return 0.;
 
   const Amg::Vector2D& locPos = trkParam->localPosition();
@@ -763,7 +715,13 @@ InDet::InDetTestPixelLayerTool::getFracGood(
     const InDetConditions::Hierarchy context = InDetConditions::PIXEL_CHIP;
     Identifier centreId = sielem->identifierOfPosition(LocPos);
     if (centreId.is_valid()) {
-      if (!m_pixelCondSummaryTool->isGood(centreId, context))
+      Identifier moduleID = m_pixelId->wafer_id(centreId);
+      IdentifierHash id_hash = m_pixelId->wafer_hash(moduleID);
+
+      VALIDATE_STATUS_ARRAY(!m_pixelDetElStatus.empty(),pixelDetElStatus->isChipGood(id_hash,m_pixelReadout->getFE(centreId, moduleID)), m_pixelCondSummaryTool->isGood(centreId, context));
+      bool is_chip_good (  (!m_pixelDetElStatus.empty() && pixelDetElStatus->isChipGood(id_hash,m_pixelReadout->getFE(centreId, moduleID)))
+                      || (m_pixelDetElStatus.empty() && m_pixelCondSummaryTool->isGood(centreId, context)));
+      if (!is_chip_good)
         return 0.;
     }
 
@@ -781,54 +739,18 @@ InDet::InDetTestPixelLayerTool::getFracGood(
     return 0.;
   }
 
-  double frac = m_pixelCondSummaryTool->goodFraction(id_hash, startId, endId);
+  double frac =0.;
+
+  if (pixelDetElStatus) {
+     frac = Pixel::getGoodFraction(*pixelDetElStatus, *m_pixelReadout, *m_pixelId, moduleid, id_hash, startId, endId);
+     VALIDATE_STATUS_ARRAY(!m_pixelDetElStatus.empty(),frac, m_pixelCondSummaryTool->goodFraction(id_hash, startId, endId));
+
+  }
+  else {
+      frac = m_pixelCondSummaryTool->goodFraction(id_hash, startId, endId);
+  }
 
   return frac;
-}
-
-bool
-InDetTestPixelLayerTool::IsInCorrectLayer(Identifier& id1,
-                                          PixelIDVec& pixvec,
-                                          int pixel_layer) const
-{
-  // the vector is sorted by layer.  the vector can still have several entries
-  // for each physical layer, so the "pixel_layer" may not map directly to the
-  // entries in this vector.  So, determine the set of indices that we should be
-  // checking against.
-  std::pair<int, int> pixvec_chosen_layer_indices = std::make_pair(-1, -1);
-  int n_layers = 0;
-  for (unsigned int pv_iter = 0; pv_iter < pixvec.size(); pv_iter++) {
-    if (pixel_layer == n_layers && pixvec_chosen_layer_indices.first < 0)
-      pixvec_chosen_layer_indices.first = pv_iter;
-
-    // check the next entry
-    if ((pv_iter + 1) >= (pixvec.size()) ||
-        !IsInSameLayer(pixvec[pv_iter], pixvec[pv_iter + 1])) {
-      if (pixel_layer == n_layers) {
-        pixvec_chosen_layer_indices.second = pv_iter + 1;
-        break;
-      }
-      n_layers++;
-    }
-  }
-
-  if (pixvec_chosen_layer_indices.first < 0 ||
-      pixvec_chosen_layer_indices.second < 0)
-    return false;
-  for (int i = pixvec_chosen_layer_indices.first;
-       i < pixvec_chosen_layer_indices.second;
-       i++) {
-    if (pixvec[i] == id1)
-      return true;
-  }
-  return false;
-}
-
-bool
-InDetTestPixelLayerTool::IsInSameLayer(Identifier& id1, Identifier& id2) const
-{
-  return ((m_pixelId->barrel_ec(id1) == m_pixelId->barrel_ec(id2)) &&
-          (m_pixelId->layer_disk(id1) == m_pixelId->layer_disk(id2)));
 }
 
 } // end namespace

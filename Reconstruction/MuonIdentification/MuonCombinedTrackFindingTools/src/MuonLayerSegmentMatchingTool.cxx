@@ -78,12 +78,11 @@ namespace Muon {
         return true;
     }
 
-    void MuonLayerSegmentMatchingTool::select(const MuonSystemExtension::Intersection& intersection,
+    void MuonLayerSegmentMatchingTool::select(const EventContext& ctx, const MuonSystemExtension::Intersection& intersection,
                                               const std::vector<std::shared_ptr<const Muon::MuonSegment> >& segments,
                                               std::vector<std::shared_ptr<const Muon::MuonSegment> >& selectedSegments) const {
-        const EventContext& ctx = Gaudi::Hive::currentContext();
         // loop over segments and match them to the intersection
-        for (const auto& segment : segments) {
+        for (const std::shared_ptr<const Muon::MuonSegment>& segment : segments) {
             if (match(ctx, intersection, *segment)) { selectedSegments.push_back(segment); }
         }
         ATH_MSG_DEBUG("Selected segments: " << selectedSegments.size());

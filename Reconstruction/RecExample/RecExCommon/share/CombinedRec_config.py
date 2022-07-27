@@ -76,9 +76,7 @@ if rec.doMuonCombined() and DetFlags.Muon_on() and DetFlags.ID_on():
 #
 #  functionality : add cells crossed by high pt ID tracks
 #
-if rec.doESD() and recAlgs.doTrackParticleCellAssociation() and DetFlags.ID_on() and DetFlags.Muon_on() and DetFlags.Calo_on():
-    from AthenaCommon.CfgGetter import getPublicTool
-    getPublicTool("MuonCombinedInDetDetailedTrackSelectorTool")
+if rec.doESD() and recAlgs.doTrackParticleCellAssociation() and DetFlags.ID_on() and DetFlags.Calo_on():
     from TrkExTools.AtlasExtrapolator import AtlasExtrapolator
     from TrackToCalo.TrackToCaloConf import Trk__ParticleCaloExtensionTool, Rec__ParticleCaloCellAssociationTool
     pcExtensionTool = Trk__ParticleCaloExtensionTool(Extrapolator = AtlasExtrapolator())
@@ -86,17 +84,20 @@ if rec.doESD() and recAlgs.doTrackParticleCellAssociation() and DetFlags.ID_on()
 
     topSequence += CfgMgr.TrackParticleCellAssociationAlg("TrackParticleCellAssociationAlg",
                                                           ParticleCaloCellAssociationTool=caloCellAssociationTool)
+    if DetFlags.Muon_on():
+        from AthenaCommon.CfgGetter import getPublicTool
+        getPublicTool("MuonCombinedInDetDetailedTrackSelectorTool")
 
 
 #
 # functionality : energy flow
 #
 pdr.flag_domain('eflow')
-if recAlgs.doEFlow() and (rec.readESD() or (DetFlags.haveRIO.ID_on() and DetFlags.haveRIO.Calo_allOn() and rec.doMuonCombined())):
+if recAlgs.doEFlow() and (rec.readESD() or (DetFlags.haveRIO.ID_on() and DetFlags.haveRIO.Calo_allOn())):
     try:        
         from eflowRec.PFRun3Config import PFCfg
         CAtoGlobalWrapper(PFCfg, ConfigFlags)
-        from eflowRec import ScheduleCHSPFlowMods
+        #from eflowRec import ScheduleCHSPFlowMods
     except Exception:
         treatException("Could not set up EFlow. Switched off !")
         recAlgs.doEFlow=False
@@ -127,12 +128,10 @@ pdr.flag_domain('egmiso')
 if (rec.doESD() and (rec.doMuonCombined() or rec.doEgamma()) and
     (jobproperties.CaloRecFlags.doCaloTopoCluster() or
      objKeyStore.isInInput ('xAOD::ParticleContainer', 'CaloCalTopoClusters'))):
-    try:
-        from IsolationAlgs.IsoGetter import isoGetter
-        isoGetter()
-    except Exception:
-        treatException("Could not set up isolation. Switched off !")
 
+    from IsolationAlgs.IsolationSteeringConfig import IsolationSteeringCfg
+    CAtoGlobalWrapper(IsolationSteeringCfg, ConfigFlags)
+    
 if jetOK and recAlgs.doMuonSpShower() and DetFlags.detdescr.Muon_on() and DetFlags.haveRIO.Calo_on() :
     try:
         include("MuonSpShowerBuilderAlgs/MuonSpShowerBuilder_jobOptions.py")
@@ -143,23 +142,13 @@ else:
     recAlgs.doMuonSpShower=False
 
 pdr.flag_domain('btagging')
-btaggingOK = False
 #By default disable b-tagging from ESD, unless user has set it and locked it to true upstream
 if rec.readESD():
     rec.doBTagging=False
 if (jetOK or rec.readESD()) and rec.doBTagging() and  DetFlags.ID_on() and DetFlags.Muon_on():
-    try:
-        from AthenaCommon.Configurable import Configurable
-        Configurable.configurableRun3Behavior=1  # TODO: remove once ATLASRECTS-6635 is fixed
-        # Configure BTagging algorithm
-        from BTagging.BTagRun3Config import BTagRecoSplitCfg
-        CAtoGlobalWrapper(BTagRecoSplitCfg, ConfigFlags)
-    except Exception:
-        treatException("Could not set up btagging reconstruction")
-        btaggingOK=False
-    finally:
-        Configurable.configurableRun3Behavior=0
-    pass
+    # Configure BTagging algorithm
+    from BTagging.BTagRun3Config import BTagRecoSplitCfg
+    CAtoGlobalWrapper(BTagRecoSplitCfg, ConfigFlags)
 
 # Hits associated with high-pt jets for trackless b-tagging
 from BTagging.BTaggingFlags import BTaggingFlags
@@ -218,8 +207,10 @@ else:
 # Functionality: CaloRinger
 #
 pdr.flag_domain('caloringer')
-if rec.doCaloRinger:
-  include('CaloRingerAlgs/CaloRinger_jobOptions.py')
+if rec.doCaloRinger and rec.doESD():
+  from CaloRingerAlgs.CaloRingerAlgsConfig import CaloRingerAlgsCfg
+  CAtoGlobalWrapper(CaloRingerAlgsCfg, ConfigFlags)
+
 
 
 

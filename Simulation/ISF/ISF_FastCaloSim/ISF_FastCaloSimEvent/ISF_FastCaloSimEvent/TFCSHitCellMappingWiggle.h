@@ -7,6 +7,12 @@
 
 #include "ISF_FastCaloSimEvent/TFCSHitCellMapping.h"
 
+#ifdef USE_GPU
+#include "ISF_FastCaloGpu/LoadGpuFuncHist.h"
+#include "ISF_FastCaloGpu/FH_structs.h"
+#endif
+
+
 class TFCS1DFunction;
 class TH1;
 
@@ -40,10 +46,26 @@ public:
 
   static void unit_test(TFCSSimulationState* simulstate=nullptr,TFCSTruthState* truth=nullptr, TFCSExtrapolationState* extrapol=nullptr);
 
+#ifdef USE_GPU
+  //construct the hist function and copy to GPU
+  //will not compile by default
+  void    set_d_HistFuncs( FHs* hf_ptr ) { m_d_HistFuncs = hf_ptr; };
+  const FHs*       d_HistFuncs() { return m_d_HistFuncs; };
+  void             LoadHistFuncs();
+  LoadGpuFuncHist* LdFH() { return m_LdFH; };
+#endif
+
 protected:  
   bool compare(const TFCSParametrizationBase& ref) const;
 
 private:
+
+#ifdef USE_GPU
+  //hist functions in GPU
+  FHs*             m_d_HistFuncs = nullptr;
+  LoadGpuFuncHist* m_LdFH        = nullptr;
+#endif
+
   //** Function for the hit-to-cell assignment accordion structure fix (wiggle)  **//
   //** To be moved to the conditions database at some point **//
   std::vector< const TFCS1DFunction* > m_functions = {nullptr};

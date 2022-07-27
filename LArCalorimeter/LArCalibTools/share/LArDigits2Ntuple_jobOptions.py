@@ -32,6 +32,9 @@ if not 'FilePrefix' in dir():
    else :
       FilePrefix = "data*"
      
+if not 'NSamples' in dir():
+   NSamples=32
+
 if not 'InputDir' in dir():
    InputDir = "/castor/cern.ch/grid/atlas/DAQ/lar/ElecCalib/2014/"+RunNumberList[0]
 
@@ -53,6 +56,7 @@ if not 'FullFileName' in dir():
          else:   
             Trigger = "calibration_"+"*"   
    
+   from LArCalibProcessing.GetInputFiles import GetInputFilesFromTokens,GetInputFiles
    FullFileName = []
    for RunNumber in RunNumberList :
        FullFileName+=GetInputFilesFromTokens(InputDir,int(RunNumber),FilePrefix,Trigger)
@@ -67,12 +71,14 @@ if not 'WriteNtuple' in dir():
 if not 'SuperCells' in dir():   
    SuperCells=False
 
+if not 'WithAccDigits' in dir():
+   WithAccDigits=False
+
 if not 'GainList' in dir():
    if SuperCells:
       GainList = ["SC"]
    else:
       GainList = [ "HIGH", "MEDIUM", "LOW" ]
-
 
 if not SuperCells: include("LArCalibProcessing/LArCalib_Flags.py")
 else: include("LArCalibProcessing/LArCalib_FlagsSC.py")
@@ -223,18 +229,7 @@ from LArCalibTools.LArCalibToolsConf import LArDigits2Ntuple
 LArDigits2Ntuple=LArDigits2Ntuple("LArDigits2Ntuple")
 contkeys = GainList
 
-if 'rawChannels' not in dir():
-   rawChannels = False
-if rawChannels is True:
-   contkeys.append("LArRawChannels")
-
-
-if SuperCells and SCDecodeAllContainers:
-   contkeys.append("SC_ADC_BAS")
-   contkeys.append("SC_ET")
-   contkeys.append("SC_ET_ID")
-   contkeys.append("SC_LATOME_HEADER")
-LArDigits2Ntuple.ContainerKeys = contkeys
+LArDigits2Ntuple.ContainerKey = contkeys[0]
 LArDigits2Ntuple.AddFEBTempInfo=False
 if 'FTlist' in dir():
    LArDigits2Ntuple.FTlist=FTlist

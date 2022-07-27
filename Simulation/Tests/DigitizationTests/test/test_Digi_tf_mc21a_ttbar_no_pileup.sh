@@ -2,6 +2,8 @@
 #
 # art-description: Run a digitization example to compare configuration between ConfGetter and the new ComponentAccumulator approach.
 # art-type: grid
+# art-architecture:  '#x86_64-intel'
+# art-include: 22.0/Athena
 # art-include: master/Athena
 # art-output: mc21a.ttbar.nopileup.CG.RDO.pool.root
 # art-output: mc21a.ttbar.nopileup.CA.RDO.pool.root
@@ -96,7 +98,7 @@ then
     rc4=$?
     status=$rc4
 fi
-echo "art-result: $rc1 OLDvsFixedRef"
+echo "art-result: $rc4 OLDvsFixedRef"
 
 rc5=-9999
 if [[ $rc -eq 0 ]]

@@ -13,6 +13,7 @@
 #include "MuonReadoutGeometry/MuonClusterReadoutElement.h"
 #include "MuonReadoutGeometry/MuonDetectorManager.h"
 #include "MuonReadoutGeometry/TgcReadoutParams.h"
+#include "MuonReadoutGeometry/ArrayHelper.h"
 
 class GeoVFullPhysVol;
 
@@ -55,6 +56,7 @@ namespace MuonGM {
         friend class Muon::TgcAlignModule;
         friend class Muon::CombinedMuonAlignModule;
         friend class MuonChamber;
+	friend class MuonChamberLite;
 
     public:
         TgcReadoutElement(GeoVFullPhysVol* pv, const std::string& stName, int zi, int fi, bool is_mirrored, MuonDetectorManager* mgr);
@@ -270,12 +272,12 @@ namespace MuonGM {
         int m_nstripplanes{0};
         int m_nwireplanes{0};
         std::array<int, maxstrp> m_nstrips_per_plane{0};
-        std::array<double, maxstrp> m_strippitch{-9999.};
-        std::array<double, maxstrp> m_stripwidth{-9999.};
-        std::array<double, maxstrp> m_wirepitch{-9999.};
-
-        std::array<double, maxstrp> m_stripoffset{-9999.};
-        std::array<double, maxstrp> m_stripplanez{-9999.};
+        std::array<double, maxstrp> m_strippitch{make_array<double, maxstrp>(-9999.)};
+        std::array<double, maxstrp> m_stripwidth{make_array<double, maxstrp>(-9999.)};
+        std::array<double, maxstrp> m_wirepitch{make_array<double, maxstrp>(-9999.)};
+       
+        std::array<double, maxstrp> m_stripoffset{make_array<double, maxstrp>(-9999.)};
+        std::array<double, maxstrp> m_stripplanez{make_array<double, maxstrp>(-9999.)};
 
         std::array<int, maxwpl> m_nwires_per_plane{0};
         std::array<int, maxwpl> m_nwiregangs_per_plane{0};

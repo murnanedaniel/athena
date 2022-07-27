@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "TrkTrack/Track.h"
@@ -32,7 +32,6 @@
 #include "TPaveText.h"
 #include "TAxis.h"
 
-using namespace std;
 
 namespace Trk {
 
@@ -124,8 +123,7 @@ namespace Trk {
     ATH_CHECK(m_residualCalculator.retrieve());
     ATH_CHECK(m_alignModuleTool.retrieve());
 
-    ParticleSwitcher particleSwitch;
-    m_particleHypothesis = particleSwitch.particle[m_particleNumber];
+    m_particleHypothesis = Trk::ParticleSwitcher::particle[m_particleNumber];
     msg(MSG::INFO) << "ParticleNumber: "     << m_particleNumber     << endmsg;
     msg(MSG::INFO) << "ParticleHypothesis: " << m_particleHypothesis << endmsg;
 
@@ -164,7 +162,7 @@ namespace Trk {
 
   //________________________________________________________________________
   bool ShiftingDerivCalcTool::scanShifts(const AlignTrack* alignTrack,
-           const std::vector<const AlignModule*>& alignModules)
+           const std::vector<AlignModule*>& alignModules)
   {
     ATH_MSG_DEBUG("in scanShifts");
 
@@ -203,7 +201,7 @@ namespace Trk {
 
     // loop over AlignModules
     int imod(0);
-    for (std::vector<const AlignModule*>::const_iterator moduleIt=alignModules.begin();
+    for (std::vector<AlignModule*>::const_iterator moduleIt=alignModules.begin();
    moduleIt!=alignModules.end(); ++moduleIt,imod++) {
 
       // loop over AlignPar
@@ -262,7 +260,10 @@ namespace Trk {
     const Trk::Track* trackForRefit =
       (m_removeScatteringBeforeRefit) ? alignTrack->trackWithoutScattering():
       dynamic_cast<const Trk::Track*>(alignTrack);
-    if (!trackForRefit) ATH_MSG_ERROR("no track for refit!");
+    if (!trackForRefit) {
+      ATH_MSG_ERROR("no track for refit!");
+      return false;
+    }
 
     const Track* refittedTrack = m_fitter->alignmentFit( alignCache,
             *trackForRefit,
@@ -270,7 +271,7 @@ namespace Trk {
             m_particleHypothesis);
 
     if (!refittedTrack) {
-      msg(MSG::WARNING)  << "initial track refit failed" << endmsg;
+      ATH_MSG_WARNING( "initial track refit failed" );
       return false;
     }
     else
@@ -314,7 +315,7 @@ namespace Trk {
     }
     if (imeas!=NMEAS) {
       msg(MSG::ERROR)<<"problem with nmeas, imeas="<<imeas<<", NMEAS="<<NMEAS<<endmsg;
-      exit(3);
+      throw std::runtime_error("Error in ShiftingDerivCalcTool::setUnshiftedResiduals");
     }
     alignTrack->setResidualVector(m_unshiftedResiduals);
 
@@ -331,12 +332,12 @@ bool ShiftingDerivCalcTool::setDerivatives(AlignTrack* alignTrack)
 
   // loop over AlignTSOSCollection,
   // find modules that are in the AlignModuleList,
-  std::vector<const AlignModule*> alignModules;
-  for (AlignTSOSCollection::const_iterator atsosItr=alignTrack->firstAtsos();
+  std::vector<AlignModule*> alignModules;
+  for (AlignTSOSCollection::iterator atsosItr=alignTrack->firstAtsos();
       atsosItr != alignTrack->lastAtsos(); ++atsosItr) {
 
     ATH_MSG_VERBOSE("getting module");
-    const AlignModule* module=(*atsosItr)->module();
+    AlignModule* module=(*atsosItr)->module();
     if (module)
       ATH_MSG_VERBOSE("have ATSOS for module "<<module->identify());
     else
@@ -366,10 +367,10 @@ bool ShiftingDerivCalcTool::setDerivatives(AlignTrack* alignTrack)
   // Determine derivatives from shifting these modules
   std::vector<AlignModuleDerivatives> * derivatives = new std::vector<AlignModuleDerivatives>;
   std::vector<AlignModuleDerivatives> * derivativeErr = new std::vector<AlignModuleDerivatives>;
-  std::vector<std::pair<const AlignModule*, std::vector<double> > > * actualSecondDerivatives =
-      new std::vector<std::pair<const AlignModule*, std::vector<double> > >;
+  std::vector<std::pair<AlignModule*, std::vector<double> > > * actualSecondDerivatives =
+      new std::vector<std::pair<AlignModule*, std::vector<double> > >;
   deleteChi2VAlignParam();
-  for (std::vector<const AlignModule*>::const_iterator moduleIt=alignModules.begin();
+  for (std::vector<AlignModule*>::const_iterator moduleIt=alignModules.begin();
     moduleIt!=alignModules.end(); ++moduleIt) {
 
     ATH_MSG_DEBUG("finding derivatives for module "<<(**moduleIt).identify());
@@ -495,7 +496,7 @@ bool ShiftingDerivCalcTool::setDerivatives(AlignTrack* alignTrack)
 //________________________________________________________________________
 Amg::VectorX ShiftingDerivCalcTool::getDerivatives(
               AlignTrack* alignTrack,
-              int ipar, const AlignPar* alignPar,
+              int ipar, AlignPar* alignPar,
               Amg::VectorX& derivativeErr,
               bool& resetIPar,
               double& actualSecondDeriv)
@@ -510,7 +511,7 @@ Amg::VectorX ShiftingDerivCalcTool::getDerivatives(
   if (!m_fitter)
     ATH_MSG_ERROR("set m_fitter before calling getDerivatives (by calling setUnshiftedResiduals)");
 
-  const AlignModule* module=alignPar->alignModule();
+  AlignModule* module=alignPar->alignModule();
 
   // set derivatives for 2 shifts up and 2 shifts down
   const int NFITS = m_nFits;
@@ -651,7 +652,7 @@ Amg::VectorX ShiftingDerivCalcTool::getDerivatives(
     AlignTSOSCollection::const_iterator atsosItr=alignTrack->firstAtsos();
     for (; atsosItr != alignTrack->lastAtsos(); ++atsosItr) {
       if (!(*atsosItr)->isValid()) continue;
-      for (vector<Residual>::const_iterator itRes=(**atsosItr).firstResidual();
+      for (std::vector<Residual>::const_iterator itRes=(**atsosItr).firstResidual();
            itRes!=(**atsosItr).lastResidual();++itRes,++imeas) {
 
         if (refittedTrack) {
@@ -675,7 +676,7 @@ Amg::VectorX ShiftingDerivCalcTool::getDerivatives(
   AlignTSOSCollection::const_iterator aatsosItr=alignTrack->firstAtsos();
   for (; aatsosItr != alignTrack->lastAtsos(); ++aatsosItr) {
     if (!(*aatsosItr)->isValid()) continue;
-    for (vector<Residual>::const_iterator itRes=(**aatsosItr).firstResidual();
+    for (std::vector<Residual>::const_iterator itRes=(**aatsosItr).firstResidual();
          itRes!=(**aatsosItr).lastResidual();++itRes,++iimeas) {
       for (int ifit=0;ifit<NFITS;ifit++) {
         ATH_MSG_DEBUG("["<<ifit<<"]["<<iimeas<<"]   res="<<residuals[ifit][iimeas]<<
@@ -810,7 +811,7 @@ Amg::VectorX ShiftingDerivCalcTool::getDerivatives(
 
         pave->AddText(measType.str().c_str());
 
-        stringstream firstderivtxt,secndderivtxt,aptxt,chi2txt;
+        std::stringstream firstderivtxt,secndderivtxt,aptxt,chi2txt;
         firstderivtxt<<fit->GetParameter(1)<<" +/- "<<fit->GetParError(1);
         secndderivtxt<<fit->GetParameter(2)<<" +/- "<<fit->GetParError(2);
         aptxt  <<"alignPar "<<alignPar->paramType()<<", RIO in "<<(*atsosItr)->identify();
@@ -879,16 +880,13 @@ double ShiftingDerivCalcTool::shiftSize(const AlignPar* alignPar) const {
 //________________________________________________________________________
 bool ShiftingDerivCalcTool::setResidualCovMatrix(AlignTrack* alignTrack) const
 {
-  Amg::MatrixX* pW = new Amg::MatrixX(alignTrack->nAlignTSOSMeas(),alignTrack->nAlignTSOSMeas());
-  //AmgSymMatrix* pW = new AmgSymMatrix(alignTrack->nAlignTSOSMeas());
-  Amg::MatrixX& W = *pW;
+  Amg::MatrixX W(alignTrack->nAlignTSOSMeas(),alignTrack->nAlignTSOSMeas());
 
   if (alignTrack->localErrorMatrixInv()) {
     ATH_MSG_ERROR("Need to assign this matrix correctly: ShiftingDerivCalcTool.cxx:888");
     W = *(alignTrack->localErrorMatrixInv());
     //W.assign(*(alignTrack->localErrorMatrixInv()));
   } else{
-    delete pW;
     return false;
   }
   ATH_MSG_DEBUG("W: "<<W);
@@ -912,11 +910,9 @@ bool ShiftingDerivCalcTool::setResidualCovMatrix(AlignTrack* alignTrack) const
   }
 
   if (Wisvalid)
-  alignTrack->setWeightMatrix(pW);
+  alignTrack->setWeightMatrix(new Amg::MatrixX(W));
 
-  Amg::MatrixX* pWfirst=new Amg::MatrixX(*pW);
-  alignTrack->setWeightMatrixFirstDeriv(pWfirst);
-  delete pW;
+  alignTrack->setWeightMatrixFirstDeriv(new Amg::MatrixX(std::move(W)));
 
   return true;
 }

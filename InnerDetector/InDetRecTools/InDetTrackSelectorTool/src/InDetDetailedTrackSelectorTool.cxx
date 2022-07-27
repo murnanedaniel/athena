@@ -13,7 +13,7 @@
 #include "TrkTrackSummary/TrackSummary.h"
 #include "TrkParticleBase/TrackParticleBase.h"
 #include "InDetRecToolInterfaces/ITrtDriftCircleCutTool.h"
-#include "InDetRecToolInterfaces/IInDetTestBLayerTool.h"
+#include "InDetRecToolInterfaces/IInDetTestPixelLayerTool.h"
 
 #include "xAODTracking/TrackParticle.h"
 #include "xAODTracking/Vertex.h"
@@ -39,9 +39,10 @@ namespace InDet
     , m_trackSumTool("Trk::TrackSummaryTool", this)
     , m_extrapolator("Trk::Extrapolator", this)
     , m_trtDCTool("InDet::InDetTrtDriftCircleCutTool", this)
-    , m_inDetTestBLayerTool("", this)
+    , m_inDetTestPixelLayerTool("", this)
     , m_trackSumToolAvailable(true)
     , m_usePtDependentCuts(false)
+    , m_useEventInfoBs(false)
 
 
   {
@@ -106,17 +107,42 @@ namespace InDet
     declareProperty("TrackSummaryTool"   , m_trackSumTool);
     declareProperty("Extrapolator"       , m_extrapolator);
     declareProperty("TrtDCCutTool"       , m_trtDCTool);
-    declareProperty("InDetTestBLayerTool", m_inDetTestBLayerTool);
+    declareProperty("InDetTestPixelLayerTool", m_inDetTestPixelLayerTool);
     
    
     declareProperty("UsePtDependentCuts", m_usePtDependentCuts = false);  
     declareProperty("PtBenchmarks"      , m_ptBenchmarks);  
-    declareProperty("SCTCutValues"      , m_nSCTValues);  
+    declareProperty("SCTCutValues"      , m_nSCTValues);
+    declareProperty("UseEventInfoBS"    , m_useEventInfoBs);
+  }
+
+  Trk::Vertex* InDetDetailedTrackSelectorTool::getBeamSpot(const EventContext& ctx) const
+  {
+    if(m_useEventInfoBs){
+      SG::ReadHandle<xAOD::EventInfo> evt(m_eventInfo_key, ctx);
+      if (evt.isValid()) {
+        InDet::BeamSpotData temp(evt->beamStatus(), evt->beamPosX(), evt->beamPosY(), evt->beamPosZ(),
+                                 evt->beamPosSigmaX(), evt->beamPosSigmaY(), evt->beamPosSigmaZ(),
+                                 evt->beamTiltXZ(), evt->beamTiltYZ(), evt->beamPosSigmaXY());
+        return new Trk::RecVertex(temp.beamVtx());
+      } else {
+        ATH_MSG_WARNING( " Cannot get beamSpot center from xAOD::EventInfo. Using (0,0,0)... " );
+        return new Trk::Vertex(Amg::Vector3D(0,0,0));
+      }
+    }else{
+      SG::ReadCondHandle<InDet::BeamSpotData> beamSpotHandle { m_beamSpotKey, ctx };
+      if (beamSpotHandle.isValid()) {
+        return new Trk::RecVertex(beamSpotHandle->beamVtx());
+      } else {
+        ATH_MSG_WARNING( " Cannot get beamSpot center from BeamSpotData. Using (0,0,0)... " );
+        return new Trk::Vertex(Amg::Vector3D(0,0,0));
+      }
+    }
   }
 
   // ---------------------------------------------------------------------
   InDetDetailedTrackSelectorTool::~InDetDetailedTrackSelectorTool()
-  {}
+  = default;
   
   // ---------------------------------------------------------------------
   StatusCode  
@@ -131,7 +157,8 @@ namespace InDet
 	    }
     } 
     ATH_CHECK( m_extrapolator.retrieve() );
-    ATH_CHECK(m_beamSpotKey.initialize());
+    ATH_CHECK(m_beamSpotKey.initialize(!m_useEventInfoBs));
+    ATH_CHECK(m_eventInfo_key.initialize(m_useEventInfoBs));
     if (m_useEtaDepententMinHitTrt || m_useEtaDepententMinHitTrtWithOutliers){
 	    if(m_trtDCTool.empty()) {
 	      ATH_MSG_ERROR(" Eta delendent cut on number of TRT hits requested but TrtDCCutTool not specified. ");
@@ -193,14 +220,7 @@ namespace InDet
     const Trk::Vertex* myVertex=vertex;
     //in case no Vertex is provided by the user, beam position will be used if available
     if (myVertex==nullptr) {
-      //ATH_MSG_DEBUG( "No vertex given, using beam spot or 0,0,0" );
-      SG::ReadCondHandle<InDet::BeamSpotData> beamSpotHandle { m_beamSpotKey };
-      if (beamSpotHandle.isValid()) {
-        myVertex=new Trk::RecVertex(beamSpotHandle->beamVtx());
-      } else {
-        ATH_MSG_WARNING( " Cannot get beamSpot center from BeamSpotData. Using (0,0,0)... " );
-        myVertex=new Trk::Vertex(Amg::Vector3D(0,0,0));
-      }
+      myVertex = getBeamSpot(Gaudi::Hive::currentContext());
     }
     Trk::PerigeeSurface perigeeSurface(myVertex->position());
     const Trk::TrackParameters *firstmeaspar=nullptr;
@@ -370,13 +390,7 @@ namespace InDet
     const Trk::Perigee* extrapolatedPerigee=dynamic_cast<const Trk::Perigee*>(definintParameters);
     const Trk::Vertex* myVertex=vertex;
     if (vertex==nullptr) {
-      SG::ReadCondHandle<InDet::BeamSpotData> beamSpotHandle { m_beamSpotKey };
-      if (beamSpotHandle.isValid()) {
-        myVertex=new Trk::RecVertex(beamSpotHandle->beamVtx());
-      } else {
-        ATH_MSG_WARNING( " Cannot get beamSpot center from BeamSpotData. Using (0,0,0)... " );
-        myVertex=new Trk::Vertex(Amg::Vector3D(0,0,0));
-      }
+      myVertex = getBeamSpot(Gaudi::Hive::currentContext());
     }
     Trk::PerigeeSurface perigeeSurface(myVertex->position());
     const Trk::TrackParameters *firstmeaspar=nullptr;
@@ -439,9 +453,26 @@ namespace InDet
   Amg::Vector3D InDetDetailedTrackSelectorTool::getPosOrBeamSpot(const xAOD::Vertex* vertex) const
   {
     if(vertex) return vertex->position();
-    SG::ReadCondHandle<InDet::BeamSpotData> beamSpotHandle { m_beamSpotKey };
-    if(beamSpotHandle.isValid()) return beamSpotHandle->beamVtx().position();
-    else return Amg::Vector3D(0,0,0);
+    if(m_useEventInfoBs){
+      SG::ReadHandle<xAOD::EventInfo> evt(m_eventInfo_key);
+      if (evt.isValid()) {
+        InDet::BeamSpotData temp(evt->beamStatus(), evt->beamPosX(), evt->beamPosY(), evt->beamPosZ(),
+                                 evt->beamPosSigmaX(), evt->beamPosSigmaY(), evt->beamPosSigmaZ(),
+                                 evt->beamTiltXZ(), evt->beamTiltYZ(), evt->beamPosSigmaXY());
+        return temp.beamVtx().position();
+      } else {
+        ATH_MSG_WARNING( " Cannot get beamSpot center from xAOD::EventInfo. Using (0,0,0)... " );
+        return Amg::Vector3D(0,0,0);
+      }
+    }else{
+      SG::ReadCondHandle<InDet::BeamSpotData> beamSpotHandle { m_beamSpotKey };
+      if (beamSpotHandle.isValid()) {
+        return beamSpotHandle->beamVtx().position();
+      } else {
+        ATH_MSG_WARNING( " Cannot get beamSpot center from BeamSpotData. Using (0,0,0)... " );
+        return Amg::Vector3D(0,0,0);
+      }
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -488,6 +519,8 @@ namespace InDet
       int nhp = getCount(tp,xAOD::numberOfPixelHoles );
       int nhs = getCount(tp,xAOD::numberOfSCTHoles );
       int ndhs = getCount(tp,xAOD::numberOfSCTDoubleHoles);
+      bool eiph = (getCount(tp,xAOD::expectInnermostPixelLayerHit)==1);
+
       //**-----------------------------------------------------------------------
       if(m_usePtDependentCuts) {
 	      double pt = tp.pt();
@@ -512,11 +545,8 @@ namespace InDet
     
       if(nb == 0 && nb < m_nHitBLayer) {
         ATH_MSG_DEBUG("Track rejected because of nHitBLayer "<<nb<<" < "<<m_nHitBLayer);
-        if(m_inDetTestBLayerTool.empty()) {
-          ATH_MSG_DEBUG("and no blayer tool configured, so will not try to recover track");
-          return false;
-        } else if (m_inDetTestBLayerTool->expectHitInBLayer(&perigee)) {
-          ATH_MSG_DEBUG("and track rejected because of Number of b-layer hits ACCOUNTING for those expected") ;
+	if (eiph) {
+          ATH_MSG_DEBUG("and track rejected because at least one hit is expected in the innermost pixel layer") ;
           return false;
         }else  ATH_MSG_DEBUG("recovered track as no b-layer expected") ;
       }//end of checking the b-layer
@@ -923,11 +953,11 @@ namespace InDet
     
     if(nb == 0 && nb < m_nHitBLayer) {
       ATH_MSG_DEBUG("Track rejected because of nHitBLayer "<<nb<<" < "<<m_nHitBLayer);
-      if(m_inDetTestBLayerTool.empty()) {
+      if(m_inDetTestPixelLayerTool.empty()) {
 	ATH_MSG_DEBUG("and no blayer tool configured, so will not try to recover track");
 	return false;
-      } else if (m_inDetTestBLayerTool->expectHitInBLayer(track)) {
-	ATH_MSG_DEBUG("and track rejected because of Number of b-layer hits ACCOUNTING for those expected") ;
+      } else if (m_inDetTestPixelLayerTool->expectHitInInnermostPixelLayer(track)) {
+	ATH_MSG_DEBUG("and track rejected because at least one hit is expected in the innermost pixel layer") ;
 	return false;
       }else  ATH_MSG_DEBUG("recovered track as no b-layer expected") ;
     }//end of checking the b-layer

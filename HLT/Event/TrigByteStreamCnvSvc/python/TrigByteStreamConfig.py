@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
@@ -9,6 +9,10 @@ from SGComps.SGInputLoaderConfig import SGInputLoaderCfg
 
 def getTrigByteStreamInputSvc(name='ByteStreamInputSvc'):
     svc = CompFactory.TrigByteStreamInputSvc(name)
+
+    # Enable checking the CTP ROB with module ID 1 (the RoIB ROB), ATR-25217
+    svc.CheckCTPFragmentModuleID = 1  # ROB ID 0x770001
+
     svc.MonTool = GenericMonitoringTool('MonTool', HistPath='HLTFramework/'+name)
     svc.MonTool.defineHistogram('L1Result_NumROBs', path='EXPERT', type='TH1F',
                                 title='Number of ROBs received in L1 result;Number of ROBs;Events',
@@ -114,7 +118,6 @@ def TrigByteStreamCfg(flags, type_names=[]):
     proxy.ProviderNames += [address_provider.name]
     acc.addService(proxy)
 
-    loader_type_names = [(t.split("/")[0], 'StoreGateSvc+'+t.split("/")[1]) for t in address_provider.TypeNames]
-    acc.merge(SGInputLoaderCfg(flags, Load=loader_type_names, FailIfNoProxy=True))
+    acc.merge(SGInputLoaderCfg(flags, Load=address_provider.TypeNames, FailIfNoProxy=True))
 
     return acc

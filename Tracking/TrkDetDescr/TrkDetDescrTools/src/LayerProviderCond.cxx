@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////////////////////////////////////////////////////////////
@@ -28,7 +28,7 @@ Trk::LayerProviderCond::LayerProviderCond(const std::string& t,
 }
 
 // destructor
-Trk::LayerProviderCond::~LayerProviderCond() {}
+Trk::LayerProviderCond::~LayerProviderCond() = default;
 
 // initialize
 StatusCode
@@ -41,37 +41,36 @@ Trk::LayerProviderCond::initialize()
 }
 
 /** LayerBuilderCond interface method - returning the central layers */
-std::pair<EventIDRange, const std::vector<Trk::Layer*>>
-Trk::LayerProviderCond::centralLayers(const EventContext& ctx) const
+const std::vector<Trk::Layer*>
+Trk::LayerProviderCond::centralLayers(const EventContext& ctx,
+                                      SG::WriteCondHandle<TrackingGeometry>& whandle) const
 {
   // central layers
   std::vector<Trk::Layer*> cLayers;
   // retrieving the cylinder layers from the layer builder
-  std::pair<EventIDRange, const std::vector<Trk::CylinderLayer*>*>
-    cylinderLayersPair = m_layerBuilder->cylindricalLayers(ctx);
-  const auto* cylinderLayers = cylinderLayersPair.second;
+  std::unique_ptr<const std::vector<Trk::CylinderLayer*> >
+    cylinderLayers = m_layerBuilder->cylindricalLayers(ctx, whandle);
   // loop over it and push into the return vector;
   if (cylinderLayers) {
     for (Trk::CylinderLayer* cL : (*cylinderLayers))
       cLayers.push_back(cL);
   }
-  // memory cleanup
-  delete cylinderLayers;
   // and return
-  return std::make_pair(cylinderLayersPair.first, cLayers);
+  return cLayers;
 }
 
 /** LayerBuilderCond interface method - returning the layers at negative side */
-std::tuple<EventIDRange, const std::vector<Trk::Layer*>, const std::vector<Trk::Layer*> > Trk::LayerProviderCond::endcapLayer(const EventContext& ctx) const
+std::pair<const std::vector<Trk::Layer*>, const std::vector<Trk::Layer*> >
+Trk::LayerProviderCond::endcapLayer(const EventContext& ctx,
+                                    SG::WriteCondHandle<TrackingGeometry>& whandle) const
 {
   // get the disc layers
   std::vector<Trk::Layer*> dLayers_pos;
   std::vector<Trk::Layer*> dLayers_neg;
   // retrieving the cylinder layers from the layer builder
-  std::pair<EventIDRange, const std::vector<Trk::DiscLayer*>*> discLayersPair =
-    m_layerBuilder->discLayers(ctx);
+  std::unique_ptr<const std::vector<Trk::DiscLayer*> > discLayers =
+    m_layerBuilder->discLayers(ctx, whandle);
 
-    const auto* discLayers = discLayersPair.second;
   // loop and fill either cache or dLayers
   if (discLayers) {
     // loop over and push into the return/cache vector
@@ -84,10 +83,8 @@ std::tuple<EventIDRange, const std::vector<Trk::Layer*>, const std::vector<Trk::
           dLayers_neg.push_back(dL);
     }
   }
-  // memory cleanup
-  delete discLayers;
   // and return
-  return std::make_tuple(discLayersPair.first, dLayers_pos, dLayers_neg);
+  return std::make_pair(dLayers_pos, dLayers_neg);
 }
 
 const std::string&

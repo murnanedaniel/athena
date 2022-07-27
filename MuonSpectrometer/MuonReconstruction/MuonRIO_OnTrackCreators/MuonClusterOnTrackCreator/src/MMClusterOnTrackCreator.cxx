@@ -83,7 +83,8 @@ const Muon::MuonClusterOnTrack* Muon::MMClusterOnTrackCreator::correct(const Trk
 }
 
 const Muon::MuonClusterOnTrack* Muon::MMClusterOnTrackCreator::calibratedCluster(const Trk::PrepRawData& RIO,
-                                                                                 const Amg::Vector3D& GP) const {
+                                                                                 const Amg::Vector3D& GP,
+                                                                                 const Amg::Vector3D& GD) const {
     MuonClusterOnTrack* cluster = nullptr;
 
     if (!m_idHelperSvc->isMM(RIO.identify())) {
@@ -123,8 +124,8 @@ const Muon::MuonClusterOnTrack* Muon::MMClusterOnTrackCreator::calibratedCluster
     }
     positionAlongStrip = lp[Trk::locY];
 
-    /// correct the local x-coordinate for the stereo angle (stereo strips only)
-    /// and for as-built conditions (eta and stereo strips), if enabled.
+    /// correct the local x-coordinate for the stereo angle (stereo strips only),
+    /// as-built conditions and b-lines (eta and stereo strips), if enabled.
     /// note: there's no point in correcting the seeded y-coordinate.
     Amg::Vector3D localposition3D;
     const MuonGM::MMReadoutElement* mmEL = dynamic_cast<const MuonGM::MMReadoutElement*>(EL);
@@ -135,7 +136,7 @@ const Muon::MuonClusterOnTrack* Muon::MMClusterOnTrackCreator::calibratedCluster
     /// calibrate the input
     const MMPrepData* MClus = dynamic_cast<const MMPrepData*>(&RIO);
     std::vector<NSWCalib::CalibratedStrip> calibratedStrips;
-    StatusCode sc = m_calibTool->calibrateClus(MClus, GP, calibratedStrips);
+    StatusCode sc = m_calibTool->calibrateClus(Gaudi::Hive::currentContext(), MClus, GP, calibratedStrips);
     if (sc != StatusCode::SUCCESS) {
         ATH_MSG_WARNING("Could not calibrate the MM Cluster in the RIO on track creator");
         return cluster;
@@ -147,7 +148,7 @@ const Muon::MuonClusterOnTrack* Muon::MMClusterOnTrackCreator::calibratedCluster
     localposition2D[Trk::locY] = 0.0;
 
     /// calibrate the cluster position along the precision coordinate
-    sc = m_clusterBuilderTool->getCalibratedClusterPosition(MClus, calibratedStrips, localposition2D, loce);
+    sc = m_clusterBuilderTool->getCalibratedClusterPosition(MClus, calibratedStrips, GD.theta(), localposition2D, loce);
     if (sc != StatusCode::SUCCESS) {
         ATH_MSG_WARNING("Could not calibrate the MM Cluster in the RIO on track creator");
         return cluster;

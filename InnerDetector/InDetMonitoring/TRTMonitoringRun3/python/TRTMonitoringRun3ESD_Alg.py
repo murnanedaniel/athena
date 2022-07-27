@@ -1,5 +1,5 @@
 #
-#  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+#  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #
 '''@file TRTMonitoringRun3ESD_Alg.py
 @author N. Belyaev
@@ -18,8 +18,13 @@ def TRTMonitoringRun3ESD_AlgConfig(inputFlags):
     helper = AthMonitorCfgHelper(inputFlags, 'TRTMonitoringCfg')
 
     from AthenaConfiguration.ComponentFactory import CompFactory
+    have_trt_phase = inputFlags.InDet.doTRTPhase  or 'TRT_Phase' in inputFlags.Input.Collections
     algTRTMonitoringRun3ESD = helper.addAlgorithm(CompFactory.TRTMonitoringRun3ESD_Alg,
-                                               'AlgTRTMonitoringRun3')
+                                                  'AlgTRTMonitoringRun3',
+                                                  ComTimeObjectName = 'TRT_Phase' if have_trt_phase else '')
+
+    from InDetConfig.InDetTrackSelectionToolConfig import InDetTrackSelectionTool_TightPrimary_Cfg
+    algTRTMonitoringRun3ESD.TrackSelectionTool = result.popToolsAndMerge(InDetTrackSelectionTool_TightPrimary_Cfg(inputFlags))
 
     # trigger flag
     if not inputFlags.DQ.triggerDataAvailable:
@@ -35,8 +40,8 @@ def TRTMonitoringRun3ESD_AlgConfig(inputFlags):
     result.merge(addFoldersSplitOnline(inputFlags, "TRT","/TRT/Onl/Calib/RT","/TRT/Calib/RT",className="TRTCond::RtRelationMultChanContainer"))
     result.merge(addFoldersSplitOnline(inputFlags, "TRT","/TRT/Onl/Calib/T0","/TRT/Calib/T0",className="TRTCond::StrawT0MultChanContainer"))
 
-    from InDetConfig.TrackingCommonConfig import InDetTrackSummaryToolCfg
-    algTRTMonitoringRun3ESD.TrackSummaryTool = result.getPrimaryAndMerge(InDetTrackSummaryToolCfg(inputFlags))
+    from TrkConfig.TrkTrackSummaryToolConfig import InDetTrackSummaryToolCfg
+    algTRTMonitoringRun3ESD.TrackSummaryTool = result.popToolsAndMerge(InDetTrackSummaryToolCfg(inputFlags))
 
 #     # To run job only with ID
 #    if hasattr(inputFlags, "Detector") and hasattr(inputFlags.Detector, "GeometryMuon") and hasattr(inputFlags.Detector, "GeometryID"):
@@ -217,10 +222,6 @@ def TRTMonitoringRun3ESD_AlgConfig(inputFlags):
     return result
 
 if __name__ == '__main__':
-    # Setup the Run III behavior
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior = 1
-
     # Setup logs
     from AthenaCommon.Logging import log
     from AthenaCommon.Constants import DEBUG
@@ -228,9 +229,8 @@ if __name__ == '__main__':
 
     # Set the Athena configuration flags
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
-    nightly = '/afs/cern.ch/work/n/nbelyaev/public/Datafiles/'
-    file = 'data18_13TeV.00349944.physics_Main.daq.ESD._lb0244._f1138._0001.root'
-    ConfigFlags.Input.Files = [nightly+file]
+    file = '/afs/cern.ch/work/y/ysmirnov/public/NikitasEsdToFeedToTrtMonitoring/data18_13TeV.00349944.physics_Main.daq.ESD._lb0244._f1138._0001.root'
+    ConfigFlags.Input.Files = [file]
     ConfigFlags.Input.isMC = False
     ConfigFlags.Output.HISTFileName = 'TRTMonitoringRun3_ToolOutput.root'
     ConfigFlags.GeoModel.Align.Dynamic = False

@@ -73,7 +73,7 @@ namespace MuonCombined {
 
         struct MaximumData {
             MaximumData(const Muon::MuonSystemExtension::Intersection& intersection_, const MuonHough::MuonLayerHough::Maximum* maximum_,
-                        std::vector<std::shared_ptr<const Muon::MuonClusterOnTrack>> phiClusterOnTracks_) :
+                        const std::vector<std::shared_ptr<const Muon::MuonClusterOnTrack>> & phiClusterOnTracks_) :
                 intersection(intersection_), maximum(maximum_), phiClusterOnTracks(phiClusterOnTracks_) {}
             Muon::MuonSystemExtension::Intersection intersection;
             const MuonHough::MuonLayerHough::Maximum* maximum;
@@ -166,7 +166,8 @@ namespace MuonCombined {
                           const ToolHandle<Muon::IMuonSegmentMaker>& segmentMaker) const;
 
         /** associate Hough maxima and associate time measurements */
-        bool extractTimeMeasurements(const Muon::MuonSystemExtension& muonSystemExtension, AssociatedData& associatedData) const;
+        bool extractTimeMeasurements(const EventContext& ctx, const Muon::MuonSystemExtension& muonSystemExtension,
+                                     AssociatedData& associatedData) const;
 
         /** create candidates from the beta seeds */
         bool createCandidates(const AssociatedData& associatedData, CandidateVec& candidates) const;
@@ -182,7 +183,7 @@ namespace MuonCombined {
         bool extractTimeHits(const MaximumData& maximumData, Muon::TimePointBetaFitter::HitVec& hits, const BetaSeed* seed = 0) const;
 
         /** refine candidates: find segments for the given beta */
-        bool refineCandidates(CandidateVec& candidates) const;
+        bool refineCandidates(const EventContext& ctx, CandidateVec& candidates) const;
 
         /** combine reconstruction */
         bool combineCandidates(const EventContext& ctx, const xAOD::TrackParticle& indetTrackParticle, CandidateVec& candidates) const;
@@ -241,10 +242,8 @@ namespace MuonCombined {
         ToolHandle<Trk::ITrackAmbiguityProcessorTool> m_trackAmbibuityResolver{this, "TrackAmbiguityProcessor",
                                                                                "Trk::TrackSelectionProcessorTool/MuonAmbiProcessor"};
         ToolHandle<Muon::IMuonHitTimingTool> m_hitTimingTool{this, "MuonHitTimingTool", "Muon::MuonHitTimingTool/MuonHitTimingTool"};
-        ToolHandle<Muon::IMuonPRDSelectionTool> m_muonPRDSelectionTool{this, "MuonPRDSelectionTool",
-                                                                       "Muon::MuonPRDSelectionTool/MuonPRDSelectionTool"};
-        ToolHandle<Muon::IMuonPRDSelectionTool> m_muonPRDSelectionToolStau{this, "MuonPRDSelectionToolStau",
-                                                                           "Muon::MuonPRDSelectionTool/MuonPRDSelectionToolStau"};
+        ToolHandle<Muon::IMuonPRDSelectionTool> m_muonPRDSelectionTool{this, "MuonPRDSelectionTool", ""};
+        ToolHandle<Muon::IMuonPRDSelectionTool> m_muonPRDSelectionToolStau{this, "MuonPRDSelectionToolStau", ""};
         ToolHandle<Muon::IMdtDriftCircleOnTrackCreator> m_mdtCreator{this, "MdtDriftCircleOnTrackCreator",
                                                                      "Muon::MdtDriftCircleOnTrackCreator/MdtDriftCircleOnTrackCreator"};
         ToolHandle<Muon::IMdtDriftCircleOnTrackCreator> m_mdtCreatorStau{

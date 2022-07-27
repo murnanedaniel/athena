@@ -7,8 +7,7 @@
    and fit quality.
 ***************************************************************************/
 
-#include <cmath>
-#include <iomanip>
+
 #include "GaudiKernel/SystemOfUnits.h"
 #include "TrkDetElementBase/TrkDetElementBase.h"
 #include "TrkExUtils/TrackSurfaceIntersection.h"
@@ -28,6 +27,8 @@
 #include "TrkiPatFitterUtils/FitMeasurement.h"
 #include "TrkiPatFitterUtils/FitParameters.h"
 #include "TrkiPatFitterUtils/MessageHelper.h"
+#include <cmath>
+#include <iomanip>
 
 namespace Trk
 {
@@ -414,7 +415,7 @@ namespace Trk
               break;
             }
             leadingMeas = new FitMeasurement((**r).materialEffectsOnTrack(),
-                                             ParticleMasses().mass[particleHypothesis],
+                                             Trk::ParticleMasses::mass[particleHypothesis],
                                              intersection->position());
           } else {
             // remove leadingOutliers - they will be reinserted wrt the leadingScatterers
@@ -426,7 +427,7 @@ namespace Trk
             }
             leadingMeas = new FitMeasurement((**r).materialEffectsOnTrack()->thicknessInX0(),
                                              -eLoss,
-                                             ParticleMasses().mass[particleHypothesis],
+                                             Trk::ParticleMasses::mass[particleHypothesis],
                                              intersection->position(),
                                              intersection->direction(),
                                              qOverP,
@@ -714,7 +715,7 @@ namespace Trk
     std::unique_ptr<std::vector<const TrackStateOnSurface*>> leadingTSOS = std::make_unique<std::vector<const TrackStateOnSurface*>>();
     leadingTSOS->reserve(extrapolatedTSOS->size());
     double outgoingEnergy = spectrometerParameters.momentum().mag();
-    double particleMass = ParticleMasses().mass[Trk::muon];
+    double particleMass = Trk::ParticleMasses::mass[Trk::muon];
     for (std::vector<const TrackStateOnSurface*>::const_iterator s = extrapolatedTSOS->begin();
          s != extrapolatedTSOS->end();
          ++s) {
@@ -848,7 +849,7 @@ namespace Trk
     }
 
     // allocate material from outside inwards
-    double mass = ParticleMasses().mass[Trk::muon];
+    double mass = Trk::ParticleMasses::mass[Trk::muon];
     MsgStream log(msgSvc(), name());
     const TrackParameters* trackParameters = parameters.trackParameters(log, *measurements.back());
 
@@ -1364,17 +1365,19 @@ namespace Trk
 
       // insert material at measurement surface
       const std::bitset<MaterialEffectsBase::NumberOfMaterialEffectsTypes> typePattern;
-      const Trk::EnergyLoss* energyLoss = nullptr;
-      if (materialEffects->energyLoss()) energyLoss = materialEffects->energyLoss()->clone();
+      std::unique_ptr<Trk::EnergyLoss> energyLoss = nullptr;
+      if (materialEffects->energyLoss()) {
+        energyLoss = std::unique_ptr<Trk::EnergyLoss>(materialEffects->energyLoss()->clone());
+      }
       MaterialEffectsOnTrack* meot = new MaterialEffectsOnTrack(materialEffects->thicknessInX0(),
-                                                                energyLoss,
+                                                                std::move(energyLoss),
                                                                 *(**m).surface(),
                                                                 typePattern);
       const TrackSurfaceIntersection* intersection =
         new TrackSurfaceIntersection((**m).intersection(FittedTrajectory));
       if (++m == measurements.end()) --m;
       m = measurements.insert(m, new FitMeasurement(meot,
-                                                    ParticleMasses().mass[particleHypothesis],
+                                                    Trk::ParticleMasses::mass[particleHypothesis],
                                                     intersection->position()));
       (**m).intersection(FittedTrajectory, intersection);
       (**m).qOverP(materialParameters->parameters()[Trk::qOverP]);
@@ -1440,7 +1443,7 @@ namespace Trk
                         FittedTrajectory).position().z());
 
       m = measurements.insert(m, new FitMeasurement((**s).materialEffectsOnTrack(),
-                                                    ParticleMasses().mass[particleHypothesis],
+                                                    Trk::ParticleMasses::mass[particleHypothesis],
                                                     (**s).trackParameters()->position()));
       const TrackSurfaceIntersection* intersection = new TrackSurfaceIntersection(
         (**s).trackParameters()->position(),
@@ -2123,7 +2126,6 @@ namespace Trk
                                   anyDirection,
                                   false,
                                   particleHypothesis));
-   if (endParameters.get() == outerParameters.get()) throw std::logic_error("Extrapolator returned input parameters.");
 
    if (!endParameters) {
      endParameters = m_extrapolator->extrapolate(ctx,
@@ -2132,9 +2134,7 @@ namespace Trk
                                                  anyDirection,
                                                  false,
                                                  Trk::nonInteracting);
-     if (endParameters.get() == outerParameters.get())
-       throw std::logic_error("Extrapolator returned input parameters.");
-
+     
      if (!endParameters) {
         // failed extrapolation
         m_messageHelper->printWarning(4);
@@ -2240,7 +2240,7 @@ namespace Trk
       std::vector<const TrackStateOnSurface*>::const_reverse_iterator s =
         spectrometerMaterial->rbegin();
       std::vector<FitMeasurement*> material;
-      double particleMass = ParticleMasses().mass[particleHypothesis];
+      double particleMass = Trk::ParticleMasses::mass[particleHypothesis];
       material.reserve(spectrometerMaterial->size());
       std::vector<FitMeasurement*>::iterator m = measurements.begin();
       for (; s != spectrometerMaterial->rend(); ) {
@@ -2285,6 +2285,6 @@ namespace Trk
     ATH_MSG_VERBOSE(" spectrometer: mem management");
     deleteMaterial(spectrometerMaterial, garbage);
 
-    materialAggregation(measurements, ParticleMasses().mass[particleHypothesis]);
+    materialAggregation(measurements, Trk::ParticleMasses::mass[particleHypothesis]);
   }
 } // end of namespace

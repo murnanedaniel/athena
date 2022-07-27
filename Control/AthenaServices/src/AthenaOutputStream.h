@@ -142,12 +142,14 @@ protected:
    /// map to record number of writes per object
    typedef std::map<std::string, unsigned int>  CounterMapType;
    CounterMapType  m_objectWriteCounter;
-   /// Vector of names of AlgTools that are executed by this stream
 
    /// pointer to AthenaOutputStreamTool
    ToolHandle<IAthenaOutputStreamTool> m_streamer;
    /// vector of AlgTools that that are executed by this stream
    ToolHandleArray<IAthenaOutputTool> m_helperTools;
+
+   // flag set by MetaDataStop if OutputSequencer is used with EndEvent
+   bool m_writeMetadataAndDisconnect =  false;
 
    // ------- Event Ranges handling in MT -------
    /// map of filenames assigned to active slots
@@ -223,8 +225,8 @@ private:
    /// tokenize a string based on a substring
    void tokenizeAtSep( std::vector<std::string>&, const std::string&, const std::string& ) const;
 
-   /// Try to match a DataProxy to a vector of strings
-   bool matchKey(const std::vector<std::string>& key, const SG::DataProxy* proxy) const;
+   /// Try to match a DataProxy name to a vector of strings
+   bool matchKey(const std::vector<std::string>& key, const std::string& proxyName) const;
 
    /// Write MetaData for this stream (by default) or for a substream outputFN (in ES mode)
    void writeMetaData( const std::string& outputFN="" );

@@ -150,7 +150,7 @@ def LArRODMonConfigCore(helper, algoinstance,inputFlags, cellDebug=False, dspDeb
 
     #DQMD histos
     dqmd_hist_path='/LAr/DSPMonitoring/DQMD/'
-    darray = helper.addArray([lArDQGlobals.Partitions],larRODMonAlg,"RODMon")
+    darray = helper.addArray([lArDQGlobals.Partitions],larRODMonAlg,"RODMon",topPath='/')
     darray.defineHistogram('Ediff,Erange;DE_ranges', title='E_offline - E_online for all ranges ; E_offline - E_online (MeV) ; Energy range',
                            type='TH2F', path=dqmd_hist_path,
                            xbins=lArDQGlobals.DSP1Energy_Bins, xmin=lArDQGlobals.DSP1Energy_Min, xmax=lArDQGlobals.DSP1Energy_Max,
@@ -184,14 +184,14 @@ def LArRODMonConfigCore(helper, algoinstance,inputFlags, cellDebug=False, dspDeb
                            xbins=lArDQGlobals.FEB_Slot["EMECA"][1], xmin=lArDQGlobals.FEB_Slot["EMECA"][0]-0.5, xmax=lArDQGlobals.FEB_Slot["EMECA"][1]+0.5,
                            ybins=lArDQGlobals.FEB_Feedthrough["EMBA"][1]+1, ymin=lArDQGlobals.FEB_Feedthrough["EMBA"][0]-0.5, ymax=lArDQGlobals.FEB_Feedthrough["EMBA"][1]+0.5)
 
-    darray.defineHistogram('slot,FT;RAW_Out_T_FT_vs_SLOT',title='# of cells with E_offline - E_online > numerical precision ; Slot ; Feedthrough',
+    darray.defineHistogram('slot,FT;RAW_Out_T_FT_vs_SLOT',title='# of cells with T_offline - T_online > numerical precision ; Slot ; Feedthrough',
                            type='TH2I', path=part_hist_path,
                            opt='kAlwaysCreate',
                            weight='weight_t',
                            xbins=lArDQGlobals.FEB_Slot["EMECA"][1], xmin=lArDQGlobals.FEB_Slot["EMECA"][0]-0.5, xmax=lArDQGlobals.FEB_Slot["EMECA"][1]+0.5,
                            ybins=lArDQGlobals.FEB_Feedthrough["EMBA"][1]+1, ymin=lArDQGlobals.FEB_Feedthrough["EMBA"][0]-0.5, ymax=lArDQGlobals.FEB_Feedthrough["EMBA"][1]+0.5)
 
-    darray.defineHistogram('slot,FT;RAW_Out_Q_FT_vs_SLOT',title='# of cells with E_offline - E_online > numerical precision ; Slot ; Feedthrough',
+    darray.defineHistogram('slot,FT;RAW_Out_Q_FT_vs_SLOT',title='# of cells with Q_offline - Q_online > numerical precision ; Slot ; Feedthrough',
                            type='TH2I', path=part_hist_path,
                            opt='kAlwaysCreate',
                            weight='weight_q',
@@ -224,8 +224,6 @@ if __name__=='__main__':
    from AthenaConfiguration.AllConfigFlags import ConfigFlags
    from AthenaCommon.Logging import log
    from AthenaCommon.Constants import DEBUG
-   from AthenaCommon.Configurable import Configurable
-   Configurable.configurableRun3Behavior=1
    log.setLevel(DEBUG)
 
 

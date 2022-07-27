@@ -39,6 +39,8 @@ public:
 
   /// Algorithm execute method.
   virtual StatusCode execute (const EventContext& ctx) const override;
+  virtual bool isReEntrant() const override final { return false; }
+
 
 
 private:
@@ -49,7 +51,7 @@ private:
   SG::WriteCondHandleKey<BunchCrossingCondData> m_outputKey{this, "OutputKey", "BunchCrossingData", "Key of output CDO" };
 
   // Service handle
-  const ServiceHandle<TrigConf::ILVL1ConfigSvc> m_trigConfigSvc{this, "TrigConfigSvc", "", "Trig Config Svc"};
+  const ServiceHandle<TrigConf::ILVL1ConfigSvc> m_trigConfigSvc{this, "TrigConfigSvc", "TrigConf::xAODConfigSvc/xAODConfigSvc", "Trig Config Svc"};
 
   ///internal methods:
   std::vector<bunchTrain_t> findTrains(const std::bitset< BunchCrossingCondData::m_MAX_BCID>& pairsToConsume, const int maxSpacingInTrain, const unsigned minBunchesPerTrain) const;

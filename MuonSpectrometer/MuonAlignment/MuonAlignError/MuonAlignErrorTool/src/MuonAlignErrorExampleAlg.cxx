@@ -1,8 +1,8 @@
 /*
-  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
-#include "MuonAlignErrorTool/MuonAlignErrorExampleAlg.h"
+#include "MuonAlignErrorExampleAlg.h"
 
 #include <iostream>
 
@@ -29,7 +29,7 @@ StatusCode MuonAlignErrorExampleAlg::initialize() {
 StatusCode MuonAlignErrorExampleAlg::execute() {
     StatusCode sc;
     const ::TrackCollection* tracks = nullptr;
-    sc = sgSvc()->retrieve(tracks, "MuonSpectrometerTracks");  // for example, should be a job option
+    sc = evtStore()->retrieve(tracks, "MuonSpectrometerTracks");  // for example, should be a job option
     if (sc.isFailure()) return sc;
 
     // LOOP ON MUON TRACKS //
@@ -41,7 +41,7 @@ StatusCode MuonAlignErrorExampleAlg::execute() {
     return StatusCode::SUCCESS;
 }
 
-void MuonAlignErrorExampleAlg::muonTrack(const Trk::Track* track) const {
+void MuonAlignErrorExampleAlg::muonTrack(const Trk::Track* track) {
     // Compute and verbose the alignment deviations for a given track
 
     ATH_MSG_DEBUG("Processing track with momentum " << track->trackParameters()->front()->momentum().mag() / 1000.

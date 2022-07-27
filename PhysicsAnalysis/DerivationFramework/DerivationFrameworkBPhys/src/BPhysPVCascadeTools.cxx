@@ -11,19 +11,18 @@
 #include "DerivationFrameworkBPhys/LocalVector.h"
 #include "JpsiUpsilonTools/PrimaryVertexRefitter.h"
 #include "HepPDT/ParticleDataTable.hh"
-#include "BeamSpotConditionsData/BeamSpotData.h"
 #include <limits>
 #include <iostream>
 
 DerivationFramework::BPhysPVCascadeTools::BPhysPVCascadeTools(const CascadeTools *cascadeTools) :
-  m_cascadeTools(cascadeTools), m_beamSpotData(nullptr), m_PV_minNTracks(0),
+  m_cascadeTools(cascadeTools), m_eventInfo(nullptr), m_PV_minNTracks(0),
   m_copyAllVertices(true)
 {
 }
 
 DerivationFramework::BPhysPVCascadeTools::BPhysPVCascadeTools(const CascadeTools *cascadeTools,
-                                                const InDet::BeamSpotData* beamSpotSvc) :
-  m_cascadeTools(cascadeTools), m_beamSpotData(beamSpotSvc), m_PV_minNTracks(0),
+                                                const xAOD::EventInfo* eventinfo) :
+  m_cascadeTools(cascadeTools), m_eventInfo(eventinfo), m_PV_minNTracks(0),
   m_copyAllVertices(true)
 {
 }
@@ -152,8 +151,8 @@ void DerivationFramework::BPhysPVCascadeTools::SetMinNTracksInPV(size_t PV_minNT
 }
 //-----------------------------------------------------------------------------
 //
-const Amg::Vector3D& DerivationFramework::BPhysPVCascadeTools::GetBeamSpot() const  noexcept {
-  if(m_beamSpotData) return m_beamSpotData->beamPos();
+Amg::Vector3D DerivationFramework::BPhysPVCascadeTools::GetBeamSpot() const {
+  if(m_eventInfo) return Amg::Vector3D(m_eventInfo->beamPosX(), m_eventInfo->beamPosY(), m_eventInfo->beamPosZ());
   else {
     static const Amg::Vector3D defaultBS(-10000.,-10000.,-10000.);
     return defaultBS;
@@ -262,7 +261,7 @@ StatusCode DerivationFramework::BPhysPVCascadeTools::FillCandwithRefittedVertice
        if (refitPV) {
          size_t pVmax =std::min((size_t)in_PV_max, GoodPVs.size());
          std::vector<const xAOD::Vertex*> refPVvertexes;
-         std::vector<const xAOD::Vertex*> refPVvertexes_toDelete;
+         std::vector<xAOD::Vertex*> refPVvertexes_toDelete;
          std::vector<int> exitCode;
          refPVvertexes.reserve(pVmax);
          refPVvertexes_toDelete.reserve(pVmax);
@@ -275,7 +274,7 @@ StatusCode DerivationFramework::BPhysPVCascadeTools::FillCandwithRefittedVertice
            // when set to false this will return null when a new vertex is not required
 //           ATH_MSG_DEBUG("old PV x " << oldPV->x() << " y " << oldPV->y() << " z " << oldPV->z());
            int exitcode = 0;
-           const xAOD::Vertex* refPV = pvRefitter->refitVertex(oldPV, exclTrk, m_copyAllVertices, &exitcode);
+           xAOD::Vertex* refPV = pvRefitter->refitVertex(oldPV, exclTrk, m_copyAllVertices, &exitcode);
 //           if (refPV) ATH_MSG_DEBUG("ref PV x " << refPV->x() << " y " << refPV->y() << " z " << refPV->z());
            exitCode.push_back(exitcode);
            // we want positioning to match the goodPrimaryVertices
@@ -318,7 +317,7 @@ StatusCode DerivationFramework::BPhysPVCascadeTools::FillCandwithRefittedVertice
                  (refPVvertexes_toDelete.at(index)) ? refPvContainer : pvContainer;
              if(ParentContainer == refPvContainer && !indexesUsed.contains(index)) {
                  // store the new vertex
-                 refPvContainer->push_back(const_cast<xAOD::Vertex*>(refPVvertexes.at(index))); 
+                 refPvContainer->push_back(refPVvertexes_toDelete.at(index));
                  indexesUsed.push_back(index);
              }
              FillBPhysHelper(mom, cov, vtx, refPVvertexes[index],

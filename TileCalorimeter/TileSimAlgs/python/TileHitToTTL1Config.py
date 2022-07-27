@@ -23,6 +23,9 @@ def TileHitToTTL1Cfg(flags, **kwargs):
     from TileConditions.TileInfoLoaderConfig import TileInfoLoaderCfg
     acc.merge( TileInfoLoaderCfg(flags) )
 
+    from TileConditions.TileSamplingFractionConfig import TileSamplingFractionCondAlgCfg
+    acc.merge( TileSamplingFractionCondAlgCfg(flags) )
+
     from TileConditions.TileCablingSvcConfig import TileCablingSvcCfg
     acc.merge(TileCablingSvcCfg(flags))
 
@@ -45,7 +48,7 @@ def TileHitToTTL1Cfg(flags, **kwargs):
             kwargs.setdefault('TileMBTSTTL1Container', flags.Overlay.BkgPrefix + 'TileTTL1MBTS')
         else:
             kwargs.setdefault('TileMBTSTTL1Container', '')
-    elif flags.Common.ProductionStep == ProductionStep.Overlay:
+    elif flags.Common.isOverlay:
         kwargs.setdefault('TileTTL1Container', flags.Overlay.SigPrefix + 'TileTTL1Cnt')
         if flags.Detector.EnableMBTS:
             kwargs.setdefault('TileMBTSTTL1Container', flags.Overlay.SigPrefix + 'TileTTL1MBTS')
@@ -138,8 +141,6 @@ def TileHitToTTL1CosmicsOutputCfg(flags, **kwargs):
 
 if __name__ == "__main__":
 
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior = True
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
     from AthenaConfiguration.TestDefaults import defaultTestFiles
     from AthenaCommon.Logging import log
@@ -152,6 +153,7 @@ if __name__ == "__main__":
     ConfigFlags.IOVDb.GlobalTag = 'OFLCOND-MC16-SDR-16'
     ConfigFlags.Digitization.PileUp = False
     ConfigFlags.Output.RDOFileName = "myRDO.pool.root"
+    ConfigFlags.Exec.MaxEvents = 3
     ConfigFlags.fillFromArgs()
     ConfigFlags.lock()
 
@@ -174,7 +176,7 @@ if __name__ == "__main__":
     acc.printConfig(withDetails = True, summariseProps = True)
     acc.store( open('TileHitToTTL1.pkl','wb') )
 
-    sc = acc.run(maxEvents=3)
+    sc = acc.run()
     # Success should be 0
     import sys
     sys.exit(not sc.isSuccess())

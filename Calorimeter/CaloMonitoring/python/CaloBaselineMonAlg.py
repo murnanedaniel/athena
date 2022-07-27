@@ -193,19 +193,14 @@ def CaloBaselineMonConfig(inputFlags, isTopLevel=True):
 
 if __name__=='__main__':
 
-    # Setup the Run III behavior
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior = 1
-
     # Setup logs
-    from AthenaCommon.Constants import DEBUG
-    from AthenaCommon.Constants import WARNING
+    from AthenaCommon.Constants import DEBUG, WARNING
     from AthenaCommon.Logging import log
     log.setLevel(DEBUG)
 
     # Set the Athena configuration flags
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
-    ConfigFlags.Input.Files = ['/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/OverlayMonitoringRTT/data15_13TeV.00278748.physics_ZeroBias.merge.RAW._lb0384._SFO-ALL._0001.1']
+    ConfigFlags.Input.Files = ['/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/OverlayTests/data15_13TeV.00278748.physics_ZeroBias.merge.RAW._lb0384._SFO-ALL._0001.1']
     #ConfigFlags.Input.isMC = True
     ConfigFlags.Output.HISTFileName = 'CaloBaselineMonOutput.root'
     ConfigFlags.DQ.enableLumiAccess = True

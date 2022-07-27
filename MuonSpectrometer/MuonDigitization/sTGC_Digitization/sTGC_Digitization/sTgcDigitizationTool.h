@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef MUONDIGITIZATION_STGC_DIGITIZATIONTOOL_H
@@ -29,12 +29,14 @@
 #include "MuonSimData/MuonSimDataCollection.h"
 #include "MuonDigitContainer/sTgcDigitContainer.h"
 #include "NSWCalibTools/INSWCalibSmearingTool.h"
+#include "NSWCalibTools/INSWCalibTool.h"
 #include "CLHEP/Random/RandGaussZiggurat.h"
 #include "CLHEP/Random/RandomEngine.h"
 #include "CLHEP/Geometry/Point3D.h"
 #include "CLHEP/Vector/ThreeVector.h"
 #include "AthenaKernel/IAthRNGSvc.h"
 #include "CLHEP/Units/PhysicalConstants.h"
+#include "MuonCondData/NswCalibDbThresholdData.h"
 
 #include "sTGC_Digitization/sTgcDigitMaker.h"
 
@@ -112,6 +114,7 @@ private:
   std::vector<std::unique_ptr<sTGCSimHitCollection>> m_STGCHitCollList{};
 
   ToolHandle<Muon::INSWCalibSmearingTool> m_smearingTool{this,"SmearingTool","Muon::NSWCalibSmearingTool/STgcCalibSmearingTool"};
+  ToolHandle<Muon::INSWCalibTool> m_calibTool{this,"CalibrationTool","Muon::NSWCalibTool/NSWCalibTool"};
 
   SG::WriteHandleKey<sTgcDigitContainer> m_outputDigitCollectionKey{this,"OutputObjectName","sTGC_DIGITS","WriteHandleKey for Output sTgcDigitContainer"}; // name of the output digits
   SG::WriteHandleKey<MuonSimDataCollection> m_outputSDO_CollectionKey{this,"OutputSDOName","sTGC_SDO","WriteHandleKey for Output MuonSimDataCollection"}; // name of the output SDOs
@@ -124,8 +127,11 @@ private:
   Gaudi::Property<std::string> m_rndmEngineName{this,"RndmEngine","MuonDigitization","Random engine name"};
 
   Gaudi::Property<bool> m_onlyUseContainerName{this, "OnlyUseContainerName", true, "Don't use the ReadHandleKey directly. Just extract the container name from it."};
-  SG::ReadHandleKey<sTGCSimHitCollection> m_hitsContainerKey{this, "InputObjectName", "sTGCSensitiveDetector", "name of the input object"};
+  SG::ReadHandleKey<sTGCSimHitCollection> m_hitsContainerKey{this, "InputObjectName", "sTGC_Hits", "name of the input object"};
   std::string m_inputObjectName{""};
+
+  Gaudi::Property<bool> m_useCondThresholds{this, "useCondThresholds", true, "Use conditions data to get VMM charge threshold values"};
+  SG::ReadCondHandleKey<NswCalibDbThresholdData> m_condThrshldsKey {this, "CondThrshldsKey", "NswCalibDbThresholdData", "Key of NswCalibDbThresholdData object containing calibration data (VMM thresholds)"};
 
   Gaudi::Property<int> m_doChannelTypes{this,"doChannelTypes",3};
 
@@ -135,26 +141,22 @@ private:
   Gaudi::Property<float> m_timeWindowStrip{this,"timeWindowStrip",30};
 
   Gaudi::Property<double> m_energyDepositThreshold{this,"energyDepositThreshold",300.0*CLHEP::eV,"Minimum energy deposit for hit to be digitized"};
+  Gaudi::Property<double> m_limitElectronKineticEnergy{this,"limitElectronKineticEnergy",5.0*CLHEP::MeV,"Minimum kinetic energy for electron hit to be digitized"};
 
-  float m_readoutThreshold;
-  float m_neighborOnThreshold;
-  float m_saturation;
+  const float m_chargeThreshold{0.02f};
+
+  const float m_timeJitterElectronicsStrip{2.f}; //ns
+  const float m_timeJitterElectronicsPad{2.f}; //ns
+  const float m_hitTimeMergeThreshold{30.f}; //30ns = resolution of peak finding descriminator
+
   
-  bool m_deadtimeON;
-  bool m_produceDeadDigits;
-
-  float m_deadtimeWire;
-  float m_readtimeStrip;
-  float m_readtimePad;
-  float m_readtimeWire;
-  float m_timeWindowOffsetPad;
-  float m_timeWindowOffsetStrip;
-  float m_bunchCrossingTime;
-  float m_timeJitterElectronicsStrip;
-  float m_timeJitterElectronicsPad;
-  float m_hitTimeMergeThreshold;
-
-  std::map< Identifier, int > m_hitSourceVec;
+  bool m_deadtimeON{true};
+  bool m_produceDeadDigits{false};
+  
+  float m_deadtimeWire{5.f};
+  float m_readtimeStrip{6.25f};
+  float m_readtimePad{6.25f};
+  float m_readtimeWire{6.25f};
 
   void readDeadtimeConfig();
 

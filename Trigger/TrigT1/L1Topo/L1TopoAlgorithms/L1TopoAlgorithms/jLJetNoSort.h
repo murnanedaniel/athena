@@ -1,15 +1,15 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 // jLJetNoSort.h
 // TopoCore
 
-#ifndef L1TOPOALGORITHMS_JLARGERJETNOSORT_H
-#define L1TOPOALGORITHMS_JLARGERJETNOSORT_H
+#ifndef L1TOPOALGORITHMS_JLJETNOSORT_H
+#define L1TOPOALGORITHMS_JLJETNOSORT_H
 
 #include "L1TopoInterfaces/SortingAlg.h"
 #include "L1TopoEvent/TOBArray.h"
-#include "L1TopoEvent/jLargeRJetTOB.h"
+#include "L1TopoEvent/jLJetTOB.h"
 
 #include <iostream>
 #include <vector>
@@ -24,12 +24,12 @@ namespace TCS {
 
       // destructor
       virtual ~jLJetNoSort();
-      virtual TCS::StatusCode initialize();
-      virtual TCS::StatusCode sort(const InputTOBArray & input, TOBArray & output);    
+      virtual TCS::StatusCode initialize() override;
+      virtual TCS::StatusCode sort(const InputTOBArray & input, TOBArray & output) override final;    
     
    private:
    
-      parType_t      m_numberOfjLargeRJets = { 0 };
+      parType_t      m_numberOfjLJets = { 0 };
    
    };
 

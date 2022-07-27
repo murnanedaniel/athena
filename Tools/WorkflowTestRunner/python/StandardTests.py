@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 from typing import List
 
 from .Checks import AODContentCheck, AODDigestCheck, FrozenTier0PolicyCheck
@@ -19,8 +19,11 @@ class QTest(WorkflowTest):
             else:
                 extra_args += " --maxEvents 20"
 
-        if "input" not in extra_args and type == WorkflowType.MCPileUpReco:
-            extra_args += f" --inputHITSFile {input_HITS[run]} --inputRDO_BKGFile ../run_d*/myRDO.pool.root"
+        if type == WorkflowType.MCPileUpReco:
+            if "inputHITSFile" not in extra_args:
+                extra_args += f" --inputHITSFile {input_HITS[run]}"
+            if "inputRDO_BKGFile" not in extra_args:
+                extra_args += " --inputRDO_BKGFile ../run_d*/myRDO.pool.root"
 
         threads = 1
         threads_argument = '--multithreaded'
@@ -38,7 +41,7 @@ class QTest(WorkflowTest):
         # if type == WorkflowType.MCReco:
         #     self.output_checks.append(FrozenTier0PolicyCheck(setup, "RDO", 10))
         self.output_checks.append(FrozenTier0PolicyCheck(setup, "ESD", 10))
-        self.output_checks.append(FrozenTier0PolicyCheck(setup, "AOD", 20))
+        self.output_checks.append(FrozenTier0PolicyCheck(setup, "AOD", 30))
 
         self.digest_checks = []
         if "--CA" not in extra_args:
@@ -132,5 +135,34 @@ class PileUpTest(WorkflowTest):
         self.output_checks = [
             FrozenTier0PolicyCheck(setup, "RDO", 5)
         ]
+
+        super().__init__(ID, run, type, steps, setup)
+
+
+class DerivationTest(WorkflowTest):
+    """Derivations test."""
+
+    def __init__(self, ID: str, run: WorkflowRun, type: WorkflowType, steps: List[str], setup: TestSetup, extra_args: str = "") -> None:
+        if "maxEvents" not in extra_args:
+            extra_args += " --maxEvents 10"
+
+        threads = 2
+        if setup.custom_threads is not None:
+            threads = setup.custom_threads
+
+        self.command = \
+            (f"ATHENA_CORE_NUMBER={threads} Derivation_tf.py --AMIConfig {ID}"
+             " --outputDAODFile myOutput.pool.root"
+             " --formats PHYS"
+             f" --imf False {extra_args}")
+
+        # skip performance checks for now due to CA
+        self.skip_performance_checks = True
+
+        if threads == 0:
+            # does not work with shared writer
+            self.output_checks = [
+                FrozenTier0PolicyCheck(setup, "DAOD_PHYS", 10)
+            ]
 
         super().__init__(ID, run, type, steps, setup)

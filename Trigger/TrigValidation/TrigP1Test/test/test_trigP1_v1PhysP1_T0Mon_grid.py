@@ -1,10 +1,11 @@
 #!/usr/bin/env python
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
-# art-description: Test of P1+Tier0 workflow, runs athenaHLT with PhysicsP1_pp_run3_v1 menu followed by offline reco and monitoring
+# art-description: Test of P1+Tier0 workflow, runs athenaHLT with PhysicsP1_pp_run3_v1 menu followed by offline reco, monitoring and analysis step for EDM monitoring
 # art-type: grid
 # art-athena-mt: 4
 # art-include: master/Athena
+# art-include: 22.0/Athena
 # art-output: *.txt
 # art-output: *.log
 # art-output: log.*
@@ -15,10 +16,13 @@
 # art-output: *perfmon*
 # art-output: prmon*
 # art-output: *.check*
-# art-memory: 7000
 
 from TrigValTools.TrigValSteering import Test, ExecStep, CheckSteps
 from TrigValTools.TrigValSteering.Common import find_file
+from TrigAnalysisTest.TrigAnalysisSteps import add_analysis_steps
+
+# Specify trigger menu once here:
+triggermenu = 'PhysicsP1_pp_run3_v1_HLTReprocessing_prescale'
 
 # HLT step (BS->BS)
 hlt = ExecStep.ExecStep()
@@ -28,7 +32,7 @@ hlt.forks = 1
 hlt.threads = 4
 hlt.concurrent_events = 4
 hlt.input = 'data'
-hlt.args = '-c "setMenu=\'PhysicsP1_pp_run3_v1\';doL1Sim=True;rewriteLVL1=True;"'
+hlt.args = f'-c "setMenu=\'{triggermenu}\';doL1Sim=True;rewriteLVL1=True;"'
 hlt.args += ' -o output'
 hlt.args += ' --dump-config-reload'
 
@@ -42,9 +46,8 @@ filter_bs.args = '-s Main ' + find_file('*_HLTMPPy_output.*.data')
 # Tier-0 reco step (BS->ESD->AOD)
 tzrecoPreExec = ' '.join([
   "from AthenaConfiguration.AllConfigFlags import ConfigFlags;",
-  "ConfigFlags.Trigger.triggerMenuSetup=\'PhysicsP1_pp_run3_v1\';",
+  f"ConfigFlags.Trigger.triggerMenuSetup=\'{triggermenu}\';",
   "ConfigFlags.Trigger.AODEDMSet=\'AODFULL\';",
-  "ConfigFlags.Trigger.enableL1MuonPhase1=True;",
   "ConfigFlags.Trigger.enableL1CaloPhase1=True;",
 ])
 
@@ -67,13 +70,14 @@ tzmon.executable = 'Run3DQTestingDriver.py'
 tzmon.input = ''
 tzmon.args = '--threads=4'
 tzmon.args += ' --dqOffByDefault'
-tzmon.args += ' Input.Files="[\'AOD.pool.root\']" DQ.Steering.doHLTMon=True Trigger.triggerMenuSetup=\'PhysicsP1_pp_run3_v1\''
+tzmon.args += f' Input.Files="[\'AOD.pool.root\']" DQ.Steering.doHLTMon=True Trigger.triggerMenuSetup=\'{triggermenu}\''
 
 # The full test
 test = Test.Test()
 test.art_type = 'grid'
 test.exec_steps = [hlt, filter_bs, tzreco, tzmon]
 test.check_steps = CheckSteps.default_check_steps(test)
+add_analysis_steps(test)
 
 # Overwrite default histogram file name for checks
 for step in [test.get_step(name) for name in ['HistCount', 'RootComp']]:

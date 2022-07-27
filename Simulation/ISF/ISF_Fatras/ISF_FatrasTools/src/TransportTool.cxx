@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////////////////////////////////////////////////////////////
@@ -34,6 +34,8 @@
 
 // AtlasDetDescr
 #include "AtlasDetDescr/AtlasRegion.h"
+#include "TrkEventPrimitives/ParticleHypothesis.h"
+
 
 #include <iostream>
 
@@ -226,7 +228,7 @@ ISF::ISFParticle* iFatras::TransportTool::process( const ISF::ISFParticle& isp, 
   int decayProc = 0;
 
   // beta calculated here for further use in validation
-  double mass = m_particleMasses.mass[pHypothesis];
+  double mass = Trk::ParticleMasses::mass[pHypothesis];
   double mom = isp.momentum().mag();
   double beta = mom/sqrt(mom*mom+mass*mass);
 
@@ -255,7 +257,7 @@ ISF::ISFParticle* iFatras::TransportTool::process( const ISF::ISFParticle& isp, 
 
   // presample interactions if not done already
   Trk::PathLimit pathLim(-1.,0);
-  ISF::MaterialPathInfo* matLimit = isp.getUserInformation() ? isp.getUserInformation()->materialLimit() : nullptr;
+  const ISF::MaterialPathInfo* matLimit = isp.getUserInformation() ? isp.getUserInformation()->materialLimit() : nullptr;
   if (matLimit) {
     pathLim=Trk::PathLimit( matLimit->dMax,matLimit->process);
     pathLim.updateMat(matLimit->dCollected,13.,0.);          // arbitrary Z choice : update MaterialPathInfo
@@ -264,12 +266,10 @@ ISF::ISFParticle* iFatras::TransportTool::process( const ISF::ISFParticle& isp, 
   }
 
   // use extrapolation with path limit - automatic exit at subdetector boundary
-  // NB: don't delete eParameters, it's memory is managed inside the extrapolator
-
   // additional exercise due to the current mismatch in geoID
   Trk::GeometrySignature nextGeoID=static_cast<Trk::GeometrySignature>(isp.nextGeoID());
 
-  const Trk::TrackParameters* eParameters = nullptr;
+  std::unique_ptr<const Trk::TrackParameters> eParameters = nullptr;
 
   // hit creation/energy deposit
   hitVector = (!m_hitsOff) ? new std::vector<Trk::HitInfo> : nullptr;
@@ -277,7 +277,13 @@ ISF::ISFParticle* iFatras::TransportTool::process( const ISF::ISFParticle& isp, 
 
   if ( !charged ) {
 
-    eParameters = processor->transportNeutralsWithPathLimit(inputPar,pathLim,timeLim,Trk::alongMomentum,pHypothesis,hitVector,nextGeoID);
+    eParameters = processor->transportNeutralsWithPathLimit(inputPar,
+                                                            pathLim,
+                                                            timeLim,
+                                                            Trk::alongMomentum,
+                                                            pHypothesis,
+                                                            hitVector,
+                                                            nextGeoID);
 
   } else {
 
@@ -285,15 +291,15 @@ ISF::ISFParticle* iFatras::TransportTool::process( const ISF::ISFParticle& isp, 
       // input covariance matrix
       AmgSymMatrix(5) inputCov;
       inputCov.setZero();
-      const Trk::TrackParameters* measuredInputPar =
+      std::unique_ptr<Trk::TrackParameters> measuredInputPar =
         inputPar.associatedSurface()
           .createUniqueTrackParameters(inputPar.parameters()[0],
                                        inputPar.parameters()[1],
                                        inputPar.parameters()[2],
                                        inputPar.parameters()[3],
                                        inputPar.parameters()[4],
-                                       std::move(inputCov))
-          .release();
+                                       std::move(inputCov));
+
       eParameters = processor->extrapolateWithPathLimit(*measuredInputPar,
                                                         pathLim,
                                                         timeLim,
@@ -301,17 +307,16 @@ ISF::ISFParticle* iFatras::TransportTool::process( const ISF::ISFParticle& isp, 
                                                         pHypothesis,
                                                         hitVector,
                                                         nextGeoID);
-      delete measuredInputPar;
 
     } else {
 
       eParameters = processor->extrapolateWithPathLimit(inputPar,
-							pathLim,
-							timeLim,
-							Trk::alongMomentum,
-							pHypothesis,
-							hitVector,
-							nextGeoID);
+                                                        pathLim,
+                                                        timeLim,
+                                                        Trk::alongMomentum,
+                                                        pHypothesis,
+                                                        hitVector,
+                                                        nextGeoID);
     }
   }
 
@@ -329,9 +334,6 @@ ISF::ISFParticle* iFatras::TransportTool::process( const ISF::ISFParticle& isp, 
       ATH_MSG_VERBOSE( "[ fatras transport ] MS hits processed.");
     }
     // memory cleanup
-    std::vector<Trk::HitInfo>::iterator tParIter    = hitVector->begin();
-    std::vector<Trk::HitInfo>::iterator tParIterEnd = hitVector->end();
-    for ( ; tParIter != tParIterEnd; delete ((*tParIter).trackParms), ++tParIter);
     delete hitVector; hitVector = nullptr;
   }
 
@@ -349,7 +351,7 @@ ISF::ISFParticle* iFatras::TransportTool::process( const ISF::ISFParticle& isp, 
                  (pathLim.process>100 && pathLim.x0Max <= pathLim.l0Collected))) ? pathLim.process : 0;
     int endProcess = eParameters ? 0 : ( dProc > mProc ? dProc : mProc );
 
-    m_validationTool->saveISFParticleInfo(isp,endProcess,eParameters,timeLim.time,pathLim.x0Collected);
+    m_validationTool->saveISFParticleInfo(isp,endProcess,eParameters.get(),timeLim.time,pathLim.x0Collected);
 
   }
 
@@ -360,10 +362,8 @@ ISF::ISFParticle* iFatras::TransportTool::process( const ISF::ISFParticle& isp, 
 									    timeLim.time-isp.timeStamp()) : nullptr;     // update expects time difference
   // free memory
   if ( hitVector ) {
-    for (auto& h : *hitVector) delete h.trackParms;
     delete hitVector;
   }
-  delete eParameters;
 
   if (uisp && m_validationOutput) {
     // save validation info

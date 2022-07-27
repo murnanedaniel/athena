@@ -1,6 +1,6 @@
 """Define methods to construct configured TRT overlay algorithms
 
-Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 """
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
@@ -25,10 +25,14 @@ def TRTOverlayAlgCfg(flags, name="TRTOverlay", **kwargs):
     acc.merge(TRT_ReadoutGeometryCfg(flags))
 
     kwargs.setdefault("SortBkgInput", flags.Overlay.DataOverlay)
-    kwargs.setdefault("BkgInputKey", flags.Overlay.BkgPrefix + "TRT_RDOs")
-    kwargs.setdefault("SignalInputKey", flags.Overlay.SigPrefix + "TRT_RDOs")
-    kwargs.setdefault("SignalInputSDOKey", flags.Overlay.SigPrefix + "TRT_SDO_Map")
+    kwargs.setdefault("BkgInputKey", f"{flags.Overlay.BkgPrefix}TRT_RDOs")
+    kwargs.setdefault("SignalInputKey", f"{flags.Overlay.SigPrefix}TRT_RDOs")
+    kwargs.setdefault("SignalInputSDOKey", f"{flags.Overlay.SigPrefix}TRT_SDO_Map")
     kwargs.setdefault("OutputKey", "TRT_RDOs")
+
+    if not flags.Overlay.DataOverlay:
+        from SGComps.SGInputLoaderConfig import SGInputLoaderCfg
+        acc.merge(SGInputLoaderCfg(flags, [f'TRT_RDO_Container#{kwargs["BkgInputKey"]}']))
 
     # HT hit correction fraction
     kwargs.setdefault("TRT_HT_OccupancyCorrectionBarrel", 0.110)
@@ -36,20 +40,17 @@ def TRTOverlayAlgCfg(flags, name="TRTOverlay", **kwargs):
     kwargs.setdefault("TRT_HT_OccupancyCorrectionBarrelNoE", 0.060)
     kwargs.setdefault("TRT_HT_OccupancyCorrectionEndcapNoE", 0.050)
 
+    from TRT_ConditionsAlgs.TRT_ConditionsAlgsConfig import TRTStrawStatusCondAlgCfg
+    acc.merge(TRTStrawStatusCondAlgCfg(flags))
+
     from InDetConfig.TRT_ElectronPidToolsConfig import TRT_OverlayLocalOccupancyCfg
     kwargs.setdefault("TRT_LocalOccupancyTool", acc.popToolsAndMerge(TRT_OverlayLocalOccupancyCfg(flags)))
-
-    from TRT_ConditionsServices.TRT_ConditionsServicesConfig import TRT_StrawStatusSummaryToolCfg
-    StrawStatusTool = acc.popToolsAndMerge(TRT_StrawStatusSummaryToolCfg(flags))
-    acc.addPublicTool(StrawStatusTool)  # public as it is has many clients to save some memory
-    kwargs.setdefault("TRTStrawSummaryTool", StrawStatusTool)
 
     from RngComps.RandomServices import AthRNGSvcCfg
     kwargs.setdefault("RndmSvc", acc.getPrimaryAndMerge(AthRNGSvcCfg(flags)).name)
 
     # Do TRT overlay
-    alg = CompFactory.TRTOverlay(name, **kwargs)
-    acc.addEventAlgo(alg)
+    acc.addEventAlgo(CompFactory.TRTOverlay(name, **kwargs))
 
     # Setup output
     if flags.Output.doWriteRDO:
@@ -66,7 +67,7 @@ def TRTOverlayAlgCfg(flags, name="TRTOverlay", **kwargs):
     if flags.Output.doWriteRDO_SGNL:
         from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
         acc.merge(OutputStreamCfg(flags, "RDO_SGNL", ItemList=[
-            "TRT_RDO_Container#" + flags.Overlay.SigPrefix + "TRT_RDOs"
+            f"TRT_RDO_Container#{flags.Overlay.SigPrefix}TRT_RDOs"
         ]))
 
     return acc
@@ -80,16 +81,17 @@ def TRTTruthOverlayCfg(flags, name="TRTSDOOverlay", **kwargs):
     if flags.Overlay.DataOverlay:
         kwargs.setdefault("BkgInputKey", "")
     else:
-        kwargs.setdefault("BkgInputKey", flags.Overlay.BkgPrefix + "TRT_SDO_Map")
+        kwargs.setdefault("BkgInputKey", f"{flags.Overlay.BkgPrefix}TRT_SDO_Map")
 
-    kwargs.setdefault("SignalInputKey",
-                      flags.Overlay.SigPrefix + "TRT_SDO_Map")
+    if kwargs["BkgInputKey"]:
+        from SGComps.SGInputLoaderConfig import SGInputLoaderCfg
+        acc.merge(SGInputLoaderCfg(flags, [f'InDetSimDataCollection#{kwargs["BkgInputKey"]}']))
+
+    kwargs.setdefault("SignalInputKey", f"{flags.Overlay.SigPrefix}TRT_SDO_Map")
     kwargs.setdefault("OutputKey", "TRT_SDO_Map")
 
     # Do TRT truth overlay
-    InDetSDOOverlay = CompFactory.InDetSDOOverlay
-    alg = InDetSDOOverlay(name, **kwargs)
-    acc.addEventAlgo(alg)
+    acc.addEventAlgo(CompFactory.InDetSDOOverlay(name, **kwargs))
 
     # Setup output
     if flags.Output.doWriteRDO:
@@ -101,7 +103,7 @@ def TRTTruthOverlayCfg(flags, name="TRTSDOOverlay", **kwargs):
     if flags.Output.doWriteRDO_SGNL:
         from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
         acc.merge(OutputStreamCfg(flags, "RDO_SGNL", ItemList=[
-            "InDetSimDataCollection#" + flags.Overlay.SigPrefix + "TRT_SDO_Map"
+            f"InDetSimDataCollection#{flags.Overlay.SigPrefix}TRT_SDO_Map"
         ]))
 
     return acc
@@ -118,9 +120,11 @@ def TRTOverlayCfg(flags):
     # Add TRT overlay digitization algorithm
     from TRT_Digitization.TRT_DigitizationConfigNew import TRT_OverlayDigitizationBasicCfg
     acc.merge(TRT_OverlayDigitizationBasicCfg(flags))
-    # Add TRT overlay algorithm
-    acc.merge(TRTOverlayAlgCfg(flags))
-    # Add TRT truth overlay
-    acc.merge(TRTTruthOverlayCfg(flags))
+    #if track overlay, only run digitization on the HS input
+    if not flags.Overlay.doTrackOverlay:
+        # Add TRT overlay algorithm
+        acc.merge(TRTOverlayAlgCfg(flags))
+        # Add TRT truth overlay
+        acc.merge(TRTTruthOverlayCfg(flags))
 
     return acc

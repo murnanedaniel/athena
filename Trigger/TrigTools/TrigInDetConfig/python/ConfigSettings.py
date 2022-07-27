@@ -1,10 +1,10 @@
-#  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+#  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 __author__ = "Mark Sutton, Matous Vozak"
 __doc__    = "ConfigSettings"
 __all__    = [ "getInDetTrigConfig" ]
 
-import math 
+import math
 from TrigInDetConfig.ConfigSettingsBase import _ConfigSettingsBase
 from TrigEDMConfig.TriggerEDMRun3 import recordable
 from AthenaCommon.SystemOfUnits import GeV
@@ -42,7 +42,7 @@ class _ConfigSettings_electron( _ConfigSettingsBase ):
       self._keepTrackParameters = True
       self._electronPID         = True
 
-      
+
 class _ConfigSettings_muon( _ConfigSettingsBase ):
    def __init__( self ):
       _ConfigSettingsBase.__init__(self)
@@ -79,6 +79,7 @@ class _ConfigSettings_tau( _ConfigSettingsBase ):
       self._etaHalfWidth    = 0.4
       self._phiHalfWidth    = 0.4
       self._doTRT           = True
+      self._electronPID     = False
       # potential change coming up ...
       # self._minNSiHits_vtx = 6
 
@@ -96,13 +97,15 @@ class _ConfigSettings_tauIso( _ConfigSettingsBase ):
       _ConfigSettingsBase.__init__(self)
       self._name     = "tauIso"
       self._suffix   = "TauIso"
-      self._roi      = "RoiForTauIso"
+      self._roi      = "HLT_Roi_TauIso"
       self._etaHalfWidth   = 0.4
       self._phiHalfWidth   = 0.4
       self._zedHalfWidth   = 7.0
       self._adaptiveVertex = True
+      self._actsVertex     = True
       self._addSingleTrackVertices = True
       self._vertex         = "HLT_IDVertex_Tau"
+      self._electronPID    = False
       # potential change coming up ...
       # self._minNSiHits_vtx = 6
 
@@ -113,6 +116,13 @@ class _ConfigSettings_tauIso( _ConfigSettingsBase ):
          return 'HLT_IDTrack_Tau_IDTrig'
 
 
+# inherit everythiong from the tauIso instance - only
+# the Roi name is changed to protect the innocent
+class _ConfigSettings_tauIsoBDT( _ConfigSettings_tauIso ):
+   def __init__( self ):
+      _ConfigSettings_tauIso.__init__(self)
+      self._roi      = "HLT_Roi_TauIsoBDT"
+
 
 class _ConfigSettings_bjet( _ConfigSettingsBase ):
    def __init__( self ):
@@ -120,6 +130,7 @@ class _ConfigSettings_bjet( _ConfigSettingsBase ):
       self._name     = "bjet"
       self._suffix   = "Bjet"
       self._roi      = "HLT_Roi_Bjet"
+      self._pTmin    = 0.8*GeV
       self._etaHalfWidth    = 0.4
       self._phiHalfWidth    = 0.4
 
@@ -131,6 +142,7 @@ class _ConfigSettings_jetSuper( _ConfigSettingsBase ):
       self._suffix   = "JetSuper"
       self._vertex   = "HLT_IDVertex_JetSuper"
       self._adaptiveVertex = True
+      self._actsVertex     = True
       self._addSingleTrackVertices = True
       self._roi      = "HLT_Roi_JetSuper"
       self._etaHalfWidth = 0.3
@@ -188,8 +200,7 @@ class _ConfigSettings_fullScan( _ConfigSettingsBase ):
       self._roi      = "HLT_Roi_FS"
       self._vertex              = "HLT_IDVertex_FS"
       self._adaptiveVertex      = True
-      # not just yet, still hoping to validate
-      # self._actsVertex          = True
+      self._actsVertex          = True
       # these are being evaluated and may be added
       # self._addSingleTrackVertices = True
       # self._TracksMaxZinterval = 3
@@ -246,6 +257,7 @@ class _ConfigSettings_fullScanUTT( _ConfigSettingsBase ):
       self._RoadWidth       = 5
       self._UseTrigSeedML   = 4
       self._vertex          = "HLT_IDVertex_FS"
+      self._actsVertex      = True
 
 
 class _ConfigSettings_cosmics( _ConfigSettingsBase ):
@@ -342,10 +354,12 @@ class _ConfigSettings_tauLRT( _ConfigSettingsBase ):
       _ConfigSettingsBase.__init__(self)
       self._name     = "tauLRT"
       self._suffix   = "TauLRT"
-      self._roi      = "HLT_Roi_TauCore"
+      self._roi      = "HLT_Roi_TauLRT"
+      self._vertex   = "HLT_IDVertex_Tau" # TODO: does this need renaming?
       self._pTmin        = 0.8*GeV
       self._etaHalfWidth = 0.4
       self._phiHalfWidth = 0.4
+      self._zedHalfWidth = 225.
       self._doTRT        = True
       self._UsePixelSpacePoints = False
       self._Triplet_D0Max       = 300.
@@ -437,8 +451,44 @@ class _ConfigSettings_DJetLRT( _ConfigSettingsBase ):
       self._suffix   = "DJLRT"
       self._roi      = "HLT_Roi_DJ"
       self._doFullScan      = False
-      self._etaHalfWidth    = 3.
-      self._phiHalfWidth    = 3.14159
+      self._etaHalfWidth    = 0.4
+      self._phiHalfWidth    = 0.4
+      self._doTRT           = False
+      self._doSeedRedundancyCheck = True
+      self._UsePixelSpacePoints   = False
+      self._Triplet_D0Max         = 300.
+      self._TrackInitialD0Max     = 300.
+      self._TrackZ0Max            = 500.
+      self._Triplet_D0_PPS_Max    = 300.
+      self._DoubletDR_Max         = 200
+      self._nClustersMin          = 8
+      self._isLRT                 = True
+      self._LRTD0Min              = 2.0
+      self._LRTHardPtMin          = 1.0*GeV
+      #pt config
+      self._newConfig           = True
+      self._maxZImpactPT        = 500.
+      self._maxRPhiImpactPT     = 300.
+      self._maxEtaPT            = 2.7
+      self._maxDoubleHolesPT    = 0
+      self._maxSiHolesPT        = 2
+      self._maxPixelHolesPT     = 1
+      self._maxSCTHolesPT       = 1
+      self._minSiClustersPT     = 8
+      self._doEmCaloSeedPT      = False
+      self._minTRTonTrkPT       = 0
+
+
+
+class _ConfigSettings_DVtxLRT( _ConfigSettingsBase ):
+   def __init__( self ):
+      _ConfigSettingsBase.__init__(self)
+      self._name     = "displacedVertexLRT"
+      self._suffix   = "DVLRT"
+      self._roi      = "HLT_Roi_DV"
+      self._doFullScan      = False
+      self._etaHalfWidth    = 0.35
+      self._phiHalfWidth    = 0.35
       self._doTRT           = False
       self._doSeedRedundancyCheck = True
       self._UsePixelSpacePoints   = False
@@ -487,7 +537,7 @@ _ConfigSettings = {
     "tauTau"      : _ConfigSettings_tau(),
     "tauCore"     : _ConfigSettings_tauCore(),
     "tauIso"      : _ConfigSettings_tauIso(),
-    "tauIsoBDT"   : _ConfigSettings_tauIso(),
+    "tauIsoBDT"   : _ConfigSettings_tauIsoBDT(),
 
     "bjet"        : _ConfigSettings_bjet(),
     "Bjet"        : _ConfigSettings_bjet(),
@@ -513,4 +563,5 @@ _ConfigSettings = {
     "tauLRT"         : _ConfigSettings_tauLRT(),
     "bjetLRT"        : _ConfigSettings_bjetLRT(),
     "fullScanLRT"    : _ConfigSettings_fullScanLRT(),
-    "DJetLRT"       : _ConfigSettings_DJetLRT() }
+    "DJetLRT"        : _ConfigSettings_DJetLRT(),
+    "DVtxLRT"        : _ConfigSettings_DVtxLRT() }

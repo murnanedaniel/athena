@@ -10,8 +10,8 @@ def SCTSiLorentzAngleTestAlgCfg(flags, name="SCTSiLorentzAngleTestAlg", **kwargs
     """Return a configured SCTSiLorentzAngleTestAlg"""
     acc = ComponentAccumulator()
     acc.merge(GeoModelCfg(flags)) # For SCT_ID used in SCTSiLorentzAngleTestAlg
-    from SiLorentzAngleTool.SCT_LorentzAngleConfig import SCT_LorentzAngleCfg
-    kwargs.setdefault("SCTLorentzAngleTool", acc.popToolsAndMerge(SCT_LorentzAngleCfg(flags)))
+    from SiLorentzAngleTool.SCT_LorentzAngleConfig import SCT_LorentzAngleToolCfg
+    kwargs.setdefault("SCTLorentzAngleTool", acc.popToolsAndMerge(SCT_LorentzAngleToolCfg(flags)))
     acc.addEventAlgo(CompFactory.SCTSiLorentzAngleTestAlg(**kwargs))
     return acc
 
@@ -19,9 +19,6 @@ if __name__=="__main__":
     from AthenaCommon.Logging import log
     from AthenaCommon.Constants import INFO
     log.setLevel(INFO)
-
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior=1
 
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
     ConfigFlags.Input.Files = []

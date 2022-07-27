@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2018 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "CavernInfraDetectorFactory.h"
@@ -43,7 +43,7 @@ void CavernInfraDetectorFactory::create(GeoPhysVol *world)
 { 
   m_detectorManager=new CavernInfraDetectorManager();
 
-  const StoredMaterialManager* materialManager = nullptr;
+  StoredMaterialManager* materialManager = nullptr;
   if (StatusCode::SUCCESS != m_detectorStore->retrieve(materialManager, std::string("MATERIALS"))) {
     return; 
   } 
@@ -445,7 +445,8 @@ const CavernInfraDetectorManager * CavernInfraDetectorFactory::getDetectorManage
   return m_detectorManager;
 }
 
-void CavernInfraDetectorFactory::setTagNode(std::string tag, std::string node)
+void CavernInfraDetectorFactory::setTagNode(const std::string& tag,
+                                            const std::string& node)
 {
   m_versionTag = tag;
   m_versionNode = node;

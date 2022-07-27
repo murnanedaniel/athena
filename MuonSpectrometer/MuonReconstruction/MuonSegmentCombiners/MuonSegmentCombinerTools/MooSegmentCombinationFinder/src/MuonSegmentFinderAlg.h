@@ -81,12 +81,12 @@ private:
     ToolHandle<Muon::IMuonClusterOnTrackCreator> m_mmClusterCreator{
         this,
         "MMClusterCreator",
-        "Muon::MMClusterOnTrackCreator/MMClusterOnTrackCreator",
+        "",
     };  //<! pointer to mm cluster rio ontrack creator
     ToolHandle<Muon::IMuonClusterSegmentFinderTool> m_clusterSegMakerNSW{
         this,
         "MuonClusterSegmentFinderTool",
-        "Muon::MuonClusterSegmentFinderTool/MuonClusterSegmentFinderTool",
+        "",
     };
     ToolHandle<ICscSegmentFinder> m_csc2dSegmentFinder{
         this,
@@ -105,6 +105,12 @@ private:
         "SegmentCollectionName",
         "TrackMuonSegments",
         "Muon Segments",
+    };
+    SG::WriteHandleKey<Trk::SegmentCollection> m_segmentNSWCollectionKey{ //this collection of segments are used to perform the alignment of the NSW
+      this,
+        "NSWSegmentCollectionName",
+        "TrackMuonNSWSegments",
+        "WriteHandleKey for NSW Segments",
     };
     SG::ReadHandleKey<Muon::CscPrepDataContainer> m_cscPrdsKey{
         this,
@@ -152,7 +158,7 @@ private:
     void createSegmentsWithMDTs(const Muon::MuonPatternCombination* patt, Trk::SegmentCollection* segs,
                                 const std::vector<const Muon::RpcPrepDataCollection*>& rpcCols,
                                 const std::vector<const Muon::TgcPrepDataCollection*>& tgcCols, const EventContext& ctx) const;
-    void createSegmentsFromClusters(const EventContext& ctx, const Muon::MuonPatternCombination* patt, Trk::SegmentCollection* segments) const;
+    void createSegmentsFromClusters(const EventContext& ctx, const Muon::MuonPatternCombination* patt, Trk::SegmentCollection* segments, Trk::SegmentCollection* segmentsNSW) const;
 
     Gaudi::Property<bool> m_printSummary{this, "PrintSummary", false};
     Gaudi::Property<bool> m_doTGCClust{this, "doTGCClust", false, "selection flags for cluster based segment finding"};

@@ -3,7 +3,6 @@
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
 from AthenaConfiguration.Enums import ProductionStep
-from AthenaCommon.Configurable import Configurable
 from AthenaCommon import Logging
 
 def GeoModelCfg(configFlags):
@@ -15,36 +14,30 @@ def GeoModelCfg(configFlags):
     if len(relversion) < 3:
         relversion = rel_metadata['base release'].split('.')
 
-
     result=ComponentAccumulator()
-    GeoModelSvc=CompFactory.GeoModelSvc
-    gms=GeoModelSvc(AtlasVersion=version,
-                    SupportedGeometry = int(relversion[0]))
-    if configFlags.Common.ProductionStep == ProductionStep.Simulation:
-        ## Protects GeoModelSvc in the simulation from the AlignCallbacks
-        gms.AlignCallbacks = False
-    result.addService(gms, primary=True, create=True)
-
 
     #Get DetDescrCnvSvc (for identifier dictionaries (identifier helpers)
     from DetDescrCnvSvc.DetDescrCnvSvcConfig import DetDescrCnvSvcCfg
     result.merge(DetDescrCnvSvcCfg(configFlags))
 
-    from EventInfoMgt.TagInfoMgrConfig import TagInfoMgrCfg	
-    tim_ca,tagInfoMgr=TagInfoMgrCfg(configFlags)
-    result.addService(tagInfoMgr)
-    result.merge(tim_ca)
     #TagInfoMgr used by GeoModelSvc but no ServiceHandle. Relies on string-name
+    from EventInfoMgt.TagInfoMgrConfig import TagInfoMgrCfg
+    result.merge(TagInfoMgrCfg(configFlags))
+
+    gms=CompFactory.GeoModelSvc(AtlasVersion=version,
+                                SupportedGeometry = int(relversion[0]))
+    if configFlags.Common.ProductionStep == ProductionStep.Simulation:
+        ## Protects GeoModelSvc in the simulation from the AlignCallbacks
+        gms.AlignCallbacks = False
+    result.addService(gms, primary=True, create=True)
 
     return result
-
 
 
 if __name__ == "__main__":
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
 
     ConfigFlags.Input.Files = []
-    Configurable.configurableRun3Behavior=1
 
     acc = GeoModelCfg( ConfigFlags )
     acc.store( open( "test.pkl", "wb" ) )

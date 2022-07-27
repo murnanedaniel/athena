@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 #################
 ### Steering options
@@ -14,6 +14,8 @@ from InDetRecExample import TrackingCommon
 from AthenaCommon.CFElements import seqAND, parOR
 
 from InDetPrepRawDataToxAOD.InDetDxAODUtils import getPixelPrepDataToxAOD
+
+from InDetConfig.TrackRecoConfig import FTAG_AUXDATA
 
 # Select active sub-systems
 dumpPixInfo = InDetDxAODFlags.DumpPixelInfo()
@@ -149,6 +151,8 @@ if makeSplitTracks:
     InDetxAODSplitParticleCreatorTool = Trk__TrackParticleCreatorTool(name = "InDetSplitxAODParticleCreatorTool",
                                                                       TrackToVertex           = TrackingCommon.getInDetTrackToVertexTool(),
                                                                       TrackSummaryTool        = TrackingCommon.getInDetTrackSummaryToolSharedHits(),
+                                                                      TestPixelLayerTool      = TrackingCommong.getInDetTestPixelLayerToolInner(),
+                                                                      ComputeAdditionalInfo   = True,
                                                                       KeepParameters          = True)
     ToolSvc += InDetxAODSplitParticleCreatorTool
     # The following adds truth information, but needs further testing
@@ -455,6 +459,8 @@ if not hasattr(svcMgr, 'DecisionSvc'):
         svcMgr += CfgMgr.DecisionSvc()
 svcMgr.DecisionSvc.CalcStats = True
 
+from RecExConfig.AutoConfiguration import IsInInputFile
+have_TRTPhase = ( InDetFlags.doTRTPhaseCalculation() and not jobproperties.Beam.beamType()=="collisions" ) or IsInInputFile('ComTime' , 'TRT_Phase' )
 
 from InDetRecExample import TrackingCommon
 # Add the TSOS augmentation tool to the derivation framework
@@ -465,6 +471,7 @@ DFTSOS = DerivationFramework__TrackStateOnSurfaceDecorator(name = "DFTrackStateO
                                                           StoreTRT   = dumpTrtInfo,
                                                           StoreSCT   = dumpSctInfo,
                                                           StorePixel = dumpPixInfo,
+                                                          AddExtraEventInfo = have_TRTPhase, # decorate EventInfo with TRTPhase
                                                           PixelMsosName = prefixName+"PixelMSOSs",
                                                           SctMsosName   = prefixName+"SCT_MSOSs",
                                                           TrtMsosName   = prefixName+"TRT_MSOSs",
@@ -479,6 +486,7 @@ DFTSOS_gsf = DerivationFramework__TrackStateOnSurfaceDecorator(name = "DFGSFTrac
                                                                StoreTRT   = dumpTrtInfo,
                                                                StoreSCT   = dumpSctInfo,
                                                                StorePixel = dumpPixInfo,
+                                                               AddExtraEventInfo = False, # only decorate once
                                                                PixelMsosName = prefixName+"PixelMSOSs_GSF",
                                                                SctMsosName   = prefixName+"SCT_MSOSs_GSF",
                                                                TrtMsosName   = prefixName+"TRT_MSOSs_GSF",
@@ -765,8 +773,7 @@ excludedAuxData = "-clusterAssociation.-trackParameterCovarianceMatrices.-parame
 excludedVtxAuxData = "-vxTrackAtVertex.-MvfFitInfo.-isInitialized.-VTAV"
 
 # exclude b-tagging decoration
-excludedAuxData += '.-TrackCompatibility.-JetFitter_TrackCompatibility_antikt4emtopo.-JetFitter_TrackCompatibility_antikt4empflow' \
-                + '.-btagIp_d0Uncertainty.-btagIp_z0SinThetaUncertainty.-btagIp_z0SinTheta.-btagIp_d0.-btagIp_trackMomentum.-btagIp_trackDisplacement'
+excludedAuxData += '.-'.join([''] + FTAG_AUXDATA)
 
 # exclude IDTIDE decorations
 excludedAuxData += '.-IDTIDE1_biased_PVd0Sigma.-IDTIDE1_biased_PVz0Sigma.-IDTIDE1_biased_PVz0SigmaSinTheta.-IDTIDE1_biased_d0.-IDTIDE1_biased_d0Sigma' \

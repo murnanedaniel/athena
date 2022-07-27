@@ -25,6 +25,7 @@
 #include "PersistentDataModel/DataHeader.h"
 
 #include "StorageSvc/DbReflex.h"
+#include "FileCatalog/IFileCatalog.h"
 
 #include "AuxDiscoverySvc.h"
 
@@ -187,7 +188,7 @@ StatusCode AthenaPoolCnvSvc::createObj(IOpaqueAddress* pAddress, DataObject*& re
       TokenAddress* tokAddr = dynamic_cast<TokenAddress*>(pAddress);
       if (tokAddr != nullptr && tokAddr->getToken() != nullptr && (boost::starts_with(tokAddr->getToken()->contID(), m_persSvcPerInputType.value() + "(") || boost::starts_with(tokAddr->getToken()->contID(), m_persSvcPerInputType.value() + "_"))) {
          const unsigned int maxContext = m_poolSvc->getInputContextMap().size();
-         const unsigned int auxContext = m_poolSvc->getInputContext(tokAddr->getToken()->classID().toString(), 1);
+         const unsigned int auxContext = m_poolSvc->getInputContext(tokAddr->getToken()->classID().toString() + tokAddr->getToken()->dbID().toString(), 1);
          char text[32];
          ::sprintf(text, "[CTXT=%08X]", auxContext);
          if (m_poolSvc->getInputContextMap().size() > maxContext) {
@@ -479,13 +480,16 @@ StatusCode AthenaPoolCnvSvc::commitOutput(const std::string& outputConnectionSpe
                   }
                   m_metadataClient = num;
                }
- 	       // Retrieve MetaDataSvc
-	       ServiceHandle<IMetaDataSvc> metadataSvc("MetaDataSvc", name());
-	       ATH_CHECK(metadataSvc.retrieve());
-	       if(!metadataSvc->shmProxy(std::string(placementStr) + "[NUM=" + oss2.str() + "]").isSuccess()) {
+               // Retrieve MetaDataSvc
+               ServiceHandle<IMetaDataSvc> metadataSvc("MetaDataSvc", name());
+               ATH_CHECK(metadataSvc.retrieve());
+               sc = metadataSvc->shmProxy(std::string(placementStr) + "[NUM=" + oss2.str() + "]");
+               if (sc.isRecoverable()) {
+                  ATH_MSG_WARNING("MetaDataSvc::shmProxy() no proxy added.");
+               } else if (sc.isFailure()) {
                   ATH_MSG_FATAL("MetaDataSvc::shmProxy() failed!");
                   return abortSharedWrClients(num);
-	       }
+               }
             } else {
                Token readToken;
                readToken.setOid(Token::OID_t(num, 0));
@@ -1207,6 +1211,15 @@ StatusCode AthenaPoolCnvSvc::readData() {
    } else {
       return(StatusCode::RECOVERABLE);
    }
+   return(StatusCode::SUCCESS);
+}
+
+//________________________________________________________________________________
+StatusCode AthenaPoolCnvSvc::commitCatalog() {
+   pool::IFileCatalog* catalog ATLAS_THREAD_SAFE =  // This is on the SharedWriter, after mother process finishes events
+	   const_cast<pool::IFileCatalog*>(m_poolSvc->catalog());
+   catalog->commit();
+   catalog->start();
    return(StatusCode::SUCCESS);
 }
 

@@ -3,6 +3,7 @@ from __future__ import print_function
 #
 # $Id: skeleton.AODtoDAOD_tf.py 731616 2016-03-22 15:25:39Z cranshaw $
 #
+from DerivationFrameworkCore.DerivationFrameworkCoreConf import DerivationFramework__DerivationKernel
 from AthenaCommon.AlgSequence import AlgSequence
 from AthenaCommon.Logging import logging
 msg = logging.getLogger('AODtoDAOD')
@@ -33,7 +34,18 @@ try:
 except:
     print("WARNING: Unable to construct AtlasReleaseVersion from environment")
 
-if hasattr(runArgs,"inputAODFile"):
+# Check if we are running exclusively truth output
+truthOutput=False
+otherOutput=False
+if 'reductionConf' in dir(runArgs):
+    truthOutput = all(['TRUTH' in x for x in runArgs.reductionConf])
+    otherOutput = any(['TRUTH' not in x for x in runArgs.reductionConf])
+else:
+    truthOutput = all(['TRUTH' in x for x in dir(runArgs) if 'output' in x and 'File' in x])
+    otherOutput = any(['TRUTH' not in x for x in dir(runArgs) if 'output' in x and 'File' in x])
+onlyTruthOutput = truthOutput and not otherOutput
+
+if hasattr(runArgs,"inputAODFile") and not onlyTruthOutput:
     globalflags.InputFormat.set_Value_and_Lock('pool')
     rec.readAOD.set_Value_and_Lock( True )
     rec.readRDO.set_Value_and_Lock( False )
@@ -42,12 +54,18 @@ if hasattr(runArgs,"inputAODFile"):
     athenaCommonFlags.PoolAODInput.set_Value_and_Lock( runArgs.inputAODFile )
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
     ConfigFlags.Input.Files = athenaCommonFlags.PoolAODInput()
-elif hasattr(runArgs,'inputEVNTFile') or hasattr(runArgs,'jobConfig'):
+elif hasattr(runArgs,'inputEVNTFile') or hasattr(runArgs,'jobConfig') or onlyTruthOutput:
     # Assume that we're running from EVNT or straight through evgen
     globalflags.InputFormat.set_Value_and_Lock('pool')
     rec.readAOD.set_Value_and_Lock( True )
     rec.readRDO.set_Value_and_Lock( False )
-    rec.OutputFileNameForRecoStep.set_Value_and_Lock("EVNTtoDAOD")
+    if hasattr(runArgs,'inputEVNTFile') or hasattr(runArgs,'jobConfig'):
+        rec.OutputFileNameForRecoStep.set_Value_and_Lock("EVNTtoDAOD")
+        athenaCommonFlags.FilesInput = runArgs.inputEVNTFile
+    else:
+        rec.OutputFileNameForRecoStep.set_Value_and_Lock("AODtoDAOD")
+        athenaCommonFlags.FilesInput = runArgs.inputAODFile
+        athenaCommonFlags.PoolAODInput.set_Value_and_Lock( runArgs.inputAODFile )
     rec.AutoConfiguration.set_Value_and_Lock(['ProjectName','BeamType','RealOrSim','DoTruth','InputType'])
     rec.doInDet.set_Value_and_Lock(False)
     rec.doCalo.set_Value_and_Lock(False)
@@ -57,10 +75,10 @@ elif hasattr(runArgs,'inputEVNTFile') or hasattr(runArgs,'jobConfig'):
     rec.doTruth.set_Value_and_Lock( True )
     rec.doTrigger.set_Value_and_Lock( False )
     rec.doWriteTAG.set_Value_and_Lock( False )
-    from AthenaCommon.DetFlags      import DetFlags
+    rec.LoadGeometry.set_Value_and_Lock( False )
+    from AthenaCommon.DetFlags import DetFlags
     DetFlags.detdescr.BField_setOff()
-    athenaCommonFlags.FilesInput = runArgs.inputEVNTFile
-    # Do not load conditions; this is running on EVNT
+    # Do not load conditions; this is running on EVNT / TRUTH only
     globalflags.ConditionsTag = ''
     # Leave the remainder for the internal setup
 else:

@@ -1,3 +1,5 @@
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+#
 # skeleton.EVGENtoRDO.py
 # skeleton file for running simulation+digi in one job for FastChain
 # currently using full simulation and digi, will swap in fast components later
@@ -338,12 +340,8 @@ def HasInputFiles(runArgs, key):
     return False
 
 ## Low Pt minbias set-up
-bkgArgName="LowPtMinbiasHitsFile"
-if hasattr(runArgs, "inputLowPtMinbiasHitsFile"):
-    bkgArgName="inputLowPtMinbiasHitsFile"
-if HasInputFiles(runArgs, bkgArgName):
-    exec("bkgArg = runArgs."+bkgArgName)
-    digitizationFlags.LowPtMinBiasInputCols = makeBkgInputCol(bkgArg,
+if HasInputFiles(runArgs, "inputLowPtMinbiasHitsFile"):
+    digitizationFlags.LowPtMinBiasInputCols = makeBkgInputCol(runArgs.inputLowPtMinbiasHitsFile,
                                                               digitizationFlags.numberOfLowPtMinBias.get_Value(), True, fast_chain_log)
 if digitizationFlags.LowPtMinBiasInputCols.statusOn:
     digitizationFlags.doLowPtMinBias = True
@@ -351,15 +349,11 @@ else:
     digitizationFlags.doLowPtMinBias = False
 
 ## High Pt minbias set-up
-bkgArgName="HighPtMinbiasHitsFile"
-if hasattr(runArgs, "inputHighPtMinbiasHitsFile"):
-    bkgArgName="inputHighPtMinbiasHitsFile"
-if HasInputFiles(runArgs, bkgArgName):
-    exec("bkgArg = runArgs."+bkgArgName)
+if HasInputFiles(runArgs, "inputHighPtMinbiasHitsFile"):
     if(digitizationFlags.HighPtMinBiasInputColOffset.get_Value()<0):
         #Calculate a pseudo random offset into the collection from the jobNumber
-        digitizationFlags.HighPtMinBiasInputColOffset = getInputColOffset(bkgArg, runArgs.jobNumber, fast_chain_log)
-    digitizationFlags.HighPtMinBiasInputCols = makeBkgInputCol(bkgArg,
+        digitizationFlags.HighPtMinBiasInputColOffset = getInputColOffset(runArgs.inputHighPtMinbiasHitsFile, runArgs.jobNumber, fast_chain_log)
+    digitizationFlags.HighPtMinBiasInputCols = makeBkgInputCol(runArgs.inputHighPtMinbiasHitsFile,
                                                                digitizationFlags.numberOfHighPtMinBias.get_Value(), True, fast_chain_log,
                                                                digitizationFlags.HighPtMinBiasInputColOffset.get_Value())
 if digitizationFlags.HighPtMinBiasInputCols.statusOn:
@@ -368,12 +362,8 @@ else:
     digitizationFlags.doHighPtMinBias = False
 
 ## Cavern Background set-up
-bkgArgName="cavernHitsFile"
-if hasattr(runArgs, "inputCavernHitsFile"):
-    bkgArgName="inputCavernHitsFile"
-if HasInputFiles(runArgs, bkgArgName):
-    exec("bkgArg = runArgs."+bkgArgName)
-    digitizationFlags.cavernInputCols = makeBkgInputCol(bkgArg,
+if HasInputFiles(runArgs, "inputCavernHitsFile"):
+    digitizationFlags.cavernInputCols = makeBkgInputCol(runArgs.inputCavernHitsFile,
                                                         digitizationFlags.numberOfCavern.get_Value(), (not digitizationFlags.cavernIgnoresBeamInt.get_Value()), fast_chain_log)
 if digitizationFlags.cavernInputCols.statusOn:
     digitizationFlags.doCavern = True
@@ -381,12 +371,8 @@ else:
     digitizationFlags.doCavern = False
 
 ## Beam Halo set-up
-bkgArgName="beamHaloHitsFile"
-if hasattr(runArgs, "inputBeamHaloHitsFile"):
-    bkgArgName="inputBeamHaloHitsFile"
-if HasInputFiles(runArgs, bkgArgName):
-    exec("bkgArg = runArgs."+bkgArgName)
-    digitizationFlags.beamHaloInputCols = makeBkgInputCol(bkgArg,
+if HasInputFiles(runArgs, "inputBeamHaloHitsFile"):
+    digitizationFlags.beamHaloInputCols = makeBkgInputCol(runArgs.inputBeamHaloHitsFile,
                                                           digitizationFlags.numberOfBeamHalo.get_Value(), True, fast_chain_log)
 if digitizationFlags.beamHaloInputCols.statusOn:
     digitizationFlags.doBeamHalo = True
@@ -394,12 +380,8 @@ else:
     digitizationFlags.doBeamHalo = False
 
 ## Beam Gas set-up
-bkgArgName="beamGasHitsFile"
-if hasattr(runArgs, "inputBeamGasHitsFile"):
-    bkgArgName="inputBeamGasHitsFile"
-if HasInputFiles(runArgs, bkgArgName):
-    exec("bkgArg = runArgs."+bkgArgName)
-    digitizationFlags.beamGasInputCols = makeBkgInputCol(bkgArg,
+if HasInputFiles(runArgs, "inputBeamGasHitsFile"):
+    digitizationFlags.beamGasInputCols = makeBkgInputCol(runArgs.inputBeamGasHitsFile,
                                                          digitizationFlags.numberOfBeamGas.get_Value(), True, fast_chain_log)
 if digitizationFlags.beamGasInputCols.statusOn:
     digitizationFlags.doBeamGas = True
@@ -457,7 +439,7 @@ printfunc ("lvl1: -14... " + str(DetFlags.digitize.LVL1_on()))
 DetFlags.digitize.all_setOn()
 DetFlags.digitize.LVL1_setOff()
 DetFlags.digitize.ZDC_setOff()
-DetFlags.digitize.Micromegas_setOff()
+DetFlags.digitize.MM_setOff()
 DetFlags.digitize.sTGC_setOff()
 DetFlags.digitize.Forward_setOff()
 DetFlags.digitize.Lucid_setOff()
@@ -486,12 +468,6 @@ from AthenaCommon.AppMgr import ServiceMgr as svcMgr
 if hasattr(runArgs,"AMITag"):
     from AthenaCommon.AppMgr import ServiceMgr as svcMgr
     svcMgr.TagInfoMgr.ExtraTagValuePairs.update({"AMITag":runArgs.AMITag})
-
-### No RDO output to increase file size of
-# Increase max RDO output file size to 10 GB
-
-#from AthenaCommon.AppMgr import ServiceMgr as svcMgr
-#svcMgr.AthenaPoolCnvSvc.MaxFileSizes = [ "10000000000" ] #[ "15000000000" ] #Athena complains that 15GB files are not supported
 
 ## Post-include
 if hasattr(runArgs,"postInclude"):

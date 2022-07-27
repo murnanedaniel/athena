@@ -1,8 +1,7 @@
-# Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
-Analysis__BTagTool=CompFactory.Analysis.BTagTool
 
 def BTagToolCfg(ConfigFlags, TaggerList, PrimaryVertexCollectionName="", scheme = '', useBTagFlagsDefaults = True):
       """Adds a new myBTagTool instance and registers it.
@@ -59,16 +58,16 @@ def BTagToolCfg(ConfigFlags, TaggerList, PrimaryVertexCollectionName="", scheme 
           from JetTagTools.SV1TagConfig import SV1TagCfg
           sv1tool = acc.popToolsAndMerge(SV1TagCfg(ConfigFlags, 'SV1Tag', scheme))
           tagToolList.append(sv1tool)
+      
+      if 'SV1Flip' in TaggerList:
+          from JetTagTools.SV1TagConfig import SV1TagCfg
+          sv1fliptool = acc.popToolsAndMerge(SV1TagCfg(ConfigFlags, 'SV1FlipTag', scheme))
+          tagToolList.append(sv1fliptool)
 
       if 'JetFitterNN' in TaggerList:
           from JetTagTools.JetFitterTagConfig import JetFitterTagCfg
           jetfitterNNtool = acc.popToolsAndMerge(JetFitterTagCfg(ConfigFlags, 'JetFitterTagNN', scheme, runNN=ConfigFlags.BTagging.RunJetFitterNN))
           tagToolList.append(jetfitterNNtool)
-
-      if 'SoftMu' in TaggerList:
-          from JetTagTools.SoftMuonTagConfig import SoftMuonTagCfg
-          softmutool = acc.popToolsAndMerge(SoftMuonTagCfg(ConfigFlags, 'SoftMuonTag', scheme))
-          tagToolList.append(softmutool)
 
       if 'MultiSVbb1' in TaggerList:
           from JetTagTools.MultiSVTagConfig import MultiSVTagCfg
@@ -102,7 +101,7 @@ def BTagToolCfg(ConfigFlags, TaggerList, PrimaryVertexCollectionName="", scheme 
         for option in defaults:
             options.setdefault(option, defaults[option])
       options['name'] = 'btag'
-      btagtool = Analysis__BTagTool(**options)
+      btagtool = CompFactory.Analysis.BTagTool(**options)
       acc.setPrivateTools(btagtool)
 
       return acc

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////////////////////////////////////////////////////////////
@@ -15,9 +15,9 @@
 
 #include "CLHEP/Random/RandLandau.h"
 #include "CLHEP/Random/RandGaussZiggurat.h"
+#include "TrkEventPrimitives/ParticleHypothesis.h"
 
-// static partilce masses
-Trk::ParticleMasses iFatras::McEnergyLossUpdator::s_particleMasses;
+
 
 iFatras::McEnergyLossUpdator::McEnergyLossUpdator( const std::string& type, const std::string& name, const IInterface* parent )
   :
@@ -39,7 +39,7 @@ iFatras::McEnergyLossUpdator::McEnergyLossUpdator( const std::string& type, cons
 }
 
 iFatras::McEnergyLossUpdator::~McEnergyLossUpdator()
-{}
+= default;
 
 StatusCode iFatras::McEnergyLossUpdator::initialize()
 {
@@ -86,27 +86,28 @@ double iFatras::McEnergyLossUpdator::dEdX( const Trk::MaterialProperties& materi
   return m_energyLossUpdator->dEdX( materialProperties, momentum, particleHypothesis );
 }
 
-Trk::EnergyLoss* iFatras::McEnergyLossUpdator::energyLoss(
-                   const Trk::MaterialProperties& materialProperties,
-                   double momentum,
-                   double pathCorrection,
-                   Trk::PropDirection direction,
-                   Trk::ParticleHypothesis particleHypothesis,
-                   bool, bool) const
+std::unique_ptr<Trk::EnergyLoss>
+iFatras::McEnergyLossUpdator::energyLoss(
+  const Trk::MaterialProperties& materialProperties,
+  double momentum,
+  double pathCorrection,
+  Trk::PropDirection direction,
+  Trk::ParticleHypothesis particleHypothesis,
+  bool,
+  bool) const
 {
 
   bool mpvSwitch = m_energyLossDistribution >= 2;
  
   // get the number of the material effects distribution
-  Trk::EnergyLoss* sampledEloss = m_energyLossUpdator->energyLoss( 
-	                                  materialProperties,
-                                          momentum,
-                                          pathCorrection,
-                                          direction,
-                                          particleHypothesis,
-                                          mpvSwitch,
-					  m_usePDGformula);     
-
+  std::unique_ptr<Trk::EnergyLoss> sampledEloss =
+    m_energyLossUpdator->energyLoss(materialProperties,
+                                    momentum,
+                                    pathCorrection,
+                                    direction,
+                                    particleHypothesis,
+                                    mpvSwitch,
+                                    m_usePDGformula);
 
   if (!sampledEloss) return nullptr; 
 
@@ -133,7 +134,7 @@ Trk::EnergyLoss* iFatras::McEnergyLossUpdator::energyLoss(
   }
 
   // protection due to straggling - maximum energy loss is E-m
-  double m     = s_particleMasses.mass[particleHypothesis];
+  double m     = Trk::ParticleMasses::mass[particleHypothesis];
   double E     = sqrt(momentum*momentum+m*m);
 
   if (sampledEloss->deltaE()+E<m ) {    // particle stopping - rest energy

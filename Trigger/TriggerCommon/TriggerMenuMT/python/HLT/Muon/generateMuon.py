@@ -10,16 +10,12 @@ from TrigMuonHypo.TrigMuonHypoConfig import TrigMufastHypoToolFromDict, TrigmuCo
 from TrigInDetConfig.TrigInDetConfig import trigInDetFastTrackingCfg
 
 from TriggerMenuMT.HLT.Config.Utility.ChainDictTools import splitChainDict
+from TriggerMenuMT.HLT.Muon.MuonRecoSequences import muonDecodeCfg
 
 from AthenaConfiguration.ComponentFactory import CompFactory
-from RegionSelector.RegSelToolConfig import regSelTool_RPC_Cfg, regSelTool_TGC_Cfg, regSelTool_MDT_Cfg, regSelTool_CSC_Cfg
 
-from MuonConfig.MuonBytestreamDecodeConfig import RpcBytestreamDecodeCfg, TgcBytestreamDecodeCfg, MdtBytestreamDecodeCfg, CscBytestreamDecodeCfg
-from MuonConfig.MuonRdoDecodeConfig import RpcRDODecodeCfg, TgcRDODecodeCfg, MdtRDODecodeCfg, CscRDODecodeCfg, CscClusterBuildCfg
-
-from TrkConfig.AtlasTrackingGeometrySvcConfig import TrackingGeometrySvcCfg
 from MuonConfig.MuonSegmentFindingConfig import MooSegmentFinderAlgCfg
-from MuonConfig.MuonTrackBuildingConfig import MuonTrackBuildingCfg
+from MuonConfig.MuonTrackBuildingConfig import MuPatTrackBuilderCfg
 from MuonCombinedConfig.MuonCombinedReconstructionConfig import MuonCombinedMuonCandidateAlgCfg, MuonInsideOutRecoAlgCfg, MuonInDetToMuonSystemExtensionAlgCfg
 from MuonSegmentTrackMaker.MuonTrackMakerAlgsMonitoring import MuPatTrackBuilderMonitoring
 from MuonCombinedConfig.MuonCombinedReconstructionConfig import MuonCombinedInDetCandidateAlgCfg, MuonCombinedAlgCfg, MuonCreatorAlgCfg
@@ -32,6 +28,7 @@ from AthenaConfiguration.AccumulatorCache import AccumulatorCache
 import pprint
 from AthenaCommon.Logging import logging
 log = logging.getLogger(__name__)
+
 
 def fakeHypoAlgCfg(flags, name="FakeHypoForMuon"):
     HLTTest__TestHypoAlg=CompFactory.HLTTest.TestHypoAlg
@@ -93,7 +90,9 @@ def MuonInsideOutViewDataVerifierCfg(flags):
         MuonViewDataVerifier.DataObjects += [( 'Muon::CscPrepDataContainer' , 'StoreGateSvc+CSC_Clusters' )]
     if flags.Beam.Type is not BeamType.Cosmics:
         MuonViewDataVerifier.DataObjects +=[( 'Muon::HoughDataPerSectorVec' , 'StoreGateSvc+HoughDataPerSectorVec' )]
-
+    if (flags.Detector.GeometrysTGC and flags.Detector.GeometryMM): 
+        MuonViewDataVerifier.DataObjects += [( 'Muon::MMPrepDataContainer'       , 'StoreGateSvc+MM_Measurements'),
+                                            ( 'Muon::sTgcPrepDataContainer'     , 'StoreGateSvc+STGC_Measurements') ]
 
     result = ComponentAccumulator()
     result.addEventAlgo(MuonViewDataVerifier)
@@ -134,17 +133,6 @@ def MuIsoViewDataVerifierCfg():
     result.addEventAlgo(alg)
     return result
 
-def MuDataPrepViewDataVerifierCfg(flags):
-    result = ComponentAccumulator()
-    dataobjects = [( 'MdtCsmContainer' , 'StoreGateSvc+MDTCSM' ),
-                   ( 'RpcPadContainer' , 'StoreGateSvc+RPCPAD' ),
-                   ('TgcRdoContainer' , 'StoreGateSvc+TGCRDO' )]
-    if flags.Detector.GeometryCSC:
-                       dataobjects += ( 'CscRawDataContainer' , 'StoreGateSvc+CSCRDO' )
-    alg = CompFactory.AthViews.ViewDataVerifier( name = "VDVMuDataPrep",
-                                                 DataObjects = dataobjects)
-    result.addEventAlgo(alg)
-    return result
 
 #Not the ideal place to keep the track cnv alg configuration. Temproarily adding it here
 #until a better location can be found
@@ -152,10 +140,8 @@ def MuonTrackCollectionCnvToolCfg(flags, name = "MuonTrackCollectionCnvTool", **
     TrackCollectionCnvTool = CompFactory.xAODMaker.TrackCollectionCnvTool
 
     result = ComponentAccumulator()
-    from MuonCombinedConfig.MuonCombinedRecToolsConfig import MuonCombinedParticleCreatorCfg
-    acc = MuonCombinedParticleCreatorCfg(flags)
-    kwargs.setdefault("TrackParticleCreator",  acc.popPrivateTools())
-    result.merge(acc)
+    from TrkConfig.TrkParticleCreatorConfig import MuonCombinedParticleCreatorCfg
+    kwargs.setdefault("TrackParticleCreator", result.popToolsAndMerge(MuonCombinedParticleCreatorCfg(flags)))
 
     result.setPrivateTools(TrackCollectionCnvTool(name=name, **kwargs))
     return result
@@ -164,10 +150,8 @@ def MuonRecTrackParticleContainerCnvToolCfg(flags, name = "MuonRecTrackParticleC
     RecTrackParticleCnvTool = CompFactory.xAODMaker.RecTrackParticleContainerCnvTool
 
     result = ComponentAccumulator()
-    from MuonCombinedConfig.MuonCombinedRecToolsConfig import MuonCombinedParticleCreatorCfg
-    acc = MuonCombinedParticleCreatorCfg(flags)
-    kwargs.setdefault("TrackParticleCreator",  acc.popPrivateTools())
-    result.merge(acc)
+    from TrkConfig.TrkParticleCreatorConfig import MuonCombinedParticleCreatorCfg
+    kwargs.setdefault("TrackParticleCreator", result.popToolsAndMerge(MuonCombinedParticleCreatorCfg(flags)))
 
     result.setPrivateTools(RecTrackParticleCnvTool(name=name, **kwargs))
     return result
@@ -176,12 +160,10 @@ def MuonTrackParticleCnvCfg(flags, name = "MuonTrackParticleCnvAlg",**kwargs):
     TrackParticleCnv = CompFactory.xAODMaker.TrackParticleCnvAlg
     result=ComponentAccumulator()
 
-    from MuonCombinedConfig.MuonCombinedRecToolsConfig import MuonCombinedParticleCreatorCfg
-    acc = MuonCombinedParticleCreatorCfg(flags)
-    particleCreator = acc.popPrivateTools()
+    from TrkConfig.TrkParticleCreatorConfig import MuonCombinedParticleCreatorCfg
+    particleCreator = result.popToolsAndMerge(MuonCombinedParticleCreatorCfg(flags))
     result.addPublicTool(particleCreator) # Still public in TrackParticleCnvAlg
     kwargs.setdefault("TrackParticleCreator", particleCreator)
-    result.merge(acc)
 
     acc = MuonTrackCollectionCnvToolCfg(flags)
     kwargs.setdefault("TrackCollectionCnvTool", acc.popPrivateTools())
@@ -208,90 +190,13 @@ def MuonTrackParticleCnvCfg(flags, name = "MuonTrackParticleCnvAlg",**kwargs):
     result.addEventAlgo( trackcnv, primary=True )
     return result
 
-@AccumulatorCache
-def decodeCfg(flags, RoIs):
-    acc = ComponentAccumulator()
-
-    RegSelTool_RPC = acc.popToolsAndMerge(regSelTool_RPC_Cfg(flags))
-    RegSelTool_TGC = acc.popToolsAndMerge(regSelTool_TGC_Cfg(flags))
-    RegSelTool_MDT = acc.popToolsAndMerge(regSelTool_MDT_Cfg(flags))
-    if flags.Detector.GeometryCSC:
-        RegSelTool_CSC = acc.popToolsAndMerge(regSelTool_CSC_Cfg(flags))
-
-    doSeededDecoding =True
-    if 'FS' in RoIs:
-        doSeededDecoding = False
-
-    if flags.Input.isMC:
-        acc.merge(MuDataPrepViewDataVerifierCfg(flags))
-    # Get RPC BS decoder
-    if not flags.Input.isMC:
-        rpcAcc = RpcBytestreamDecodeCfg( flags, name = "RpcRawDataProvider_"+RoIs )
-        rpcAcc.getEventAlgo("RpcRawDataProvider_"+RoIs).RoIs = RoIs
-        rpcAcc.getEventAlgo("RpcRawDataProvider_"+RoIs).DoSeededDecoding = doSeededDecoding
-        rpcAcc.getEventAlgo("RpcRawDataProvider_"+RoIs).RegionSelectionTool = RegSelTool_RPC
-        acc.merge( rpcAcc )
-
-    # Get RPC BS->RDO convertor
-    rpcAcc = RpcRDODecodeCfg( flags, name= "RpcRdoToRpcPrepData_"+RoIs )
-    rpcAcc.getEventAlgo("RpcRdoToRpcPrepData_"+RoIs).RoIs = RoIs
-    rpcAcc.getEventAlgo("RpcRdoToRpcPrepData_"+RoIs).DoSeededDecoding = doSeededDecoding
-    acc.merge( rpcAcc )
-
-    # Get TGC BS decoder
-    if not flags.Input.isMC:
-        tgcAcc = TgcBytestreamDecodeCfg( flags, name="TgcRawDataProvider_"+RoIs )
-        tgcAcc.getEventAlgo("TgcRawDataProvider_"+RoIs).RoIs = RoIs
-        tgcAcc.getEventAlgo("TgcRawDataProvider_"+RoIs).DoSeededDecoding = doSeededDecoding
-        tgcAcc.getEventAlgo("TgcRawDataProvider_"+RoIs).RegionSelectionTool = RegSelTool_TGC
-        acc.merge( tgcAcc )
-
-    # Get TGC BS->RDO convertor
-    tgcAcc = TgcRDODecodeCfg( flags, name="TgcRdoToTgcPrepData_"+RoIs )
-    tgcAcc.getEventAlgo("TgcRdoToTgcPrepData_"+RoIs).RoIs = RoIs
-    tgcAcc.getEventAlgo("TgcRdoToTgcPrepData_"+RoIs).DoSeededDecoding = doSeededDecoding
-    acc.merge( tgcAcc )
-
-    # Get MDT BS decoder
-    if not flags.Input.isMC:
-        mdtAcc = MdtBytestreamDecodeCfg( flags, name="MdtRawDataProvider_"+RoIs )
-        mdtAcc.getEventAlgo("MdtRawDataProvider_"+RoIs).RoIs = RoIs
-        mdtAcc.getEventAlgo("MdtRawDataProvider_"+RoIs).DoSeededDecoding = doSeededDecoding
-        mdtAcc.getEventAlgo("MdtRawDataProvider_"+RoIs).RegionSelectionTool = RegSelTool_MDT
-        acc.merge( mdtAcc )
-
-    # Get MDT BS->RDO convertor
-    mdtAcc = MdtRDODecodeCfg( flags, name="MdtRdoToMdtPrepData_"+RoIs )
-    mdtAcc.getEventAlgo("MdtRdoToMdtPrepData_"+RoIs).RoIs = RoIs
-    mdtAcc.getEventAlgo("MdtRdoToMdtPrepData_"+RoIs).DoSeededDecoding = doSeededDecoding
-    acc.merge( mdtAcc )
-
-    # Get CSC BS decoder
-    if flags.Detector.GeometryCSC:
-        if not flags.Input.isMC:
-            cscAcc = CscBytestreamDecodeCfg( flags, name="CscRawDataProvider_"+RoIs )
-            cscAcc.getEventAlgo("CscRawDataProvider_"+RoIs).RoIs = RoIs
-            cscAcc.getEventAlgo("CscRawDataProvider_"+RoIs).DoSeededDecoding = doSeededDecoding
-            cscAcc.getEventAlgo("CscRawDataProvider_"+RoIs).RegionSelectionTool = RegSelTool_CSC
-            acc.merge( cscAcc )
-
-        # Get CSC BS->RDO convertor
-        cscAcc = CscRDODecodeCfg( flags, name="CscRdoToCscPrepData_"+RoIs )
-        cscAcc.getEventAlgo("CscRdoToCscPrepData_"+RoIs).RoIs = RoIs
-        cscAcc.getEventAlgo("CscRdoToCscPrepData_"+RoIs).DoSeededDecoding = doSeededDecoding
-        acc.merge( cscAcc )
-
-        # Get CSC cluster builder
-        cscAcc = CscClusterBuildCfg( flags, name="CscThresholdClusterBuilder_"+RoIs )
-        acc.merge( cscAcc )
-
-    return acc
 
 
-def efMuHypoConf(flags, name="UNSPECIFIED", inputMuons="UNSPECIFIED"):
+def efMuHypoConf(flags, name="UNSPECIFIED", inputMuons="UNSPECIFIED",doSA=False):
     TrigMuonEFHypoAlg = CompFactory.TrigMuonEFHypoAlg
     efHypo = TrigMuonEFHypoAlg(name)
     efHypo.MuonDecisions = inputMuons
+    efHypo.IncludeSAmuons = doSA
     return efHypo
 
 def efMuIsoHypoConf(flags, name="UNSPECIFIED", inputMuons="UNSPECIFIED"):
@@ -311,7 +216,7 @@ def _muFastStepSeq(flags):
     reco.mergeReco( MuFastViewDataVerifier(flags) )
 
     # decoding
-    decodeAcc = decodeCfg(flags, selAcc.name+"RoIs")
+    decodeAcc = muonDecodeCfg(flags, selAcc.name+"RoIs")
     reco.mergeReco(decodeAcc)
 
     #L2 SA alg
@@ -329,6 +234,12 @@ def _muFastStepSeq(flags):
                                       HypoToolGen = TrigMufastHypoToolFromDict )
 
     return (selAcc , l2muFastSequence)
+
+def muFastSequence(flags, is_probe_leg=False): 
+    muonflags = flags.cloneAndReplace('Muon', 'Trigger.Offline.SA.Muon')
+    selAcc , l2muFastSequence =  _muFastStepSeq(muonflags)
+    return l2muFastSequence
+
 
 def muFastStep(flags, chainDict):
 
@@ -362,6 +273,11 @@ def _muCombStepSeq(flags):
 
     return (selAccL2CB , l2muCombSequence)
 
+def muCombSequence(flags, is_probe_leg=False):
+    muonflagsCB = flags.cloneAndReplace('Muon', 'Trigger.Offline.Muon').cloneAndReplace('MuonCombined', 'Trigger.Offline.Combined.MuonCombined')    
+    selAccL2CB , l2muCombSequence = _muCombStepSeq(muonflagsCB)
+    return l2muCombSequence
+
 def muCombStep(flags, chainDict):
 
     selAccL2CB , l2muCombSequence = _muCombStepSeq(flags)
@@ -385,18 +301,15 @@ def _muEFSAStepSeq(flags, name='RoI'):
                                                          
     recoMS = InViewRecoCA(name=viewName, RoITool = roiTool, RequireParentView = requireParentView)
     
-    recoMS.merge(TrackingGeometrySvcCfg(flags))
-    ###################
-
     recoMS.mergeReco(EFMuonViewDataVerifierCfg(flags, name))
 
     # decoding
-    recoMS.mergeReco(decodeCfg(flags, selAccMS.name+"RoIs"))
+    recoMS.mergeReco(muonDecodeCfg(flags, selAccMS.name+"RoIs"))
 
     #Reco
     recoMS.mergeReco( MooSegmentFinderAlgCfg(flags,name="TrigMooSegmentFinder_"+name,UseTGCNextBC=False, UseTGCPriorBC=False))
 
-    recoMS.mergeReco(MuonTrackBuildingCfg(flags, name="TrigMuPatTrackBuilder_"+name, MonTool = MuPatTrackBuilderMonitoring("MuPatTrackBuilderMonitoringSA_"+name)))
+    recoMS.mergeReco(MuPatTrackBuilderCfg(flags, name="TrigMuPatTrackBuilder_"+name, MonTool = MuPatTrackBuilderMonitoring("MuPatTrackBuilderMonitoringSA_"+name)))
     recoMS.mergeReco(MuonTrackParticleCnvCfg(flags, name = "TrigMuonTrackParticleCnvAlg_"+name))
     recoMS.mergeReco(MuonCombinedMuonCandidateAlgCfg(flags, name = "TrigMuonCandidateAlg_"+name))
     recoMS.mergeReco(MuonCreatorAlgCfg(flags, name = "TrigMuonCreatorAlg_"+name, MuonContainerLocation="Muons_"+name))
@@ -405,7 +318,8 @@ def _muEFSAStepSeq(flags, name='RoI'):
 
     efmuMSHypo = efMuHypoConf( flags,
                               name = 'TrigMuonEFMSonlyHypo_'+name,
-                              inputMuons = "Muons_"+name )
+                              inputMuons = "Muons_"+name,
+                              doSA=True)
 
     selAccMS.addHypoAlgo(efmuMSHypo)
     
@@ -413,6 +327,11 @@ def _muEFSAStepSeq(flags, name='RoI'):
                                     HypoToolGen = TrigMuonEFMSonlyHypoToolFromDict)
 
     return (selAccMS , efmuMSSequence)
+
+def muEFSASequence(flags, name='RoI', is_probe_leg=False):
+    muonflags = flags.cloneAndReplace('Muon', 'Trigger.Offline.SA.Muon')
+    selAccMS , efmuMSSequence = _muEFSAStepSeq(muonflags, name)
+    return efmuMSSequence
 
 def muEFSAStep(flags, chainDict, name='RoI'):
 
@@ -454,14 +373,14 @@ def _muEFCBStepSeq(flags, name='RoI'):
     recoCB.mergeReco(EFMuonCBViewDataVerifierCfg(flags, name))
     
     indetCandCfg = MuonCombinedInDetCandidateAlgCfg(flags, name="TrigMuonCombinedInDetCandidateAlg_"+name, TrackParticleLocation=[trackName], 
-                                                 InDetCandidateLocation="IndetCandidates_"+name, DoSiliconAssocForwardMuons=False, InDetForwardTrackSelector="")
+                                                 InDetCandidateLocation="InDetCandidates_"+name, DoSiliconAssocForwardMuons=False, InDetForwardTrackSelector="")
     recoCB.mergeReco(indetCandCfg)
     muonCombCfg = MuonCombinedAlgCfg(flags, name="TrigMuonCombinedAlg_"+name, MuonCandidateLocation=muonCandName, 
-                                     InDetCandidateLocation="IndetCandidates_"+name)
+                                     InDetCandidateLocation="InDetCandidates_"+name)
     recoCB.mergeReco(muonCombCfg)
 
     muonCreatorCBCfg = MuonCreatorAlgCfg(flags, name="TrigMuonCreatorAlgCB_"+name, MuonCandidateLocation=[muonCandName], TagMaps=["muidcoTagMap"], 
-                                         InDetCandidateLocation="IndetCandidates_"+name, MuonContainerLocation = "MuonsCB_"+name, SegmentContainerName = "xaodCBSegments", TrackSegmentContainerName = "TrkCBSegments",
+                                         InDetCandidateLocation="InDetCandidates_"+name, MuonContainerLocation = "MuonsCB_"+name, 
                                          ExtrapolatedLocation = "CBExtrapolatedMuons", MSOnlyExtrapolatedLocation = "CBMSonlyExtrapolatedMuons", CombinedLocation = "HLT_CBCombinedMuon_"+name)
     recoCB.mergeReco(muonCreatorCBCfg)
 
@@ -483,9 +402,8 @@ def _muEFCBStepSeq(flags, name='RoI'):
         acc.merge(inDetExtensionCfg, sequenceName=seqIOreco.name)
         muonInsideOutCfg = MuonInsideOutRecoAlgCfg(flags, name="TrigMuonInsideOutRecoAlg", InDetCandidateLocation = "InDetCandidatesSystemExtended_"+name)
         acc.merge(muonInsideOutCfg, sequenceName=seqIOreco.name)
-        insideOutCreatorAlgCfg = MuonCreatorAlgCfg(flags, name="TrigMuonCreatorAlgInsideOut", TagMaps=["muGirlTagMap"], InDetCandidateLocation="IndetCandidates_"+name,
-                                                   MuonContainerLocation = "MuonsInsideOut_"+name, SegmentContainerName = "xaodInsideOutCBSegments", 
-                                                   TrackSegmentContainerName = "TrkInsideOutCBSegments", ExtrapolatedLocation = "InsideOutCBExtrapolatedMuons",
+        insideOutCreatorAlgCfg = MuonCreatorAlgCfg(flags, name="TrigMuonCreatorAlgInsideOut", TagMaps=["muGirlTagMap"], InDetCandidateLocation="InDetCandidates_"+name,
+                                                   MuonContainerLocation = "MuonsInsideOut_"+name, ExtrapolatedLocation = "InsideOutCBExtrapolatedMuons",
                                                    MSOnlyExtrapolatedLocation = "InsideOutCBMSOnlyExtrapolatedMuons", CombinedLocation = "InsideOutCBCombinedMuon")
         acc.merge(insideOutCreatorAlgCfg, sequenceName=seqIOreco.name)
 
@@ -507,6 +425,11 @@ def _muEFCBStepSeq(flags, name='RoI'):
                                     HypoToolGen = TrigMuonEFCombinerHypoToolFromDict)
    
     return (selAccEFCB , efmuCBSequence)
+
+def muEFCBSequence(flags, is_probe_leg=False):
+    muonflagsCB = flags.cloneAndReplace('Muon', 'Trigger.Offline.Muon').cloneAndReplace('MuonCombined', 'Trigger.Offline.Combined.MuonCombined')
+    selAccEFCB , efmuCBSequence = _muEFCBStepSeq(muonflagsCB, name='RoI')
+    return efmuCBSequence
 
 def muEFCBStep(flags, chainDict, name='RoI'):
 
@@ -584,5 +507,7 @@ def generateChains( flags, chainDict ):
                 chain = Chain( name=chainDict['chainName'], L1Thresholds=l1Thresholds, ChainSteps=[ muFastStep(muonflags, chainDict), muCombStep(muonflagsCB, chainDict), muEFSAStep(muonflags, chainDict), muEFCBStep(muonflagsCB, chainDict), muEFIsoStep(muonflagsCB, chainDict) ] )
             else:
                 chain = Chain( name=chainDict['chainName'], L1Thresholds=l1Thresholds, ChainSteps=[ muFastStep(muonflags, chainDict), muCombStep(muonflagsCB, chainDict), muEFSAStep(muonflags, chainDict), muEFCBStep(muonflagsCB, chainDict) ] )
+    
+    log.info('Steps for %s are %s', chain.name, chain.steps)
     return chain
 

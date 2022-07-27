@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "SimpleAmbiguityProcessorTool.h"
@@ -40,8 +40,7 @@ Trk::SimpleAmbiguityProcessorTool::SimpleAmbiguityProcessorTool(const std::strin
 //==================================================================================================
 
 Trk::SimpleAmbiguityProcessorTool::~SimpleAmbiguityProcessorTool()
-{
-}
+= default;
 //==================================================================================================
 
 StatusCode Trk::SimpleAmbiguityProcessorTool::initialize(){
@@ -67,8 +66,7 @@ StatusCode Trk::SimpleAmbiguityProcessorTool::initialize(){
     ATH_MSG_INFO( "Ensure that the tracks are fitted after the ambiguity processing!");
   }
   // Configuration of the material effects
-  Trk::ParticleSwitcher particleSwitch;
-  m_particleHypothesis = particleSwitch.particle[m_matEffects];
+  m_particleHypothesis = Trk::ParticleSwitcher::particle[m_matEffects];
   // brem fitting enabled ?
   if (m_tryBremFit) {
      ATH_MSG_INFO( "Try brem fit and recovery for electron like tracks.");

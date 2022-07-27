@@ -21,7 +21,7 @@ def fromRunArgs(runArgs):
 
     log.info('**** Setting-up configuration flags')
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
-    from G4AtlasApps.SimEnums import SimulationFlavour
+    from SimulationConfig.SimEnums import SimulationFlavour
     commonRunArgsToFlags(runArgs, ConfigFlags)
 
     # Autoconfigure enabled subdetectors
@@ -64,7 +64,7 @@ def fromRunArgs(runArgs):
         ConfigFlags.IOVDb.GlobalTag = runArgs.conditionsTag
 
     # Setup common simulation flags
-    from G4AtlasApps.SimConfigFlags import simulationRunArgsToFlags
+    from SimulationConfig.SimConfigFlags import simulationRunArgsToFlags
     simulationRunArgsToFlags(runArgs, ConfigFlags)
 
     from SimuJobTransforms.ISF_Skeleton import defaultSimulationFlags
@@ -80,6 +80,7 @@ def fromRunArgs(runArgs):
     # Setup common digitization flags
     from Digitization.DigitizationConfigFlags import setupDigitizationFlags
     setupDigitizationFlags(runArgs, ConfigFlags)
+    ConfigFlags.Digitization.TruthOutput = True
     log.info('Running with pile-up: %s', ConfigFlags.Digitization.PileUp)
     # ConfigFlags.dump()
 
@@ -95,7 +96,7 @@ def fromRunArgs(runArgs):
 
     # Setup pile-up profile
     if ConfigFlags.Digitization.PileUp:
-        from Digitization.PileUpUtils import setupPileUpProfile
+        from RunDependentSimComps.PileUpUtils import setupPileUpProfile
         setupPileUpProfile(ConfigFlags)
 
     ConfigFlags.Sim.DoFullChain = True

@@ -1,8 +1,6 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
-
-// $Id$
 /**
  * @file MuonEventAthenaPool/test/TgcRawDataCnv_p3_test.cxx
  * @author scott snyder <snyder@bnl.gov>
@@ -12,6 +10,7 @@
 
 #undef NDEBUG
 #include "../src/TgcRawDataCnv_p3.h"
+#include "CxxUtils/checker_macros.h"
 #include "TestTools/leakcheck.h"
 #include "GaudiKernel/MsgStream.h"
 #include <cassert>
@@ -52,6 +51,16 @@ void compare (const TgcRawData& p1,
   assert (p1.isOverlap() == p2.isOverlap());
   assert (p1.isVeto() == p2.isVeto());
   assert (p1.roi() == p2.roi());
+  assert (p1.innerflag() == p2.innerflag());
+  assert (p1.coinflag() == p2.coinflag());
+  assert (p1.nsweta() == p2.nsweta());
+  assert (p1.nswphi() == p2.nswphi());
+  assert (p1.nswsl() == p2.nswsl());
+  assert (p1.nswcand() == p2.nswcand());
+  assert (p1.nswdtheta() == p2.nswdtheta());
+  assert (p1.nswphires() == p2.nswphires());
+  assert (p1.nswlowres() == p2.nswlowres());
+  assert (p1.nswid() == p2.nswid());
 }
 
 
@@ -67,7 +76,7 @@ void testit (const TgcRawData& trans1)
 }
 
 
-void test1()
+void test1 ATLAS_NOT_THREAD_SAFE ()
 {
   std::cout << "test1\n";
 
@@ -105,7 +114,7 @@ void test1()
 }
 
 
-int main()
+int main ATLAS_NOT_THREAD_SAFE ()
 {
   test1();
   return 0;

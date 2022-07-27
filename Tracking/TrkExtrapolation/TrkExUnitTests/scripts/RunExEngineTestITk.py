@@ -1,15 +1,15 @@
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 from AthenaConfiguration.AllConfigFlags import ConfigFlags
 from AthenaConfiguration.MainServicesConfig import MainServicesCfg    
-from AthenaCommon.Configurable import Configurable
 from AthenaCommon.Logging import log
-
-Configurable.configurableRun3Behavior = True
 
 ## Just enable ID for the moment.
 ConfigFlags.Input.isMC             = True
 
-ConfigFlags.GeoModel.useLocalGeometry = False
-if ConfigFlags.GeoModel.useLocalGeometry:
+ConfigFlags.Input.Files = []
+
+ConfigFlags.ITk.Geometry.AllLocal = False
+if ConfigFlags.ITk.Geometry.AllLocal:
   detectors = [
     "ITkPixel",
     "ITkStrip",
@@ -17,11 +17,12 @@ if ConfigFlags.GeoModel.useLocalGeometry:
   ]
   from AthenaConfiguration.DetectorConfigFlags import setupDetectorsFromList
   setupDetectorsFromList(ConfigFlags, detectors, toggle_geometry=True)
+  ConfigFlags.TrackingGeometry.MaterialSource = "Input"
 
-ConfigFlags.GeoModel.AtlasVersion = "ATLAS-P2-ITK-24-00-00"
+
+ConfigFlags.GeoModel.AtlasVersion = "ATLAS-P2-RUN4-01-00-00"
 ConfigFlags.IOVDb.GlobalTag = "OFLCOND-SIM-00-00-00"
 ConfigFlags.GeoModel.Align.Dynamic = False
-ConfigFlags.TrackingGeometry.MaterialSource = "Input"
 
 ConfigFlags.Detector.GeometryCalo = False
 ConfigFlags.Detector.GeometryMuon = False

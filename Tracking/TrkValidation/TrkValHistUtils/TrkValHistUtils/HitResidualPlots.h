@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef XAOD_ANALYSIS
@@ -14,7 +14,7 @@ namespace Trk{
 
 class HitResidualPlots: public PlotBase {
     public:
- HitResidualPlots(PlotBase *pParent, std::string sDir, std::string sType=""): PlotBase(pParent, sDir),m_sType(sType) { init(); }
+ HitResidualPlots(PlotBase *pParent, const std::string& sDir, const std::string& sType=""): PlotBase(pParent, sDir),m_sType(sType) { init(); }
       void fill( const Trk::ResidualPull& resPull );
 
       TH1* residuals;

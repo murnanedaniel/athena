@@ -24,6 +24,7 @@ pflowcontexts = {
     # Omit smearing, to avoid any efficiency loss
     "AnalysisLatest":("JES_data2017_2016_2015_Consolidated_PFlow_2018_Rel21.config","00-04-82","JetArea_Residual_EtaJES_GSC_Insitu"),
     "TrigLS2":("JES_MC16Recommendation_Consolidated_PFlow_Apr2019_Rel21_Trigger.config","00-04-82","JetArea_Residual_EtaJES_GSC_Insitu"),
+    "Trigger":("JES_MC16Recommendation_Consolidated_PFlow_30May2022_Rel22_Trigger.config","00-04-82","JetArea_Residual_EtaJES_GSC_Insitu"),
 }
 
 topocontexts = {
@@ -33,6 +34,7 @@ topocontexts = {
     "TrigRun2":("JES_MC15cRecommendation_May2016_Trigger.config","00-04-77","JetArea_EtaJES_GSC_Insitu"),
     "TrigRun2GSC":("JES_data2016_data2015_Recommendation_Dec2016_rel21.config","00-04-77","JetArea_EtaJES_GSC_Insitu"),
     "TrigLS2":("JES_MC16Recommendation_Consolidated_EMTopo_Apr2019_Rel21_Trigger.config","00-04-82","JetArea_Residual_EtaJES_GSC_Insitu"),
+    "Trigger":("JES_MC16Recommendation_Consolidated_EMTopo_Apr2019_Rel21_Trigger.config","00-04-82","JetArea_Residual_EtaJES_GSC_Insitu"),
 }
 
 rscanlc2 = {
@@ -44,9 +46,9 @@ rscanlc6 = {
 }
 
 fatjetcontexts = {
-    "CombinedMass":  ("JES_MC16recommendation_FatJet_JMS_comb_19Jan2018.config","00-04-81","EtaJES_JMS"),
-    "CaloMass":      ("JES_MC16recommendation_FatJet_JMS_calo_29Nov2017.config","00-04-81","EtaJES_JMS"),
-    "TAMass":        ("JES_MC16recommendation_FatJet_JMS_TA_29Nov2017.config","00-04-81","EtaJES_JMS"),
+    "CombinedMass":  ("JES_MC16recommendation_FatJet_Trimmed_JMS_comb_17Oct2018.config","00-04-82","EtaJES_JMS"),
+    "CaloMass":      ("JES_MC16recommendation_FatJet_Trimmed_JMS_calo_12Oct2018.config","00-04-82","EtaJES_JMS"),
+    "TAMass":        ("JES_MC16recommendation_FatJet_Trimmed_JMS_TA_12Oct2018.config","00-04-82","EtaJES_JMS"),
     "TrigUngroomed": ("JES_Full2012dataset_Rscan_June2014.config","00-04-77","JetArea_EtaJES"),
     "TrigTrimmed":   ("JES_MC15recommendation_FatJet_June2015_PtFrac4.config","00-04-82","EtaJES_JMS"),
     "TrigSoftDrop":  ("JES_MC16recommendation_R10_UFO_CSSK_SoftDrop_JMS_01April2020.config","00-04-82","EtaJES_JMS"),
@@ -55,6 +57,7 @@ fatjetcontexts = {
 # List AFII config files separately, to avoid needing to specify a different context
 af2configs = {
     "AntiKt4EMPFlow": "JES_MC16Recommendation_AFII_PFlow_April2018_rel21.config",
+    "AntiKt4GPFlow": "JES_MC16Recommendation_AFII_PFlow_April2018_rel21.config",
     "AntiKt4EMTopo":  "JES_MC16Recommendation_AFII_EMTopo_April2018_rel21.config",
     "AntiKt4LCTopo":  "JES_MC16Recommendation_AFII_EMTopo_April2018_rel21.config",
 }
@@ -62,6 +65,7 @@ af2configs = {
 calibcontexts = {
     # Standard AntiKt4
     "AntiKt4EMPFlow":pflowcontexts,
+    "AntiKt4GPFlow":pflowcontexts,
     "AntiKt4EMTopo":topocontexts,
     "AntiKt4LCTopo":topocontexts,
     "AntiKt10LCTopo":fatjetcontexts,
@@ -124,7 +128,7 @@ def getJetCalibTool(jetcollection, context, data_type, calibseq = "", rhoname = 
         _jetcollection = jetcollection
         if "PFlow" in jetcollection and context=="TrigSoftDrop":
             _jetcollection = jetcollection.replace("EMPFlow","UFO")
-        return defineJetCalibTool(_jetcollection, _configfile, calibarea, _calibseq, _data_type, rhoname, _pvname, gscdepth)
+        return defineJetCalibTool(_jetcollection, context, _configfile, calibarea, _calibseq, _data_type, rhoname, _pvname, gscdepth)
     except KeyError as e:
         jetcaliblog.error("Context '{0}' not found for jet collection '{1}'".format(context,jetcollection))
         jetcaliblog.error("Options are '{0}".format(','.join(jetcontexts.keys())))
@@ -132,10 +136,10 @@ def getJetCalibTool(jetcollection, context, data_type, calibseq = "", rhoname = 
     return None
 
 # This method actually sets up the tool
-def defineJetCalibTool(jetcollection, configfile, calibarea, calibseq, data_type, rhoname, pvname, gscdepth):
+def defineJetCalibTool(jetcollection, context, configfile, calibarea, calibseq, data_type, rhoname, pvname, gscdepth):
     # Abbreviate the calib sequence
     calibseqshort = ''.join([ step[0] for step in calibseq.split('_') ])
-    toolname = "jetcalib_{0}_{1}".format(jetcollection,calibseqshort)
+    toolname = "jetcalib_{0}_{1}_{2}".format(jetcollection,calibseqshort,context)
     #
     from AthenaConfiguration.ComponentFactory import CompFactory
     jct = CompFactory.JetCalibrationTool(toolname,
@@ -163,12 +167,15 @@ def getJetCalibToolPrereqs(modspec,jetdef):
     prereqs.append("mod:ConstitFourMom")
     if "JetArea" in calibseq: # Will not insert a prefix here
         if calibcontext.startswith("Trig"): prereqs.append("input:HLT_EventDensity")
+        elif pvname != "PrimaryVertices": prereqs.append("input:EventDensityCustomVtx")
         else: prereqs.append("input:EventDensity")
     if "GSC" in calibseq:
         prereqs += ["mod:CaloEnergies"]
         if calibcontext != "TrigRun2": # No track/MS GSC for trigger w/o FTK
             prereqs += ["mod:TrackMoments",
                         "ghost:MuonSegment"]
+    if "CombinedMass" in calibcontext:
+        prereqs += ["mod:TrackSumMoments"]
     jetcaliblog.debug("Prereqs for calibseq '{0}': {1}".format(calibseq,str(prereqs)))
     return prereqs
 

@@ -1,13 +1,17 @@
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 
 from AthenaCommon.Logging import logging
 log = logging.getLogger(__name__)
 
+
 import abc
 from TriggerMenuMT.HLT.Config.MenuComponents import Chain, ChainStep, RecoFragmentsPool
 from DecisionHandling.DecisionHandlingConfig import ComboHypoCfg
 from AthenaConfiguration.AllConfigFlags import ConfigFlags
+from AthenaConfiguration.ComponentFactory import isRun3Cfg
+from TriggerMenuMT.HLT.Config.ControlFlow.HLTCFTools import NoCAmigration
+
 
 #----------------------------------------------------------------
 # Base class to configure chain
@@ -43,10 +47,30 @@ class ChainConfigurationBase(metaclass=abc.ABCMeta):
     def getStep(self, stepID, stepPartName, sequenceCfgArray, comboHypoCfg=ComboHypoCfg, comboTools=[], flags=ConfigFlags, **stepArgs):
         stepName = 'Step%d'%stepID + '_' + stepPartName
         log.debug("Configuring step %s", stepName)
-        seqArray = []
-        for sequenceCfg in sequenceCfgArray:
-            seqArray.append( RecoFragmentsPool.retrieve( sequenceCfg, flags, **stepArgs ))
-        return ChainStep(stepName, seqArray, [self.mult], [self.dict], comboHypoCfg=comboHypoCfg, comboToolConfs=comboTools)
+        seqArray = []                
+        for sequenceCfg in sequenceCfgArray:            
+            try:
+                if isRun3Cfg():
+                    seqArray.append (sequenceCfg(flags, **stepArgs) )                                                         
+                else:
+                    seqArray.append( RecoFragmentsPool.retrieve( sequenceCfg, flags, **stepArgs ))                                                       
+            except NameError:
+                if isRun3Cfg():
+                    log.warning(str(NoCAmigration('[getStep] This sequence {0} does not exist for CA components'.format(sequenceCfg.__name__)) ))                    
+                else: 
+                    raise
+
+        if (len(seqArray)>0):
+            return ChainStep(stepName, seqArray, [self.mult], [self.dict], comboHypoCfg=comboHypoCfg, comboToolConfs=comboTools)
+
+        try:
+            if isRun3Cfg():
+                raise NoCAmigration                            
+            raise RuntimeError("[getStep] No sequences generated for step %s!", stepPartName)        
+        except NoCAmigration:
+            # return an Empty step with newJO if no Sequence was found 
+            return self.getEmptyStep(stepID, stepPartName+"_MissingCA")
+
 
     def getEmptyStep(self, stepID, stepPartName):
         stepName = 'Step%d'%stepID + '_' + stepPartName

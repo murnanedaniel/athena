@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "Geo2G4Builder.h"
@@ -33,11 +33,11 @@
 #include <utility>
 
 Geo2G4Builder::Geo2G4Builder(const std::string& detectorName)
-  : m_detectorName(detectorName)
+  : AthMessaging("Geo2G4Builder")
+  , m_detectorName(detectorName)
   , m_motherTransform(GeoTrf::Transform3D::Identity())
   , m_matAir(nullptr)
   , m_pDetStore(nullptr)
-  , m_msg("Geo2G4Builder")
 {
   ISvcLocator* svcLocator = Gaudi::svcLocator(); // from Bootstrap
   StatusCode sc=svcLocator->service("DetectorStore",m_pDetStore);
@@ -62,7 +62,7 @@ Geo2G4Builder::Geo2G4Builder(const std::string& detectorName)
 
     if(m_treeTops.size()>1) {
         // -------- -------- MATERIAL MANAGER -------- ----------
-        const StoredMaterialManager* theMaterialManager = m_pDetStore->tryConstRetrieve<StoredMaterialManager>("MATERIALS");
+        StoredMaterialManager* theMaterialManager = m_pDetStore->tryRetrieve<StoredMaterialManager>("MATERIALS");
 	if(theMaterialManager) {
           m_matAir = theMaterialManager->getMaterial("std::Air");
 	}
@@ -149,7 +149,7 @@ G4LogicalVolume* Geo2G4Builder::BuildTree()
       }
 
       // Add the temporary physical volume to the GeoModelExperiment
-      GeoModelExperiment * theExpt;
+      GeoModelExperiment * theExpt = nullptr;
       StatusCode sc = m_pDetStore->retrieve(theExpt,"ATLAS");
       if(sc.isFailure())
         ATH_MSG_WARNING("Unable to retrieve GeoModelExperiment. Temporary volume cannot be released");

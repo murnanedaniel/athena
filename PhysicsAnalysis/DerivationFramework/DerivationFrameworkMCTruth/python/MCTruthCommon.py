@@ -35,16 +35,6 @@ if DerivationFrameworkIsMonteCarlo:
                                                                     AugmentationTools = [ToolSvc.DFCommonTruthMetaDataWriter]
                                                                      )
 
-    # Add in some jets - global config if we are running on EVNT
-    if dfInputIsEVNT:
-        from JetRec.JetRecFlags import jetFlags
-        jetFlags.useTruth = True
-        jetFlags.useTracks = False
-        jetFlags.truthFlavorTags = ["BHadronsInitial", "BHadronsFinal", "BQuarksFinal",
-                                    "CHadronsInitial", "CHadronsFinal", "CQuarksFinal",
-                                    "TausFinal",
-                                    "Partons",
-                                    ]
 
 # Helper for adding truth jet collections via new jet config
 def addTruthJets(kernel=None, decorationDressing=None):
@@ -131,15 +121,12 @@ def schedulePostJetMCTruthAugmentations(kernel=None, decorationDressing=None):
     augmentationToolsList = [ dfTruth.DFCommonTruthTauDressingTool ]
 
     #Save the post-shower HT and MET filter values that will make combining filtered samples easier (adds to the EventInfo)
-    if dfInputIsEVNT:
-        from DerivationFrameworkMCTruth.GenFilterToolSetup import DFCommonTruthGenFilter
+    from DerivationFrameworkMCTruth.GenFilterToolSetup import DFCommonTruthGenFilter
 
-        # schedule the special truth building tools and add them to a common augmentation; note taus are handled separately below
-        from DerivationFrameworkMCTruth.TruthDerivationTools import DFCommonTruthDressedWZQGLabelTool
-        augmentationToolsList += [ DFCommonTruthGenFilter ,
-                                   DFCommonTruthDressedWZQGLabelTool]
-    else:
-        augmentationToolsList = []
+    # schedule the special truth building tools and add them to a common augmentation; note taus are handled separately below
+    from DerivationFrameworkMCTruth.TruthDerivationTools import DFCommonTruthDressedWZQGLabelTool
+    augmentationToolsList += [ DFCommonTruthGenFilter ,
+                               DFCommonTruthDressedWZQGLabelTool]
     # SUSY signal decorations
     from DerivationFrameworkSUSY.DecorateSUSYProcess import IsSUSYSignal
     if IsSUSYSignal():
@@ -416,31 +403,28 @@ def addTruthEnergyDensity(kernel=None):
         dfcommontruthlog.warning("Attempt to add a duplicate DFCommonTruthEDKernel. Failing.")
         return
     # Truth energy density tools
-    from EventShapeTools.EventDensityConfig import configEventDensityTool,EventDensityAthAlg
+    from EventShapeTools.EventDensityConfig import configEventDensityTool
+    from EventShapeTools.EventShapeToolsConf import EventDensityAthAlg
     from AthenaCommon.AppMgr import ToolSvc
     from JetRecConfig.StandardJetConstits import stdConstitDic as cst
     # Algorithms for the energy density - needed only if e/gamma hasn't set things up already
     if not hasattr(ToolSvc,'EDTruthCentralTool'):
         DFCommonTruthCentralEDTool = configEventDensityTool("DFCommonTruthCentralEDTool",
-                                                            cst.Truth.label,
+                                                            cst.Truth,
                                                             0.5,
                                                             AbsRapidityMax      = 1.5,
                                                             OutputContainer     = "TruthIsoCentralEventShape",
                                                            )
-        # Note the helper function mangles the naming in a specific way that is not sufficiently general
-        DFCommonTruthCentralEDTool.InputContainer = "PseudoJet"+cst.Truth.label
         ToolSvc += DFCommonTruthCentralEDTool
         kernel += EventDensityAthAlg("DFCommonTruthCentralEDAlg", EventDensityTool = DFCommonTruthCentralEDTool )
     if not hasattr(ToolSvc,'EDTruthForwardTool'):
         DFCommonTruthForwardEDTool = configEventDensityTool("DFCommonTruthForwardEDTool",
-                                                            cst.Truth.label,
+                                                            cst.Truth,
                                                             0.5,
                                                             AbsRapidityMin      = 1.5,
                                                             AbsRapidityMax      = 3.0,
                                                             OutputContainer     = "TruthIsoForwardEventShape",
                                                            )
-        # Note the helper function mangles the naming in a specific way that is not sufficiently general
-        DFCommonTruthForwardEDTool.InputContainer = "PseudoJet"+cst.Truth.label
         ToolSvc += DFCommonTruthForwardEDTool
         kernel += EventDensityAthAlg("DFCommonTruthForwardEDAlg", EventDensityTool = DFCommonTruthForwardEDTool )
 

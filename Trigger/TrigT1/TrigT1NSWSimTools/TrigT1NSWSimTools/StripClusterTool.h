@@ -32,11 +32,6 @@
 #include <map>
 #include <utility>
 
-//forward declarations
-class IIncidentSvc;
-class sTgcDigit;
-class TTree;
-
 namespace MuonGM {
   class MuonDetectorManager;
 }
@@ -58,80 +53,72 @@ namespace NSWL1 {
    */
 
   class StripClusterTool: virtual public IStripClusterTool,
-                                   public AthAlgTool,
-                                   public IIncidentListener {
+                                  public AthAlgTool,
+                                  public IIncidentListener {
 
   public:
-    enum cStatus {OK, FILL_ERROR, CLEARED};
-
-    StripClusterTool(const std::string& type, 
-                      const std::string& name,
-                      const IInterface* parent);
+    StripClusterTool(const std::string& type,
+                     const std::string& name,
+                     const IInterface* parent);
     virtual ~StripClusterTool()=default;
     virtual StatusCode initialize() override;
     virtual void handle (const Incident& inc) override;
-    virtual
-    StatusCode cluster_strip_data( std::vector<std::unique_ptr<StripData>>& strips,std::vector<std::unique_ptr<StripClusterData>>& clusters) override;
+    virtual StatusCode cluster_strip_data( std::vector<std::unique_ptr<StripData>>& strips,std::vector<std::unique_ptr<StripClusterData>>& clusters) const override;
+
   private:
     // methods implementing the internal data processing
-
+    StatusCode init_branches();                             //!< init the branches
     StatusCode book_branches();                             //!< book the branches to analyze the StripTds
-    void reset_ntuple_variables();                          //!< reset the variables used in the analysis
     void clear_ntuple_variables();                          //!< clear the variables used in the analysis
-    void fill_strip_validation_id(std::vector<std::unique_ptr<StripClusterData>>& clusters);  //!< fill the ntuple branch for the StripTdsOffline
+    StatusCode fill_strip_validation_id(std::vector<std::unique_ptr<StripClusterData>>& clusters,
+                                        std::vector< std::shared_ptr<std::vector<std::unique_ptr<StripData> >>  > &cluster_cache) const;
 
     // needed Servives, Tools and Helpers
-    ServiceHandle< IIncidentSvc >      m_incidentSvc;       //!< Athena/Gaudi incident Service
+    ServiceHandle< IIncidentSvc > m_incidentSvc{this, "IncidentSvc", "IncidentSvc"};       //!< Athena/Gaudi incident Service
     const MuonGM::MuonDetectorManager* m_detManager;        //!< MuonDetectorManager
     ServiceHandle<Muon::IMuonIdHelperSvc> m_idHelperSvc {this, "MuonIdHelperSvc", "Muon::MuonIdHelperSvc/MuonIdHelperSvc"};
 
-    // analysis ntuple
-    TTree* m_tree;                                          //!< ntuple for analysis
-    BooleanProperty  m_doNtuple;                            //!< property, see @link StripTdsOfflineTool::StripTdsOfflineTool @endlink
-    StringProperty   m_sTgcSdoContainer;                    //!< property, see @link PadTdsOfflineTool::PadTdsOfflineTool @endlink
-    // analysis variable to be put into the ntuple
-    int m_cl_n;                                             //!< number of STRIP hit delivered
-    std::vector<int> *m_cl_charge;                          //!< charge of hit STRIPs
-    std::vector<int> *m_cl_size;                            //!< charge of hit STRIPs
-    std::vector<float> *m_cl_x;                             //!<global x position of cluster
-    std::vector<float> *m_cl_y;                             //!<global y position of cluster
-    std::vector<float> *m_cl_z;                             //!<global z position of cluster
-    std::vector<float> *m_cl_lx;                            //!<global x position of cluster
-    std::vector<float> *m_cl_ly;                            //!<global y position of cluster
-    std::vector<float> *m_cl_lz;                            //!<global z position of cluster
-    std::vector<float> *m_cl_ltgx;                          //!<global x position of cluster
-    std::vector<float> *m_cl_ltgy;                          //!<global y position of cluster
-    std::vector<float> *m_cl_ltgz;                          //!<global z position of cluster
+    Gaudi::Property<bool>         m_isMC            {this, "IsMC",                  true,       "This is MC"};
+    Gaudi::Property<bool>         m_doNtuple        {this, "DoNtuple",              false,      "Input the sTGC strip cluster branches into the analysis ntuple"};
+    SG::ReadHandleKey<MuonSimDataCollection> m_sTgcSdoContainerKey{this,"sTGC_SdoContainerName", "sTGC_SDO", "the name of the sTGC SDO container"};
 
-    std::vector<float> *m_cl_truth_x;                       //!<global x of first truth hit for strip in cluster
-    std::vector<float> *m_cl_truth_y;                       //!<global y of first truth hit for strip in cluster
-    std::vector<float> *m_cl_truth_z;                       //!<global z of first truth hit for strip in cluster
+    /* None of the TTree filling is thread-safe and should really be refactored.
+     * But we check in initialize() that this is only used in single-threaded mode.
+     */
+    TTree* m_tree{nullptr};                                 //!< ntuple for analysis
+    mutable int m_cl_n ATLAS_THREAD_SAFE;                   //!< number of STRIP hit delivered
+    std::vector<int> *m_cl_charge ATLAS_THREAD_SAFE{nullptr};                          //!< charge of hit STRIPs
+    std::vector<int> *m_cl_size ATLAS_THREAD_SAFE{nullptr};                            //!< charge of hit STRIPs
+    std::vector<float> *m_cl_x ATLAS_THREAD_SAFE{nullptr};                             //!<global x position of cluster
+    std::vector<float> *m_cl_y ATLAS_THREAD_SAFE{nullptr};                             //!<global y position of cluster
+    std::vector<float> *m_cl_z ATLAS_THREAD_SAFE{nullptr};                             //!<global z position of cluster
+    std::vector<float> *m_cl_lx ATLAS_THREAD_SAFE{nullptr};                            //!<global x position of cluster
+    std::vector<float> *m_cl_ly ATLAS_THREAD_SAFE{nullptr};                            //!<global y position of cluster
+    std::vector<float> *m_cl_lz ATLAS_THREAD_SAFE{nullptr};                            //!<global z position of cluster
+    std::vector<float> *m_cl_ltgx ATLAS_THREAD_SAFE{nullptr};                          //!<global x position of cluster
+    std::vector<float> *m_cl_ltgy ATLAS_THREAD_SAFE{nullptr};                          //!<global y position of cluster
+    std::vector<float> *m_cl_ltgz ATLAS_THREAD_SAFE{nullptr};                          //!<global z position of cluster
 
-    std::vector<float> *m_cl_truth_lx;                      //!<global x of first truth hit for strip in cluster
-    std::vector<float> *m_cl_truth_ly;                      //!<global y of first truth hit for strip in cluster
-    std::vector<float> *m_cl_truth_lz;                      //!<global z of first truth hit for strip in cluster
+    std::vector<float> *m_cl_truth_x ATLAS_THREAD_SAFE{nullptr};                       //!<global x of first truth hit for strip in cluster
+    std::vector<float> *m_cl_truth_y ATLAS_THREAD_SAFE{nullptr};                       //!<global y of first truth hit for strip in cluster
+    std::vector<float> *m_cl_truth_z ATLAS_THREAD_SAFE{nullptr};                       //!<global z of first truth hit for strip in cluster
 
+    std::vector<float> *m_cl_truth_lx ATLAS_THREAD_SAFE{nullptr};                      //!<local x of first truth hit for strip in cluster
+    std::vector<float> *m_cl_truth_ly ATLAS_THREAD_SAFE{nullptr};                      //!<local y of first truth hit for strip in cluster
+    std::vector<float> *m_cl_truth_lz ATLAS_THREAD_SAFE{nullptr};                      //!<local z of first truth hit for strip in cluster
 
-    std::vector<float> *m_cl_truth_E;                       //!<global energy of truth strip deposits
-    std::vector<int> *m_cl_truth_n;                         //!<Cluster index for truth strip hits
+    std::vector<float> *m_cl_truth_E ATLAS_THREAD_SAFE{nullptr};                       //!<global energy of truth strip deposits
+    std::vector<int> *m_cl_truth_n ATLAS_THREAD_SAFE{nullptr};                         //!<Cluster index for truth strip hits
 
-    std::vector<int> *m_cl_side;
-    std::vector<int> *m_cl_isSmall;
-    std::vector<int> *m_cl_wedge;
-    std::vector<int> *m_cl_sector;
-    std::vector<int> *m_cl_module;
-    std::vector<int> *m_cl_layer;
-    std::vector<int> *m_cl_bandId;
+    std::vector<int> *m_cl_side ATLAS_THREAD_SAFE{nullptr};
+    std::vector<int> *m_cl_isSmall ATLAS_THREAD_SAFE{nullptr};
+    std::vector<int> *m_cl_wedge ATLAS_THREAD_SAFE{nullptr};
+    std::vector<int> *m_cl_sector ATLAS_THREAD_SAFE{nullptr};
+    std::vector<int> *m_cl_module ATLAS_THREAD_SAFE{nullptr};
+    std::vector<int> *m_cl_layer ATLAS_THREAD_SAFE{nullptr};
+    std::vector<int> *m_cl_bandId ATLAS_THREAD_SAFE{nullptr};
 
-    std::vector<int> *m_cl_phiId;
-    //Cache that holds which strips to read based on bandid
-    // 2d-vector for eta/phi station coordinates
-    // map from BandID to a set of strips
-
-    //std::vector< std::vector<std::unique_ptr<StripData> >* > m_clusters;
-    std::vector< std::shared_ptr<std::vector<std::unique_ptr<StripData> >>  > m_clusters;
+    std::vector<int> *m_cl_phiId ATLAS_THREAD_SAFE{nullptr};
   };  // end of StripClusterTool class
-
 } // namespace NSWL1
-
 #endif

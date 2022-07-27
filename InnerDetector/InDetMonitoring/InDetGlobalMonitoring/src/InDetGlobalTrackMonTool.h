@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 
@@ -26,16 +26,14 @@
 #include "InDetTrackSelectionTool/IInDetTrackSelectionTool.h"
 #include "TrkToolInterfaces/IResidualPullCalculator.h"
 #include "TrkToolInterfaces/ITrackHoleSearchTool.h"
-#include "TrkToolInterfaces/ITrackSummaryTool.h"
 #include "TrkVertexFitterInterfaces/ITrackToVertexIPEstimator.h"
 #include "TrkToolInterfaces/IUpdator.h"
 
-#include "TrkMeasurementBase/MeasurementBase.h"
-
 #include "PixelGeoModel/IBLParameterSvc.h"
+
+#include "xAODTracking/TrackParticleContainer.h"
 #include "xAODJet/JetContainer.h"
 #include "xAODTracking/VertexContainer.h"
-#include "xAODTracking/TrackParticleContainer.h"
 
 //Detector Managers
 #include "AtlasDetDescr/AtlasDetectorID.h"
@@ -47,7 +45,6 @@
 //Framework
 #include "StoreGate/ReadHandleKey.h"
 
-#include "TrkTrack/TrackCollection.h"
 //Standard c++
 #include <string>
 #include <map>
@@ -99,13 +96,13 @@ public:
     virtual StatusCode procHistograms();
 
     /// Functions to fill individual sets of histograms
-    void FillForwardTracks( const Trk::Track *track, const std::unique_ptr<const Trk::TrackSummary> & summary );
-    void FillEtaPhi( const Trk::Track *track, const std::unique_ptr<const Trk::TrackSummary> & summary );
-    void FillHits( const Trk::Track *track, const std::unique_ptr<const Trk::TrackSummary> & summary );
+    void FillForwardTracks( const xAOD::TrackParticle *trackPart);
+    void FillEtaPhi( const xAOD::TrackParticle *trackPart );
+    void FillHits( const xAOD::TrackParticle *trackPart );
     void FillTIDE();
-    void FillHoles( const Trk::Track *track, const std::unique_ptr<const Trk::TrackSummary> & summary );
-    void FillHitMaps( const Trk::Track *track );
-    void FillHoleMaps( const Trk::Track *track );
+    void FillHoles( const xAOD::TrackParticle *trackPart );
+    void FillHitMaps( const xAOD::TrackParticle *trackPart );
+    void FillHoleMaps( const xAOD::TrackParticle *trackPart );
     ///@} 
  
 private:
@@ -140,15 +137,14 @@ private:
 
     ServiceHandle <IBLParameterSvc> m_IBLParameterSvc;
     ToolHandle <Trk::ITrackHoleSearchTool> m_holes_search_tool;
-    PublicToolHandle <Trk::ITrackSummaryTool> m_trkSummaryTool
-       {this,"TrackSummaryTool","Trk::TrackSummaryTool/InDetTrackSummaryTool",""};
     ToolHandle<Trk::IResidualPullCalculator> m_residualPullCalculator;
     PublicToolHandle< Trk::ITrackToVertexIPEstimator >  m_trackToVertexIPEstimator
        {this,"TrackToVertexIPEstimator","Trk::TrackToVertexIPEstimator",""};
     ToolHandle<Trk::IUpdator>             m_iUpdator;
     
-    SG::ReadHandleKey<TrackCollection> m_CombinedTracksName{this,"TrackCollection","Tracks","Combined Track Collection for Global Monitoring"};
-    SG::ReadHandleKey<TrackCollection> m_ForwardTracksName{this,"ForwardTrackCollection","ResolvedForwardTracks","Forward Track Collection for Global Monitoring"};
+    SG::ReadHandleKey<xAOD::TrackParticleContainer> m_TrackParticleName{this,"TrackParticleContainerName","InDetTrackParticles","TrackParticle Collection for Global Monitoring"};
+    SG::ReadHandleKey<xAOD::TrackParticleContainer> m_ForwardTrackParticleName{this,"ForwardTrackParticleContainerName","InDetForwardTrackParticles","Forward TrackParticle Collection for Global Monitoring"};
+
     SG::ReadHandleKey<xAOD::JetContainer> m_JetsName{this,"JetCollection","AntiKt4EMTopoJets","Jet Collection for Global Track Monitoring"};
     SG::ReadHandleKey<xAOD::VertexContainer> m_vertexKey { this, "VertexContainer", "PrimaryVertices", "primary vertex container" };
 
@@ -276,10 +272,10 @@ private:
 
     template <class histClass>
     StatusCode registerManHist ( 
-	histClass * & target, std::string path, Interval_t interval,
-	std::string name, std::string title,
+	histClass * & target, const std::string & path, Interval_t interval,
+	const std::string & name, const std::string & title,
 	int nbinsx, double xlow, double xhi,
-	std::string xlabel, std::string ylabel = "" )
+	const std::string & xlabel, const std::string & ylabel = "" )
 	{
 	    target = new histClass( name.c_str(), title.c_str(), 
 				    nbinsx, xlow, xhi );
@@ -291,11 +287,11 @@ private:
 
     template <class histClass>
     StatusCode registerManHist ( 
-	histClass * & target, std::string path, Interval_t interval,
-	std::string name, std::string title,
+	histClass * & target, const std::string & path, Interval_t interval,
+	const std::string & name, const std::string & title,
 	int nbinsx, double xlow, double xhi,
 	int nbinsy, double ylow, double yhi,
-	std::string xlabel, std::string ylabel = "" )
+	const std::string & xlabel, const std::string & ylabel = "" )
 	{
 	    target = new histClass( name.c_str(), title.c_str(), 
 				    nbinsx, xlow, xhi,
@@ -308,9 +304,9 @@ private:
     
     template <class histClass>
     StatusCode registerHistI ( 
-	MonGroup & theGroup, histClass * & target, std::string name, std::string title,
+	MonGroup & theGroup, histClass * & target, const std::string & name, const std::string & title,
 	int nbinsx, double xlow, double xhi,
-	std::string xlabel = "", std::string ylabel = "" )
+	const std::string & xlabel = "", const std::string & ylabel = "" )
 	{
 	    target = histClass::create( name.c_str(), title.c_str(), nbinsx, xlow, xhi );
 	    
@@ -325,10 +321,10 @@ private:
 
     template <class histClass>
     StatusCode registerHistI ( 
-	MonGroup & theGroup, histClass * & target, std::string name, std::string title,
+	MonGroup & theGroup, histClass * & target, const std::string & name, const std::string & title,
 	int nbinsx, double xlow, double xhi,
 	int nbinsy, double ylow, double yhi,
-	std::string xlabel = "", std::string ylabel = "" )
+	const std::string & xlabel = "", const std::string & ylabel = "" )
 	{
 	    target = histClass::create( name.c_str(), title.c_str(), 
 					nbinsx, xlow, xhi,
@@ -345,9 +341,9 @@ private:
     
     template <class histClass>
     StatusCode registerHistIR ( 
-	MonGroup & theGroup, histClass * & target, std::string name, std::string title,
+	MonGroup & theGroup, histClass * & target, const std::string & name, const std::string & title,
 	int nbinsx, double xlow, double xhi,
-	std::string xlabel = "", std::string ylabel = "" )
+	const std::string & xlabel = "", const std::string & ylabel = "" )
 	{
 	    target = new histClass( name.c_str(), title.c_str(), 
 				    nbinsx, xlow, xhi );
@@ -363,10 +359,10 @@ private:
     
     template <class histClass>
     StatusCode registerHistIR ( 
-	MonGroup & theGroup, histClass * & target, std::string name, std::string title,
+	MonGroup & theGroup, histClass * & target, const std::string& name, const std::string & title,
 	int nbinsx, double xlow, double xhi,
 	int nbinsy, double ylow, double yhi,
-	std::string xlabel = "", std::string ylabel = "" )
+	const std::string & xlabel = "", const std::string & ylabel = "" )
 	{
 	    target = new histClass( name.c_str(), title.c_str(), 
 				    nbinsx, xlow, xhi,

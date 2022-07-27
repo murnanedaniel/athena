@@ -7,7 +7,7 @@
 #
 #   @date    Sun  8 Mar 2020 03:27:57 GMT
 #                 
-#   Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration#                 
+#   Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration#                 
 #
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory # CompFactory creates old or new configs depending on the enva
@@ -147,7 +147,7 @@ def makeRegSelTool_MM() :
     from AthenaCommon.DetFlags import DetFlags
     enabled = False
     if MuonGeometryFlags.hasMM() :
-        enabled = DetFlags.detdescr.Micromegas_on()
+        enabled = DetFlags.detdescr.MM_on()
     from MuonRegionSelector.MuonRegionSelectorConf import MM_RegSelCondAlg
     return _makeRegSelTool( "MM", enabled, MM_RegSelCondAlg )
 
@@ -236,11 +236,8 @@ def regSelTool_SCT_Cfg(flags):
 
 def regSelTool_TRT_Cfg(flags):
     from TRT_GeoModel.TRT_GeoModelConfig import TRT_ReadoutGeometryCfg
-    # temporary
-    from PixelConditionsAlgorithms.PixelConditionsConfig import PixelCablingCondAlgCfg
     return regSelToolCfg(flags, "TRT", CompFactory.TRT_RegSelCondAlg,
-                         readout_geometry=TRT_ReadoutGeometryCfg(flags),
-                         conditions=PixelCablingCondAlgCfg(flags))  # FIXME: TRT should not depend on Pixel
+                         readout_geometry=TRT_ReadoutGeometryCfg(flags))
 
 # ITk
 def regSelTool_ITkPixel_Cfg(flags):

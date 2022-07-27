@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /// @author Tadej Novak
@@ -9,8 +9,7 @@
 #define ASG_ANALYSIS_ALGORITHMS__ASG_EVENT_SCALE_FACTOR_ALG_H
 
 #include <AnaAlgorithm/AnaAlgorithm.h>
-#include <SelectionHelpers/ISelectionAccessor.h>
-#include <SelectionHelpers/SelectionReadHandle.h>
+#include <SelectionHelpers/SysReadSelectionHandle.h>
 #include <SystematicsHandles/SysReadHandle.h>
 #include <SystematicsHandles/SysReadDecorHandle.h>
 #include <SystematicsHandles/SysWriteDecorHandle.h>
@@ -53,13 +52,8 @@ namespace CP
 
     /// \brief the preselection we apply to our input
   private:
-    SelectionReadHandle m_preselection {
+    SysReadSelectionHandle m_preselection {
       this, "preselection", "", "the preselection to apply"};
-
-    /// \brief the decoration for reading systematically aware preselection
-  private:
-    SysReadDecorHandle<char> m_inputSelectionDecoration {
-      this, "inputSelectionDecoration", "", "the decoration for the input selection flag"};
 
     /// \brief the decoration for reading the scale factor
   private:

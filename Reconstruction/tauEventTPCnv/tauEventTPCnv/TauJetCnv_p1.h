@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 //-----------------------------------------------------------------------------
@@ -11,7 +11,6 @@
 #ifndef tauEventTPCnv_TAUJETCNV_P1_H
 #define tauEventTPCnv_TAUJETCNV_P1_H
 
-#include "AthenaPoolCnvSvc/T_AthenaPoolTPConverter.h"
 #include "tauEventTPCnv/TauJet_p1.h"
 
 namespace Analysis
@@ -21,17 +20,17 @@ namespace Analysis
 
 class MsgStream;
 
-class TauJetCnv_p1 : public T_AthenaPoolTPCnvBase<Analysis::TauJet, TauJet_p1>
+class TauJetCnv_p1
 {
-    public:
-        TauJetCnv_p1() {};
-        virtual void persToTrans( const TauJet_p1    *persObj,
-                                  Analysis :: TauJet *transObj,
-                                  MsgStream          &msg );
+public:
+  TauJetCnv_p1() {};
+  void persToTrans( const TauJet_p1    *persObj,
+                    Analysis :: TauJet *transObj,
+                    MsgStream          &msg ) const;
 
-        virtual void transToPers( const Analysis :: TauJet *transObj,
-                                  TauJet_p1                *persObj,
-                                  MsgStream                &msg );
+  void transToPers( const Analysis :: TauJet *transObj,
+                    TauJet_p1                *persObj,
+                    MsgStream                &msg ) const;
 };
 
 #endif // tauEventTPCnv_TAUJETCNV_P1_H

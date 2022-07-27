@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 ///////////////////////////////////////////////////////////////////
@@ -37,6 +37,9 @@
 #include "TrkMaterialOnTrack/EnergyLoss.h"
 #include "TrkExInterfaces/ExtrapolationMacros.h"
 #include "TrkExInterfaces/ITimedExtrapolator.h"
+
+#include "TrkEventPrimitives/ParticleHypothesis.h"
+
 
 // CLHEP
 #include "CLHEP/Units/SystemOfUnits.h"
@@ -126,7 +129,7 @@ iFatras::McMaterialEffectsEngine::McMaterialEffectsEngine(const std::string& t, 
 
 // destructor
 iFatras::McMaterialEffectsEngine::~McMaterialEffectsEngine()
-{}
+= default;
 
 // Athena standard methods
 // initialize
@@ -370,7 +373,7 @@ ISF::ISFParticle* iFatras::McMaterialEffectsEngine::bremPhoton(const ISF::ISFPar
 
   // the start of the equation
   double theta = 0.;
-  double m = m_particleMasses.mass[particle];
+  double m = Trk::ParticleMasses::mass[particle];
   double E = sqrt(pElectron*pElectron + m*m);
 
   if (m_uniformHertzDipoleAngle) {
@@ -497,7 +500,7 @@ Trk::ExtrapolationCode iFatras::McMaterialEffectsEngine::processMaterialOnLayer(
 
   // get the kinematics
   double p    = parm->momentum().mag();
-  double m    = m_particleMasses.mass[eCell.pHypothesis];
+  double m    = Trk::ParticleMasses::mass[eCell.pHypothesis];
   double E    = sqrt(p*p+m*m);
 
   // radiation and ionization preceed the presampled interaction (if any)
@@ -507,59 +510,93 @@ Trk::ExtrapolationCode iFatras::McMaterialEffectsEngine::processMaterialOnLayer(
     AmgVector(5)      uParameters = parm->parameters();
 
     if ( m_eLoss ) {
-
       // smeared/presampled energy loss
-      Trk::EnergyLoss* eloss = (eCell.pHypothesis==Trk::electron && m_dedicatedElectronSampler) ? m_elEnergyLossSampler->energyLoss(*m_matProp, p, dX0/m_matProp->thicknessInX0(), dir, eCell.pHypothesis) : m_eLossSampler->energyLoss(*m_matProp, p, dX0/m_matProp->thicknessInX0(), dir, eCell.pHypothesis);
+      std::unique_ptr<Trk::EnergyLoss> eloss =
+        (eCell.pHypothesis == Trk::electron && m_dedicatedElectronSampler)
+          ? std::unique_ptr<Trk::EnergyLoss>(m_elEnergyLossSampler->energyLoss(
+              *m_matProp,
+              p,
+              dX0 / m_matProp->thicknessInX0(),
+              dir,
+              eCell.pHypothesis))
+          : m_eLossSampler->energyLoss(*m_matProp,
+                                       p,
+                                       dX0 / m_matProp->thicknessInX0(),
+                                       dir,
+                                       eCell.pHypothesis);
 
       if (eCell.pHypothesis==Trk::electron && m_createBremPhoton) {
 
-	// ionization update
+        // ionization update
 
-	double newP = E+eloss->meanIoni()>m ? sqrt((E+eloss->meanIoni())*(E+eloss->meanIoni())-m*m) : 0.5*m_minimumMomentum;
-	uParameters[Trk::qOverP] = parm->charge()/newP;
+        double newP =
+          E + eloss->meanIoni() > m
+            ? sqrt((E + eloss->meanIoni()) * (E + eloss->meanIoni()) - m * m)
+            : 0.5 * m_minimumMomentum;
+        uParameters[Trk::qOverP] = parm->charge() / newP;
 
-	// radiation
-	if (newP>m_minimumMomentum)
-	  radiate(isp,uParameters,eCell,dX0,mFraction,dir,pathCorrection*m_thicknessInX0);   // mFraction used to estimate material thickness for brem photons
+        // radiation
+        if (newP > m_minimumMomentum)
+          radiate(isp,
+                  uParameters,
+                  eCell,
+                  dX0,
+                  mFraction,
+                  dir,
+                  pathCorrection *
+                    m_thicknessInX0); // mFraction used to estimate material
+                                      // thickness for brem photons
 
-	// save the actual radiation loss
-	float nqOp = uParameters[Trk::qOverP];
-	float radLoss = fabs(1./nqOp) - newP;
-	eloss->update(0.,0.,radLoss-eloss->meanRad(),eloss->meanRad()-radLoss);
+        // save the actual radiation loss
+        float nqOp = uParameters[Trk::qOverP];
+        float radLoss = fabs(1. / nqOp) - newP;
+        eloss->update(
+          0., 0., radLoss - eloss->meanRad(), eloss->meanRad() - radLoss);
 
       } else {
 
-	// calculate the new momentum
-	double newP = E+eloss->deltaE()>m ? sqrt((E+eloss->deltaE())*(E+eloss->deltaE())-m*m) : 0.5*m_minimumMomentum;
-	uParameters[Trk::qOverP] = parm->charge()/newP;
-
+        // calculate the new momentum
+        double newP =
+          E + eloss->deltaE() > m
+            ? sqrt((E + eloss->deltaE()) * (E + eloss->deltaE()) - m * m)
+            : 0.5 * m_minimumMomentum;
+        uParameters[Trk::qOverP] = parm->charge() / newP;
       }
 
-      EX_MSG_VERBOSE(eCell.navigationStep, "eloss", "char ", "E,deltaE:" <<E<<","<< eloss->deltaE() );
+      EX_MSG_VERBOSE(eCell.navigationStep,
+                     "eloss",
+                     "char ",
+                     "E,deltaE:" << E << "," << eloss->deltaE());
 
       // TODO straggling
 
       if (m_validationMode) {
-	if (eCell.eLoss) {
-	  eCell.eLoss->update(*eloss);
-	  delete eloss;
-	} else eCell.eLoss=eloss;
-      } else delete eloss;
-
-      if ( 1./fabs(uParameters[Trk::qOverP]) < m_minimumMomentum ) {
-
-	// save info for locally created particle
-	if (m_validationMode && isp!=m_isp) {
-	  EX_MSG_VERBOSE( "[validation]", "processMaterialOnLayer", "char", "saving interaction info for locally produced particle " << isp->pdgCode() );
-	  m_validationTool->saveISFParticleInfo(*isp,eCell,Trk::ExtrapolationCode::SuccessMaterialLimit);
-	}
-
-	if (isp!=m_isp) { delete isp; }
-	return Trk::ExtrapolationCode::SuccessMaterialLimit;
+        if (eCell.eLoss) {
+          eCell.eLoss->update(*eloss);
+        } else
+          eCell.eLoss = eloss.release();
       }
 
-    }
+      if (1. / fabs(uParameters[Trk::qOverP]) < m_minimumMomentum) {
 
+        // save info for locally created particle
+        if (m_validationMode && isp != m_isp) {
+          EX_MSG_VERBOSE(
+            "[validation]",
+            "processMaterialOnLayer",
+            "char",
+            "saving interaction info for locally produced particle "
+              << isp->pdgCode());
+          m_validationTool->saveISFParticleInfo(
+            *isp, eCell, Trk::ExtrapolationCode::SuccessMaterialLimit);
+        }
+
+        if (isp != m_isp) {
+          delete isp;
+        }
+        return Trk::ExtrapolationCode::SuccessMaterialLimit;
+      }
+    }
 
     if ( m_ms && m_thicknessInX0>0 ) {
 
@@ -708,7 +745,7 @@ Trk::ExtrapolationCode iFatras::McMaterialEffectsEngine::processMaterialOnLayer(
 						  isp->pdgCode(),isp->timeStamp(),*m_isp,isp->barcode());
     // add presampled process info
     if (isp->getUserInformation() && isp->getUserInformation()->materialLimit()) {
-      ISF::MaterialPathInfo* matLim = isp->getUserInformation()->materialLimit();
+      const ISF::MaterialPathInfo* matLim = isp->getUserInformation()->materialLimit();
       ISF::ParticleUserInformation* validInfo = new ISF::ParticleUserInformation();
       validInfo->setMaterialLimit(matLim->process,matLim->dMax,matLim->process==121 ? eCell.materialL0 : eCell.materialX0);
       regisp->setUserInformation(validInfo);
@@ -786,7 +823,7 @@ Trk::ExtrapolationCode iFatras::McMaterialEffectsEngine::processMaterialOnLayer(
 
   // get the kinematics
   //double p    = parm->momentum().mag();
-  //double m    = m_particleMasses.mass[eCell.pHypothesis];
+  //double m    = Trk::ParticleMasses::mass[eCell.pHypothesis];
   //double E    = sqrt(p*p+m*m);
 
   if ( iStatus==1 || iStatus==2 ) {   // interaction with particle stopping
@@ -904,7 +941,7 @@ Trk::ExtrapolationCode iFatras::McMaterialEffectsEngine::processMaterialOnLayer(
 						  isp->pdgCode(),isp->timeStamp(),*m_isp,isp->barcode());
     // add presampled process info
     if (isp->getUserInformation() && isp->getUserInformation()->materialLimit()) {
-      ISF::MaterialPathInfo* matLim = isp->getUserInformation()->materialLimit();
+      const ISF::MaterialPathInfo* matLim = isp->getUserInformation()->materialLimit();
       ISF::ParticleUserInformation* validInfo = new ISF::ParticleUserInformation();
       validInfo->setMaterialLimit(matLim->process,matLim->dMax,matLim->process==121 ? eCell.materialL0 : eCell.materialX0);
       regisp->setUserInformation(validInfo);
@@ -996,5 +1033,4 @@ void iFatras::McMaterialEffectsEngine::radiate(const ISF::ISFParticle* parent, A
   (parm)[Trk::qOverP] = (parm)[Trk::qOverP] > 0 ? 1/p : -1./p;
   (parm)[Trk::theta]  = eDir.theta();
   (parm)[Trk::phi]    = eDir.phi();
-  return;
 }

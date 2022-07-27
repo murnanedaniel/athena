@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /////////////////////////////////////////////////////////////////// 
@@ -70,12 +70,13 @@ class EventBookkeeper
   int getCycle() const { return m_cycle; }
   void setCycle( int cycle );
 
-  std::vector<EventBookkeeper*>* getChildrenEventBookkeepers() const { return m_childrenEB; }
+  const std::vector<EventBookkeeper*>* getChildrenEventBookkeepers() const { return m_childrenEB; }
   void fillWithWholeFamily( EventBookkeeperCollection* family );
   void setChildrenEventBookkeepers(std::vector<EventBookkeeper*>*  childrenEB );
   void AddChild(EventBookkeeper* eb);
   void AddChildren( std::vector<EventBookkeeper*>* children );
-  EventBookkeeper* AddNewChild(std::string name, std::string description);
+  EventBookkeeper* AddNewChild(const std::string& name,
+                               const std::string& description);
 
   bool isEqualTo( const EventBookkeeper *eb );
 

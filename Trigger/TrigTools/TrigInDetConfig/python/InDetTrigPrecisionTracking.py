@@ -1,4 +1,4 @@
-#  Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+#  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #
 #           Setup of precision tracking
 
@@ -357,7 +357,7 @@ def trtRIOMaker_builder( signature, config, rois, prefix="InDetTrigMT" ):
 
     from .InDetTrigCollectionKeys import TrigTRTKeys
     from AthenaCommon.GlobalFlags import globalflags
-    
+
     # Only add raw data decoders if we're running over raw data
     if globalflags.InputFormat.is_bytestream():
         #Global keys/names for collections 

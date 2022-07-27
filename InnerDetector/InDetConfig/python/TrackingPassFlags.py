@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import AthenaCommon.SystemOfUnits as Units
 from AthenaConfiguration.Enums import BeamType
+from AthenaConfiguration.Enums import LHCPeriod
 
 
 def select( selInd, valuesmap ):
@@ -339,6 +340,9 @@ def createTrackingPassFlags():
     icf.addFlag("TrkSel.TRTTrksMinTRTHitsThresholds"    , [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0])  # eta-dep nTRT for TRT conversion tracks (> 15 is applied elsewhere)
     icf.addFlag("TrkSel.TRTTrksMinTRTHitsMuDependencies", [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0])  # eta-dep nTRT, mu dependence for TRT conversion tracks
 
+    # --- Pixel and TRT particle ID during particle creation
+    icf.addFlag("RunPixelPID", True)
+    icf.addFlag("RunTRTPID", True)
     return icf
 
 ### RobustReco mode ####################
@@ -372,6 +376,7 @@ def createITkTrackingPassFlags():
 
     icf.addFlag("useITkPixel"       		  , lambda pcf : pcf.Detector.EnableITkPixel )
     icf.addFlag("useITkStrip"        		  , lambda pcf : pcf.Detector.EnableITkStrip )
+    icf.addFlag("useITkPixelSeeding"        	  , True )
     icf.addFlag("useITkStripSeeding"        	  , True )
 
     icf.addFlag("usePrdAssociationTool"     , False)
@@ -490,6 +495,9 @@ def createITkLargeD0FastTrackingPassFlags():
 
     icf = createITkLargeD0TrackingPassFlags()
 
+    icf.useITkPixelSeeding = False
+    icf.useITkStripSeeding = True
+
     icf.maxEta             = 2.4
     icf.etaBins            = [-1.0, 2.4]
     icf.minPT              = [5.0 * Units.GeV]
@@ -559,6 +567,9 @@ def createLargeD0TrackingPassFlags():
     icf.seedFilterLevel    = 1
     icf.maxTracksPerSharedPRD = 2
 
+    icf.RunPixelPID             = False
+    icf.RunTRTPID               = False
+
     return icf
 
 
@@ -597,6 +608,9 @@ def createR3LargeD0TrackingPassFlags():
     icf.keepAllConfirmedStripSeeds = True
     icf.maxSeedsPerSP_Strips = 1
 
+    icf.RunPixelPID        = False
+    icf.RunTRTPID          = False
+
     return icf
 
 ## LowPtLargeD0 mode ########################
@@ -626,6 +640,9 @@ def createLowPtLargeD0TrackingPassFlags():
     icf.seedFilterLevel    = 1
     icf.maxTracksPerSharedPRD = 2
 
+    icf.RunPixelPID        = False
+    icf.RunTRTPID          = False
+
     return icf
 
 ## LowPt mode ########################
@@ -634,7 +651,7 @@ def createLowPtTrackingPassFlags():
     icf.extension        = "LowPt"
     icf.usePrdAssociationTool = True
     icf.isLowPt          = True
-    icf.maxPT = lambda pcf: (1e6  if pcf.InDet.Tracking.doMinBias else pcf.InDet.Tracking.ActivePass.minPT + 0.3) * Units.GeV
+    icf.maxPT = lambda pcf: (1e6  if pcf.InDet.Tracking.doMinBias else pcf.InDet.Tracking.MainPass.minPT + 0.3) * Units.GeV
     icf.minPT            = 0.050 * Units.GeV
     icf.minClusters      = 5
     icf.minSiNotShared   = 4
@@ -693,7 +710,7 @@ def createVeryLowPtTrackingPassFlags():
     icf.usePrdAssociationTool = True
     icf.isLowPt          = True
     icf.useTRTExtension  = False
-    icf.maxPT            = lambda pcf : (1e6 if pcf.InDet.Tracking.doMinBias  else  pcf.InDet.Tracking.ActivePass.minPT + 0.3) * Units.GeV # some overlap
+    icf.maxPT            = lambda pcf : (1e6 if pcf.InDet.Tracking.doMinBias  else  pcf.InDet.Tracking.MainPass.minPT + 0.3) * Units.GeV # some overlap
     icf.minPT            = 0.050 * Units.GeV
     icf.minClusters      = 3
     icf.minSiNotShared   = 3
@@ -732,6 +749,9 @@ def createForwardTracksTrackingPassFlags():
     icf.nHolesGapMax     = icf.maxHoles
     icf.radMax           = 600. * Units.mm
     icf.useTRT           = False # no TRT for forward tracks
+
+    icf.RunPixelPID      = False
+    icf.RunTRTPID        = False
 
     return icf
 
@@ -902,6 +922,8 @@ def createPixelTrackingPassFlags():
     icf.Xi2maxNoAdd      = lambda pcf: 100.0  if pcf.Beam.Type is BeamType.Cosmics else Xi2maxNoAdd_ranges( pcf )
     icf.nWeightedClustersMin = 6
 
+    icf.RunPixelPID      = False
+    icf.RunTRTPID        = False
     return icf
 
 ########## Disappearing mode ######################
@@ -969,6 +991,8 @@ def createSCTTrackingPassFlags():
     icf.minClusters      = lambda pcf: 4 if pcf.InDet.Tracking.doInnerDetectorCommissioning and pcf.Beam.Type is BeamType.Cosmics else minClusters_ranges( pcf )
     icf.minSiNotShared   = lambda pcf: 4 if pcf.InDet.Tracking.doInnerDetectorCommissioning and pcf.Beam.Type is BeamType.Cosmics else 5
     
+    icf.RunPixelPID      = False
+    icf.RunTRTPID        = False
     return icf
 
 ########## TRT subdetector tracklet cuts  ##########
@@ -981,6 +1005,8 @@ def createTRTTrackingPassFlags():
     icf.minTRTonly              = 15
     icf.maxTRTonlyShared        = 0.7
 
+    icf.RunPixelPID             = False
+    icf.RunTRTPID               = False
     return icf
 
 
@@ -994,7 +1020,8 @@ def createTRTStandaloneTrackingPassFlags():
     icf.minSecondaryTRTPrecFrac = 0.15
     # Mu- and eta- dependent cuts on nTRT
     icf.TrkSel.TRTTrksEtaBins                  = [ 0.7,   0.8,   0.9,  1.2,  1.3,  1.6,  1.7,  1.8,  1.9,  999]  # eta bins (10) for eta-dep cuts on TRT conversion tracks
-    icf.TrkSel.TRTTrksMinTRTHitsThresholds     = [  27,    18,    18,   18,   26,   28,   26,   24,   22,    0]  # eta-dep nTRT for TRT conversion tracks (> 15 is applied elsewhere)
+    icf.TrkSel.TRTTrksMinTRTHitsThresholds     = lambda pcf: [  25,    18,    18,   18,   26,   28,   26,   24,   22,    0] if pcf.GeoModel.Run is LHCPeriod.Run3 else \
+                                                 [  27,    18,    18,   18,   26,   28,   26,   24,   22,    0]  # eta-dep nTRT for TRT conversion tracks (> 15 is applied elsewhere)
     icf.TrkSel.TRTTrksMinTRTHitsMuDependencies = [ 0.2,  0.05,  0.05, 0.05, 0.15, 0.15, 0.15, 0.15, 0.15,    0]  # eta-dep nTRT, mu dependence for TRT conversion tracks
 
     return icf
@@ -1032,6 +1059,9 @@ def createDBMTrackingPassFlags():
     icf.useSCT           = False
     icf.usePixel         = True
 
+    icf.RunPixelPID      = False
+    icf.RunTRTPID        = False
+
     return icf
 
 
@@ -1049,7 +1079,8 @@ if __name__ == "__main__":
   l = logging.getLogger('AthConfigFlags')
   from AthenaCommon.Constants import WARNING
   l.setLevel(WARNING)
-  ConfigFlags.loadAllDynamicFlags()
+
+  ConfigFlags = ConfigFlags.cloneAndReplace("InDet.Tracking.ActivePass","InDet.Tracking.MainPass")
 
   assert ConfigFlags.InDet.Tracking.cutLevel == 19 , "default cut level is wrong"
   assert ConfigFlags.InDet.Tracking.ActivePass.minRoIClusterEt == 6000.0 * Units.MeV, "wrong cut value {} ".format(ConfigFlags.InDet.Tracking.ActivePass.minRoIClusterEt)

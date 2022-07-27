@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 /**
@@ -19,7 +19,6 @@
 #include "CLHEP/Random/RandomEngine.h"
 #include "CoralBase/Blob.h"
 #include "CoralUtilities/blobaccess.h"
-#include "GaudiKernel/ICondSvc.h"
 #include "GaudiKernel/ServiceHandle.h"
 #include "GaudiKernel/ToolHandle.h"
 #include "MdtCalibData/MdtCorFuncSetCollection.h"
@@ -49,7 +48,6 @@ public:
     virtual StatusCode execute() override;
 
 private:
-    ServiceHandle<ICondSvc> m_condSvc{this, "CondSvc", "CondSvc"};
     MuonCalib::MdtTubeCalibContainer* buildMdtTubeCalibContainer(const Identifier& id);
 
     StatusCode loadRt();
@@ -61,9 +59,10 @@ private:
     ToolHandle<MuonCalib::IIdToFixedIdTool> m_idToFixedIdTool{this, "IdToFixedIdTool", "MuonCalib::IdToFixedIdTool"};
     ServiceHandle<MdtCalibrationRegionSvc> m_regionSvc{this, "MdtCalibrationRegionSvc", "MdtCalibrationRegionSvc"};
 
-    const MuonGM::MuonDetectorManager* m_detMgr{
-        nullptr};  // only needed to retrieve information on number of tubes etc. (no alignment needed)
+    const MuonGM::MuonDetectorManager* m_detMgr{nullptr};  
+    /// only needed to retrieve information on number of tubes etc. (no alignment needed)
 
+    Gaudi::Property<bool> m_checkTubes{this, "checkTubes", true,"If true the number of tubes must agree between the conditions DB & geometry"};
     // new conditions format 2020
     Gaudi::Property<bool> m_newFormat2020{this, "NewFormat2020", false, "Use the new calibration data format "};
 
@@ -108,7 +107,7 @@ private:
 
     ServiceHandle<IAthRNGSvc> m_AthRNGSvc{this, "AthRNGSvc", "AthRNGSvc"};
     StringProperty m_randomStream{this, "RandomStream", "MDTCALIBDBALG"};
-    ATHRNG::RNGWrapper* m_RNGWrapper;
+    ATHRNG::RNGWrapper* m_RNGWrapper{nullptr};
 
     StringArrayProperty m_RTfileNames{this,
                                       "RT_InputFiles",

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 #include <algorithm>
 #include <regex>
@@ -39,7 +39,19 @@ StatusCode TrigSignatureMoni::start() {
   // Retrieve chain information from menus
   m_groupToChainMap.clear();
   m_streamToChainMap.clear();
+  m_expressChainMap.clear();
   m_chainIDToBunchMap.clear();
+
+  std::unordered_map<std::string,std::string> mapStrNameToTypeName; // e.g. {Main -> physics_Main}
+  try {
+    for (const TrigConf::DataStructure& stream : hltMenuHandle->streams()) {
+      mapStrNameToTypeName.insert({stream.getAttribute("name"), stream.getAttribute("type")+"_"+stream.getAttribute("name")});
+    }
+  } catch (const std::exception& ex) {
+    ATH_MSG_ERROR("Exception reading stream tag configuration from the HLT menu: " << ex.what());
+    return StatusCode::FAILURE;
+  }
+
   for (const TrigConf::Chain& chain : *hltMenuHandle) {
     for (const std::string& group : chain.groups()) {
       // Save chains per RATE group
@@ -49,8 +61,18 @@ StatusCode TrigSignatureMoni::start() {
     }
 
     // Save chain to stream map
-    for (const std::string& stream : chain.streams()){
-      m_streamToChainMap[stream].insert(HLT::Identifier(chain.name()));
+    for (const std::string& streamName : chain.streams()){
+      const auto it = mapStrNameToTypeName.find(streamName);
+      if (it==mapStrNameToTypeName.cend()) {
+        ATH_MSG_ERROR("Stream name " << streamName << " assigned to chain " << chain.name()
+                      << " is missing from menu streams definition");
+        return StatusCode::FAILURE;
+      }
+      if (it->second == "express_express") {
+        m_expressChainMap[it->second].insert(HLT::Identifier(chain.name()));
+      } else {
+        m_streamToChainMap[it->second].insert(HLT::Identifier(chain.name()));
+      }
     }
   }
 
@@ -336,20 +358,31 @@ StatusCode TrigSignatureMoni::execute( const EventContext& context ) const {
     ++step;
   }
 
-  // Fill the final decisions
-  const int row {nSteps()};
-  const int rateRow {nBaseSteps()};
+  // Collect the final decisions
   SG::ReadHandle<TrigCompositeUtils::DecisionContainer> finalDecisionsHandle = SG::makeHandle( m_finalDecisionKey, context );
   ATH_CHECK( finalDecisionsHandle.isValid() );
   TrigCompositeUtils::DecisionIDContainer finalIDs;
-  const TrigCompositeUtils::Decision* decisionObject = TrigCompositeUtils::getTerminusNode(finalDecisionsHandle);
+  const TrigCompositeUtils::Decision* decisionObject = TrigCompositeUtils::getTerminusNode(*finalDecisionsHandle);
   if (!decisionObject) {
     ATH_MSG_WARNING("Unable to locate trigger navigation terminus node. Cannot tell which chains passed the event.");
   } else {
     TrigCompositeUtils::decisionIDs(decisionObject, finalIDs);
   }
-  
+
+  // Collect the express stream decisions
+  TrigCompositeUtils::DecisionIDContainer expressFinalIDs;
+  const TrigCompositeUtils::Decision* expressDecisionObject = TrigCompositeUtils::getExpressTerminusNode(*finalDecisionsHandle);
+  if (!expressDecisionObject) {
+    ATH_MSG_WARNING("Unable to locate trigger navigation express terminus node. Cannot tell which chains passed the express stream in this event.");
+  } else {
+    TrigCompositeUtils::decisionIDs(expressDecisionObject, expressFinalIDs);
+  }
+
+  // Fill the histograms
+  const int row {nSteps()};
+  const int rateRow {nBaseSteps()};
   ATH_CHECK( fillStreamsAndGroups(m_streamToChainMap, finalIDs));
+  ATH_CHECK( fillStreamsAndGroups(m_expressChainMap, expressFinalIDs));
   ATH_CHECK( fillStreamsAndGroups(m_groupToChainMap, finalIDs));
   ATH_CHECK( fillPassEvents(finalIDs, row));
   ATH_CHECK( fillRate(finalIDs, rateRow));
@@ -363,11 +396,11 @@ StatusCode TrigSignatureMoni::execute( const EventContext& context ) const {
 }
 
 int TrigSignatureMoni::nBinsX(SG::ReadHandle<TrigConf::HLTMenu>& hltMenuHandle) const {
-  return nChains(hltMenuHandle) + m_groupToChainMap.size() + m_streamToChainMap.size();
+  return nChains(hltMenuHandle) + m_groupToChainMap.size() + m_streamToChainMap.size() + m_expressChainMap.size();
 }
 
 int TrigSignatureMoni::nBinsX() const {
-  return m_chainIDToBinMap.size() + m_groupToChainMap.size() + m_streamToChainMap.size() + 1;
+  return m_chainIDToBinMap.size() + m_groupToChainMap.size() + m_streamToChainMap.size() + m_expressChainMap.size() + 1;
 }
 
 int TrigSignatureMoni::nChains(SG::ReadHandle<TrigConf::HLTMenu>& hltMenuHandle) const {
@@ -405,6 +438,12 @@ StatusCode TrigSignatureMoni::initHist(LockedHandle<TH2>& hist, SG::ReadHandle<T
 
  
   for ( const auto& stream : m_streamToChainMap){
+    x->SetBinLabel( bin, ("str_"+stream.first).c_str());
+    m_nameToBinMap[ stream.first ] = bin;
+    bin++;
+  }
+
+  for ( const auto& stream : m_expressChainMap){
     x->SetBinLabel( bin, ("str_"+stream.first).c_str());
     m_nameToBinMap[ stream.first ] = bin;
     bin++;

@@ -18,14 +18,15 @@ _lowLevelSteeringFlags = [ 'InDet.doGlobalMon', 'InDet.doAlignMon',
                            'Muon.doTrackMon', 'Muon.doAlignMon',
                            'Muon.doSegmentMon',
                            'Muon.doPhysicsMon', 'Muon.doTrkPhysMon',
-                           'Muon.doCombinedMon'
+                           'Muon.doCombinedMon', 'LVL1Calo.doValidation'
                            ]
 
 def createDQConfigFlags():
     acf=AthConfigFlags()
-    acf.addFlag('DQ.doMonitoring', True)
+    acf.addFlag('DQ.doMonitoring', False)
     acf.addFlag('DQ.doStreamAwareMon', True)
     acf.addFlag('DQ.disableAtlasReadyFilter', False)
+    acf.addFlag('DQ.disableFilledBunchFilter', False)
     acf.addFlag('DQ.enableLumiAccess', True)
     acf.addFlag('DQ.FileKey', 'CombinedMonitoring')
     # two flags here, with different meaning.
@@ -40,6 +41,10 @@ def createDQConfigFlags():
     # computed
     acf.addFlag('DQ.Environment', getEnvironment )
     acf.addFlag('DQ.DataType', getDataType )
+
+    # for in-Athena histogram postprocessing
+    acf.addFlag('DQ.doPostProcessing', False)
+    acf.addFlag('DQ.postProcessingInterval', 100)
     
     # steering ...
     for flag in _steeringFlags + _lowLevelSteeringFlags:
@@ -49,7 +54,9 @@ def createDQConfigFlags():
         if flag == 'doHLTMon':
             # new HLT monitoring not yet compatible with pre-Run 3 data
             arg = lambda x: x.Trigger.EDMVersion == 3 # noqa: E731
-
+        if flag == 'LVL1Calo.doValidation':
+            arg = False
+            
         acf.addFlag('DQ.Steering.' + flag, arg)
 
     # HLT steering ...

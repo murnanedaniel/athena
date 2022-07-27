@@ -1,17 +1,23 @@
 #
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 #
 
 from AthenaCommon.Logging import logging
 logging.getLogger().info("Importing %s",__name__)
 log = logging.getLogger(__name__)
+
 from ..Config.ChainConfigurationBase import ChainConfigurationBase
-from ..CommonSequences.CaloSequences import fastCaloMenuSequence
-from ..Photon.FastPhotonMenuSequences import fastPhotonMenuSequence
-from ..Photon.PrecisionPhotonMenuSequences import precisionPhotonMenuSequence
-from ..Photon.PrecisionCaloMenuSequences import precisionCaloMenuSequence
-from ..Photon.HipTRTMenuSequences import hipTRTMenuSequence
-from TrigEgammaHypo.TrigEgammaHypoConf import TrigEgammaTopoHypoTool
+from AthenaConfiguration.ComponentFactory import isRun3Cfg
+
+if isRun3Cfg():
+    pass
+else:
+    from ..CommonSequences.CaloSequences import fastCaloMenuSequence
+    from ..Photon.FastPhotonMenuSequences import fastPhotonMenuSequence
+    from ..Photon.PrecisionPhotonMenuSequences import precisionPhotonMenuSequence
+    from ..Photon.PrecisionCaloMenuSequences import precisionCaloMenuSequence
+    from ..Photon.HipTRTMenuSequences import hipTRTMenuSequence
+    from TrigEgammaHypo.TrigEgammaHypoConf import TrigEgammaTopoHypoTool
 
 
 

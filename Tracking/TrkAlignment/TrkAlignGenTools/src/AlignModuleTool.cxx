@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "AtlasDetDescr/AtlasDetectorID.h"
@@ -38,9 +38,7 @@ namespace Trk {
 
   //________________________________________________________________________
   AlignModuleTool::~AlignModuleTool()
-  {
-
-  }
+  = default;
 
   //________________________________________________________________________
   StatusCode AlignModuleTool::initialize()
@@ -203,7 +201,7 @@ namespace Trk {
     int idHash =alignModule->identifyHash();
     ATH_MSG_DEBUG("getting alignPars for idHash "<<idHash);
 
-    return (*m_alignParList)[idHash];
+    return std::as_const(m_alignParList)->at(idHash);
   }
 
   //________________________________________________________________________
@@ -221,7 +219,7 @@ namespace Trk {
     
     ATH_MSG_DEBUG("have alignModule "<<alignModule->identify());
     // get alignment parameters
-    AlignParVec* modAlignPar = getFullAlignPars(alignModule);
+    const AlignParVec* modAlignPar = getFullAlignPars(alignModule);
     ATH_MSG_DEBUG("modAlignPar size: "<<modAlignPar->size());
     
     double alignModPar[AlignModule::NTransformPar];
@@ -314,10 +312,11 @@ namespace Trk {
   }
  
   //________________________________________________________________________
-  DataVector<AlignPar>* AlignModuleTool::getFullAlignPars(const AlignModule* alignModule) const
+  AlignModuleTool::AlignParVec*
+  AlignModuleTool::getFullAlignPars(const AlignModule* alignModule) const
   {
     int idHash =alignModule->identifyHash();
-    return (*m_fullAlignParList)[idHash];
+    return std::as_const(m_fullAlignParList)->at(idHash);
   }
 
   //________________________________________________________________________

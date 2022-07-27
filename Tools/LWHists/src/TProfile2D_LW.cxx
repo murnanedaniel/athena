@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 
@@ -17,6 +17,7 @@
 #include "Flex2DProfileHisto.h"
 #include "LWHistRootUtils.h"
 #include "TProfile2D.h"
+#include <utility>
 
 #define CALL(x,y) m_rootHisto ? m_rootHisto-> x : m_flexHisto-> y
 #ifdef LW_DEBUG_HEAVY_USERS
@@ -214,27 +215,27 @@ const char* TProfile2D_LW::GetErrorOption() const { return CALL(GetErrorOption()
 double TProfile2D_LW::getXMin() const
 {
   if (m_rootHisto)
-    return m_rootHisto->GetXaxis()->GetXmin();
+    return std::as_const(m_rootHisto)->GetXaxis()->GetXmin();
   return m_flexHisto->getXMin();
 }
 
 double TProfile2D_LW::getXMax() const
 {
   if (m_rootHisto)
-    return m_rootHisto->GetXaxis()->GetXmax();
+    return std::as_const(m_rootHisto)->GetXaxis()->GetXmax();
   return m_flexHisto->getXMax();
 }
 double TProfile2D_LW::getYMin() const
 {
   if (m_rootHisto)
-    return m_rootHisto->GetYaxis()->GetXmin();
+    return std::as_const(m_rootHisto)->GetYaxis()->GetXmin();
   return m_flexHisto->getYMin();
 }
 
 double TProfile2D_LW::getYMax() const
 {
   if (m_rootHisto)
-    return m_rootHisto->GetYaxis()->GetXmax();
+    return std::as_const(m_rootHisto)->GetYaxis()->GetXmax();
   return m_flexHisto->getYMax();
 }
 

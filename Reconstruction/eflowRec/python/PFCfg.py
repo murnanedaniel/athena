@@ -18,13 +18,8 @@ def PFTrackSelectorAlgCfg(inputFlags,algName,useCaching=True):
 
     PFTrackSelector.trackExtrapolatorTool = TrackCaloExtensionTool
 
-    InDet__InDetTrackSelectionToolFactory=CompFactory.InDet.InDetTrackSelectionTool
-    TrackSelectionTool = InDet__InDetTrackSelectionToolFactory("PFTrackSelectionTool")
-
-    TrackSelectionTool.CutLevel = "TightPrimary"
-    TrackSelectionTool.minPt = 500.0
-
-    PFTrackSelector.trackSelectionTool = TrackSelectionTool
+    from InDetConfig.InDetTrackSelectionToolConfig import PFTrackSelectionToolCfg
+    PFTrackSelector.trackSelectionTool = result.popToolsAndMerge(PFTrackSelectionToolCfg(inputFlags))
 
     # P->T conversion extra dependencies
     if inputFlags.Detector.GeometryITk:
@@ -136,34 +131,6 @@ def getPFLCCalibTool(inputFlags):
     PFLCCalibTool.CaloClusterLocalCalibDM=lcCalibToolList[3]
 
     return PFLCCalibTool
-
-def getChargedPFOCreatorAlgorithm(inputFlags,chargedPFOOutputName,eflowObjectsInputName=None):
-    PFOChargedCreatorAlgorithmFactory = CompFactory.PFOChargedCreatorAlgorithm
-    PFOChargedCreatorAlgorithm = PFOChargedCreatorAlgorithmFactory("PFOChargedCreatorAlgorithm")
-    if chargedPFOOutputName:
-        PFOChargedCreatorAlgorithm.PFOOutputName = chargedPFOOutputName
-    if(inputFlags.PF.EOverPMode):
-        PFOChargedCreatorAlgorithm.PFOOutputName="EOverPChargedParticleFlowObjects"
-    if eflowObjectsInputName is not None:
-        PFOChargedCreatorAlgorithm.eflowCaloObjectContainerName = eflowObjectsInputName
-
-    return PFOChargedCreatorAlgorithm
-
-def getNeutralPFOCreatorAlgorithm(inputFlags,neutralPFOOutputName,eflowObjectsInputName=None):
-    PFONeutralCreatorAlgorithmFactory = CompFactory.PFONeutralCreatorAlgorithm
-    PFONeutralCreatorAlgorithm =  PFONeutralCreatorAlgorithmFactory("PFONeutralCreatorAlgorithm")
-    if neutralPFOOutputName:
-        PFONeutralCreatorAlgorithm.PFOOutputName = neutralPFOOutputName
-    if(inputFlags.PF.EOverPMode):
-        PFONeutralCreatorAlgorithm.PFOOutputName="EOverPNeutralParticleFlowObjects"
-    if(inputFlags.PF.useCalibHitTruthClusterMoments and inputFlags.PF.addClusterMoments):
-        PFONeutralCreatorAlgorithm.UseCalibHitTruth=True
-    if eflowObjectsInputName is not None:
-        PFONeutralCreatorAlgorithm.eflowCaloObjectContainerName = eflowObjectsInputName
-
-    PFONeutralCreatorAlgorithm.DoClusterMoments=inputFlags.PF.addClusterMoments
-
-    return PFONeutralCreatorAlgorithm
 
 def getChargedFlowElementCreatorAlgorithm(inputFlags,chargedFlowElementOutputName,eflowCaloObjectContainerName="eflowCaloObjects"):
     FlowElementChargedCreatorAlgorithmFactory = CompFactory.PFChargedFlowElementCreatorAlgorithm
@@ -423,15 +390,6 @@ def PFTauFlowElementLinkingCfg(inputFlags,neutral_FE_cont_name="",charged_FE_con
     result=ComponentAccumulator()
     
     result.addEventAlgo(getTauFlowElementAssocAlgorithm(inputFlags,neutral_FE_cont_name,charged_FE_cont_name,AODTest))
-
-    # the following is needed to reliably determine whether we're really being steered from an old-style job option
-    # assume we're running CPython
-    #Snippet provided by Carlo Varni
-    import inspect
-    stack = inspect.stack()
-    if len(stack) >= 2 and stack[1].function == 'CAtoGlobalWrapper':
-      for el in result._allSequences:
-        el.name = "TopAlg"
 
     return result
 

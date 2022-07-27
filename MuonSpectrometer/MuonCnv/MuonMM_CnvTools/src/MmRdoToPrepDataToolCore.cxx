@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "MmRdoToPrepDataToolCore.h"
@@ -18,21 +18,14 @@ using namespace MuonGM;
 using namespace Trk;
 using namespace Muon;
 
+class NswCalibDbTimeChargeData;
+
 Muon::MmRdoToPrepDataToolCore::MmRdoToPrepDataToolCore(const std::string& t,
 					       const std::string& n,
 					       const IInterface*  p )
   :
-  base_class(t,n,p)
-{
-  //  template for property declaration
-  declareProperty("OutputCollection",    m_mmPrepDataContainerKey = std::string("MM_Measurements"),
-		  "Muon::MMPrepDataContainer to record");
-  declareProperty("InputCollection",    m_rdoContainerKey = std::string("MMRDO"),
-		  "Muon::MMPrepDataContainer to record");
-  
-  declareProperty("MergePrds", m_merge = true);
-  declareProperty("singleStripChargeCut", m_singleStripChargeCut = 6241 * 0.4);   // 0.4 fC from BB5 cosmics
-}
+  base_class(t,n,p) {}
+
 
 StatusCode Muon::MmRdoToPrepDataToolCore::initialize()
 {  
@@ -42,70 +35,74 @@ StatusCode Muon::MmRdoToPrepDataToolCore::initialize()
   ATH_CHECK(m_mmPrepDataContainerKey.initialize());
   ATH_CHECK(m_rdoContainerKey.initialize());
   ATH_CHECK(m_muDetMgrKey.initialize());
+  ATH_CHECK(m_calibTool.retrieve());
   ATH_MSG_INFO("initialize() successful in " << name());
   return StatusCode::SUCCESS;
 }
 
 StatusCode Muon::MmRdoToPrepDataToolCore::processCollection(Muon::MMPrepDataContainer* mmPrepDataContainer,
+                                                            const std::vector<IdentifierHash>& idsToDecode,
                                                             const MM_RawDataCollection *rdoColl, 
 							std::vector<IdentifierHash>& idWithDataVect) const
 {
   ATH_MSG_DEBUG(" ***************** Start of process MM Collection");
-
+  const EventContext& ctx = Gaudi::Hive::currentContext();
   bool merge = m_merge;
 // protect for large splashes 
   if(rdoColl->size()>100) merge = true; 
 
   const IdentifierHash hash = rdoColl->identifierHash();
 
-  MMPrepDataCollection* prdColl = nullptr;
-  
+  // check if we actually want to decode this RDO collection
+  if(idsToDecode.size() > 0 and std::find(idsToDecode.begin(), idsToDecode.end(), hash)==idsToDecode.end()) {
+    ATH_MSG_DEBUG("Hash ID " << hash << " not in input list, ignore");
+    return StatusCode::SUCCESS;
+  } else ATH_MSG_DEBUG("Going to decode " << hash);
+
   // check if the collection already exists, otherwise add it
   if ( mmPrepDataContainer->indexFindPtr(hash) != nullptr) {
 
     ATH_MSG_DEBUG("In processCollection: collection already contained in the MM PrepData container");
-    return StatusCode::FAILURE;
+    idWithDataVect.push_back(hash);
+    return StatusCode::SUCCESS;
+  } 
+
+  // Get write handle for this collection
+  MMPrepDataContainer::IDC_WriteHandle lock = mmPrepDataContainer->getWriteHandle( hash );
+  // Check if collection already exists (via the cache, i.e. in online trigger mode)
+  if( lock.OnlineAndPresentInAnotherView() ) {
+    ATH_MSG_DEBUG("In processCollection: collection already available in the MM PrepData container (via cache)");
+    idWithDataVect.push_back(hash);
+    return StatusCode::SUCCESS;
+  }
+  std::unique_ptr<MMPrepDataCollection> prdColl = std::make_unique<MMPrepDataCollection>(hash);
+  idWithDataVect.push_back(hash);
+    
+  // set the offline identifier of the collection Id
+  IdContext context = m_idHelperSvc->mmIdHelper().module_context();
+  Identifier moduleId;
+  int getId = m_idHelperSvc->mmIdHelper().get_id(hash,moduleId,&context);
+  if ( getId != 0 ) {
+    ATH_MSG_ERROR("Could not convert the hash Id: " << hash << " to identifier");
   } 
   else {
-    prdColl = new MMPrepDataCollection(hash);
-    idWithDataVect.push_back(hash);
-    
-    // set the offline identifier of the collection Id
-    IdContext context = m_idHelperSvc->mmIdHelper().module_context();
-    Identifier moduleId;
-    int getId = m_idHelperSvc->mmIdHelper().get_id(hash,moduleId,&context);
-    if ( getId != 0 ) {
-      ATH_MSG_ERROR("Could not convert the hash Id: " << hash << " to identifier");
-    } 
-    else {
-      ATH_MSG_DEBUG(" dump moduleId " << moduleId );
-      prdColl->setIdentifier(moduleId);
-    }
-
-    if (StatusCode::SUCCESS != mmPrepDataContainer->addCollection(prdColl, hash)) {
-      ATH_MSG_DEBUG("In processCollection - Couldn't record in the Container MM Collection with hashID = "
-		    << (int)hash );
-      return StatusCode::FAILURE;
-    }
-
-  }
+    ATH_MSG_DEBUG(" dump moduleId " << moduleId );
+    prdColl->setIdentifier(moduleId);
+  }  
 
   // MuonDetectorManager from the conditions store
-  SG::ReadCondHandle<MuonGM::MuonDetectorManager> DetectorManagerHandle{m_muDetMgrKey};
+  SG::ReadCondHandle<MuonGM::MuonDetectorManager> DetectorManagerHandle{m_muDetMgrKey,ctx};
   const MuonGM::MuonDetectorManager* MuonDetMgr = DetectorManagerHandle.cptr(); 
-  if(MuonDetMgr==nullptr){
+  if(!MuonDetMgr){
     ATH_MSG_ERROR("Null pointer to the read MuonDetectorManager conditions object");
     return StatusCode::FAILURE;
   }
  
   std::vector<MMPrepData> MMprds;
   // convert the RDO collection to a PRD collection
-  MM_RawDataCollection::const_iterator it = rdoColl->begin();
-  for ( ; it != rdoColl->end() ; ++it ) {
-
+  for (const MM_RawData* rdo : *rdoColl ) {
     ATH_MSG_DEBUG("Adding a new MM PrepRawData");
 
-    const MM_RawData* rdo = *it;
     const Identifier rdoId = rdo->identify();
     if (!m_idHelperSvc->isMM(rdoId)) {
       ATH_MSG_WARNING("given Identifier "<<rdoId.get_compact()<<" ("<<m_idHelperSvc->mmIdHelper().print_to_string(rdoId)<<") is no MicroMega Identifier, continuing");
@@ -127,7 +124,7 @@ StatusCode Muon::MmRdoToPrepDataToolCore::processCollection(Muon::MMPrepDataCont
 
     bool getLocalPos = detEl->stripPosition(prdId,localPos);
     if ( !getLocalPos ) {
-      ATH_MSG_WARNING("Could not get the local strip position for MM");
+      ATH_MSG_WARNING("Could not get the local strip position for MM "<<m_idHelperSvc->toString(prdId));
       continue;
     }
     int stripNumberRDOId = detEl->stripNumber(localPos,layid);
@@ -139,7 +136,7 @@ StatusCode Muon::MmRdoToPrepDataToolCore::processCollection(Muon::MMPrepDataCont
       continue;
     }
     NSWCalib::CalibratedStrip calibStrip;
-    ATH_CHECK (m_calibTool->calibrateStrip(rdo, calibStrip));
+    ATH_CHECK (m_calibTool->calibrateStrip(ctx, rdo, calibStrip));
 
     const Amg::Vector3D globalDir(globalPos.x(), globalPos.y(), globalPos.z());
     Trk::LocalDirection localDir;
@@ -200,8 +197,7 @@ StatusCode Muon::MmRdoToPrepDataToolCore::processCollection(Muon::MMPrepDataCont
                                   calibStrip.time,
                                   calibStrip.charge,
                                   calibStrip.distDrift);
-      if (mpd.charge() < m_singleStripChargeCut)
-        continue;
+      if (mpd.charge() < m_singleStripChargeCut) continue;
       // set the hash of the MMPrepData such that it contains the correct value
       // in case it gets used in SimpleMMClusterBuilderTool::getClusters
       mpd.setHashAndIndex(hash, 0);
@@ -222,9 +218,11 @@ StatusCode Muon::MmRdoToPrepDataToolCore::processCollection(Muon::MMPrepDataCont
       prdColl->push_back(std::move(prdN));
     } 
 
-  }
+  }//merge
 
-
+  // now write the collection
+  ATH_CHECK( lock.addOrDelete(std::move( prdColl ) ) );
+  ATH_MSG_DEBUG("PRD hash " << hash << " has been moved to container");
 
   return StatusCode::SUCCESS;
 }
@@ -244,6 +242,7 @@ const MM_RawDataContainer* Muon::MmRdoToPrepDataToolCore::getRdoContainer() cons
 
 
 void Muon::MmRdoToPrepDataToolCore::processRDOContainer( Muon::MMPrepDataContainer* mmPrepDataContainer,
+                                                         const std::vector<IdentifierHash>& idsToDecode,
                                                          std::vector<IdentifierHash>& idWithDataVect ) const
 {
 
@@ -253,13 +252,13 @@ void Muon::MmRdoToPrepDataToolCore::processRDOContainer( Muon::MMPrepDataContain
     return;
   }
   
-  // run in unseeded mode
   for (MM_RawDataContainer::const_iterator it = rdoContainer->begin(); it != rdoContainer->end(); ++it ) {
     
     auto rdoColl = *it;
     if (rdoColl->empty()) continue;
     ATH_MSG_DEBUG("New RDO collection with " << rdoColl->size() << "MM Hits");
-    if(processCollection(mmPrepDataContainer, rdoColl, idWithDataVect).isFailure()) {
+  
+    if(processCollection(mmPrepDataContainer, idsToDecode, rdoColl, idWithDataVect).isFailure()) {
       ATH_MSG_DEBUG("processCsm returns a bad StatusCode - keep going for new data collections in this event");
     }
   } 
@@ -285,7 +284,7 @@ StatusCode Muon::MmRdoToPrepDataToolCore::decode( std::vector<IdentifierHash>& i
     return StatusCode::FAILURE;
   } 
 
-  processRDOContainer(mmPrepDataContainer, idWithDataVect);
+  processRDOContainer(mmPrepDataContainer, idVect, idWithDataVect);
 
   return StatusCode::SUCCESS;
 } 

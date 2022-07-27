@@ -2,7 +2,6 @@
 from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
 from AthenaConfiguration.Enums import BeamType
-import InDetConfig.TrackingCommonConfig as TC
 
 
 def InDetTrtTrackScoringToolCfg(flags, name ='InDetTRT_StandaloneScoringTool', extension = "", **kwargs):
@@ -11,10 +10,12 @@ def InDetTrtTrackScoringToolCfg(flags, name ='InDetTRT_StandaloneScoringTool', e
     #
     # --- set up special Scoring Tool for standalone TRT tracks
     #
-    InDetTRTDriftCircleCut = acc.popToolsAndMerge(TC.InDetTRTDriftCircleCutForPatternRecoCfg(flags))
-    acc.addPublicTool(InDetTRTDriftCircleCut)
+    if "DriftCircleCutTool" not in kwargs:
+        from InDetConfig.InDetTrackSelectorToolConfig import InDetTRTDriftCircleCutToolCfg
+        InDetTRTDriftCircleCut = acc.popToolsAndMerge(InDetTRTDriftCircleCutToolCfg(flags))
+        acc.addPublicTool(InDetTRTDriftCircleCut)
+        kwargs.setdefault("DriftCircleCutTool", InDetTRTDriftCircleCut)
 
-    kwargs.setdefault("DriftCircleCutTool", InDetTRTDriftCircleCut)
     kwargs.setdefault("useAmbigFcn", True)
     kwargs.setdefault("useSigmaChi2", False)
     kwargs.setdefault("PtMin", flags.InDet.Tracking.ActivePass.minPT if extension == "_TRT" # TRT track segments
@@ -41,14 +42,17 @@ def TRT_SegmentToTrackToolCfg(flags, name ='InDetTRT_SegmentToTrackTool', extens
     #
 
     if flags.InDet.Tracking.ActivePass.usePrdAssociationTool:
-        asso_tool = acc.popToolsAndMerge( TC.InDetPRDtoTrackMapToolGangedPixelsCfg(flags) )
+        from InDetConfig.InDetAssociationToolsConfig import InDetPRDtoTrackMapToolGangedPixelsCfg
+        asso_tool = acc.popToolsAndMerge( InDetPRDtoTrackMapToolGangedPixelsCfg(flags) )
     else:
         asso_tool = None
 
-    InDetTrackFitterTRT = acc.popToolsAndMerge(TC.InDetTrackFitterTRTCfg(flags))
+    from TrkConfig.CommonTrackFitterConfig import InDetTrackFitterTRTCfg
+    InDetTrackFitterTRT = acc.popToolsAndMerge(InDetTrackFitterTRTCfg(flags))
     acc.addPublicTool(InDetTrackFitterTRT)
 
-    InDetTrackSummaryTool = acc.getPrimaryAndMerge(TC.InDetTrackSummaryToolCfg(flags))
+    from TrkConfig.TrkTrackSummaryToolConfig import InDetTrackSummaryToolCfg
+    InDetTrackSummaryTool = acc.popToolsAndMerge(InDetTrackSummaryToolCfg(flags))
 
     from TrkConfig.AtlasExtrapolatorConfig import InDetExtrapolatorCfg
     InDetExtrapolator = acc.getPrimaryAndMerge(InDetExtrapolatorCfg(flags))
@@ -102,28 +106,21 @@ def TRT_SegmentsToTrackCfg( flags, name ='InDetTRT_SegmentsToTrack_Barrel', exte
     acc = ComponentAccumulator()
 
     if extension == "_TRT":
-        TRTStandaloneTracks = 'StandaloneTRTTracks' # InDetKeys.TRTTracks
+        TRTStandaloneTracks = 'StandaloneTRTTracks'
     else:
-        TRTStandaloneTracks = 'TRTStandaloneTracks' # flags.InDetKeys.TRTTracks_NewT
-
-    #
-    # set up TRT_SegmentToTrackTool
-    #
-    InDetTRT_SegmentToTrackTool = acc.popToolsAndMerge(TRT_SegmentToTrackToolCfg(flags, name='InDetTRT_SegmentToTrackTool'+ extension,
-                                                                                        extension=extension))
-    acc.addPublicTool(InDetTRT_SegmentToTrackTool)
+        TRTStandaloneTracks = 'TRTStandaloneTracks'
 
     #
     # --- cosmics segment to track conversion for Barrel
     #
-    InDetTrackFitter = acc.popToolsAndMerge(TC.InDetKalmanFitterCfg(flags))
-    acc.addPublicTool(InDetTrackFitter)
+    from TrkConfig.CommonTrackFitterConfig import InDetTrackFitterCfg
+    InDetTrackFitter = acc.popToolsAndMerge(InDetTrackFitterCfg(flags))
 
-    InDetTrackSummaryToolTRTTracks = acc.popToolsAndMerge(TC.InDetTrackSummaryToolTRTTracksCfg(flags))
-    acc.addPublicTool(InDetTrackSummaryToolTRTTracks)
+    from TrkConfig.TrkTrackSummaryToolConfig import InDetTrackSummaryToolSharedHitsCfg
+    InDetTrackSummaryToolTRTTracks = acc.popToolsAndMerge(InDetTrackSummaryToolSharedHitsCfg(flags))
 
-    InDetPRDtoTrackMapToolGangedPixels = acc.popToolsAndMerge( TC.InDetPRDtoTrackMapToolGangedPixelsCfg(flags) )
-    acc.addPublicTool(InDetPRDtoTrackMapToolGangedPixels)
+    from InDetConfig.InDetAssociationToolsConfig import InDetPRDtoTrackMapToolGangedPixelsCfg
+    InDetPRDtoTrackMapToolGangedPixels = acc.popToolsAndMerge( InDetPRDtoTrackMapToolGangedPixelsCfg(flags) )
 
     kwargs.setdefault("InputSegmentsCollection", BarrelSegments)
     kwargs.setdefault("OutputTrackCollection", TRTStandaloneTracks)
@@ -152,10 +149,11 @@ def TRTStandaloneCfg( flags, extension = '', InputCollections = None, BarrelSegm
     if flags.InDet.Tracking.ActivePass.usePrdAssociationTool and extension != "_TRT" :
         prefix='InDetTRTonly_'
         prd_to_track_map = prefix+'PRDtoTrackMap'+extension
-        acc.merge(TC.InDetTrackPRD_AssociationCfg(flags,
-                                                  name = prefix + 'TrackPRD_Association' + extension,
-                                                  AssociationMapName = prd_to_track_map,
-                                                  TracksName = list(InputCollections)))
+        from InDetConfig.InDetTrackPRD_AssociationConfig import InDetTrackPRD_AssociationCfg
+        acc.merge(InDetTrackPRD_AssociationCfg(flags,
+                                               name = prefix + 'TrackPRD_Association' + extension,
+                                               AssociationMapName = prd_to_track_map,
+                                               TracksName = list(InputCollections)))
     
     if flags.Beam.Type is not BeamType.Cosmics:
         #
@@ -178,12 +176,12 @@ def TRTStandaloneCfg( flags, extension = '', InputCollections = None, BarrelSegm
 
 
 if __name__ == "__main__":
-    from AthenaCommon.Configurable import Configurable
-    Configurable.configurableRun3Behavior=1
-
     from AthenaConfiguration.AllConfigFlags import ConfigFlags
     from AthenaConfiguration.TestDefaults import defaultTestFiles
     ConfigFlags.Input.Files=defaultTestFiles.RDO_RUN2
+
+    # disable calo for this test
+    ConfigFlags.Detector.EnableCalo = False
 
     # TODO: TRT only?
 
@@ -191,7 +189,6 @@ if __name__ == "__main__":
     ConfigFlags.Concurrency.NumThreads=numThreads
     ConfigFlags.Concurrency.NumConcurrentEvents=numThreads
 
-    ConfigFlags.loadAllDynamicFlags()
 
     ConfigFlags.lock()
     ConfigFlags.dump()
@@ -211,10 +208,6 @@ if __name__ == "__main__":
 
     from SCT_GeoModel.SCT_GeoModelConfig import SCT_ReadoutGeometryCfg
     top_acc.merge(SCT_ReadoutGeometryCfg(ConfigFlags))
-
-    from MuonConfig.MuonGeometryConfig import MuonGeoModelCfg, MuonIdHelperSvcCfg
-    top_acc.merge(MuonGeoModelCfg(ConfigFlags))
-    top_acc.merge(MuonIdHelperSvcCfg(ConfigFlags))
 
     ############################# TRTPreProcessing configuration ############################
     if not ConfigFlags.InDet.Tracking.doDBMstandalone:

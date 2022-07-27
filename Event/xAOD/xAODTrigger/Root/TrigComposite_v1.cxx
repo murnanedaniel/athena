@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 
@@ -46,6 +46,7 @@ namespace xAOD {
   const std::string TrigComposite_v1::s_comboHypoAlgNodeNameString{"CH"};
   const std::string TrigComposite_v1::s_summaryFilterNodeNameString{"SF"};
   const std::string TrigComposite_v1::s_summaryPassNodeNameString{"HLTPassRaw"};
+  const std::string TrigComposite_v1::s_summaryPassExpressNodeNameString{"HLTPassExpress"};
   const std::string TrigComposite_v1::s_summaryPrescaledNodeNameString{"HLTPrescaled"};
 
   bool TrigComposite_v1::s_throwOnCopyError = false; 
@@ -276,6 +277,9 @@ namespace xAOD {
      if (bib) {
        return bib->is_base (ClassID_traits< xAOD::IParticleContainer >::ID());
      }
+     // No base info available means we never called any of the macros declaring bases so it's
+     // likely that the clid doesn't inherit from IParticle...
+     return false;
 #endif
      return true;
    }

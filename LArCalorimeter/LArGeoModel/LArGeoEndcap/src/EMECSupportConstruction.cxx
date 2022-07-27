@@ -86,6 +86,7 @@
 
 #include "LArGeoEndcap/EMECConstruction.h"
 #include "LArGeoEndcap/EMECSupportConstruction.h"
+#include <boost/algorithm/string/predicate.hpp>
 
 using namespace LArGeo;
 
@@ -102,7 +103,7 @@ EMECSupportConstruction::EMECSupportConstruction(
     if(svcLocator->service("DetectorStore", detStore, false) == StatusCode::FAILURE){
         throw std::runtime_error("Error in EMECSupportConstruction, cannot access DetectorStore");
     }
-    const StoredMaterialManager* materialManager = nullptr;
+    StoredMaterialManager* materialManager = nullptr;
     if (detStore->retrieve(materialManager, std::string("MATERIALS")).isFailure()) {
         throw std::runtime_error("Error in EMECSupportConstruction, cannot access MATERIALS");
     }
@@ -226,26 +227,25 @@ static void printWarning(const std::ostringstream &message)
 typedef std::map<std::string, unsigned int> map_t;
 static map_t getMap(const IRDBRecordset_ptr& db, const std::string& s)
 {
-    map_t result;
-    for(unsigned int i = 0; i < db->size(); ++ i){
-        std::string key = (*db)[i]->getString(s);
-        result[key] = i;
-    }
-    return result;
+  map_t result;
+  for(unsigned int i = 0; i < db->size(); ++ i) {
+    const std::string& key = (*db)[i]->getString(s);
+    result[key] = i;
+  }
+  return result;
 }
 
 static map_t getNumbersMap(const IRDBRecordset_ptr& db, const std::string& s)
 {
-	map_t result;
-	for(unsigned int i = 0; i < db->size(); ++ i){
-		std::string object = (*db)[i]->getString("OBJECTNAME");
-		if(object == s){
-			std::string key = (*db)[i]->getString("PARNAME");
-			result[key] = i;
-//std::cout << s << ": " << key << " -> " << i << std::endl;
-		}
-	}
-	return result;
+  map_t result;
+  for(unsigned int i = 0; i < db->size(); ++ i) {
+    const std::string& object = (*db)[i]->getString("OBJECTNAME");
+    if(object == s) {
+      const std::string& key = (*db)[i]->getString("PARNAME");
+      result[key] = i;
+    }
+  }
+  return result;
 }
 
 static double getNumber(
@@ -270,9 +270,9 @@ static double getNumber(
 	const std::string &parameter, double defval = 0.)
 {
 	for(unsigned int i = 0; i < db->size(); ++ i){
-		std::string object = (*db)[i]->getString("OBJECTNAME");
+		const std::string& object = (*db)[i]->getString("OBJECTNAME");
 		if(object == s){
-			std::string key = (*db)[i]->getString("PARNAME");
+			const std::string& key = (*db)[i]->getString("PARNAME");
 			if(key == parameter){
 				double value = (*db)[i]->getDouble("PARVALUE");
 				assert(value == defval);
@@ -317,8 +317,8 @@ GeoPcon* EMECSupportConstruction::getPcon(const std::string& id) const
 	std::vector<double> zplane, rmin, rmax;
 
 	std::string id1 = id;
-	if(id.find("FrontSupportMother") == 0) id1 = "FrontSupportMother";
-	else if(id.find("BackSupportMother") == 0) id1 = "BackSupportMother";
+	if(boost::starts_with(id, "FrontSupportMother")) id1 = "FrontSupportMother";
+	else if(boost::starts_with(id, "BackSupportMother")) id1 = "BackSupportMother";
 	else if(id.find("Stretchers") != std::string::npos) id1 = "Stretchers";
 	else if(id == "FrontMiddleRing::LowerHole") id1 = "FrontMiddleRing::LH";
 	else if(id == "FrontMiddleRing::LowerGTen") id1 = "FrontMiddleRing::LGT";
@@ -333,7 +333,7 @@ GeoPcon* EMECSupportConstruction::getPcon(const std::string& id) const
 	int nzplanes = 0;
 	double R0 = 0.;
 	for(unsigned int i = 0; i < m_DB_pcons->size(); ++ i){
-		std::string object = (*m_DB_pcons)[i]->getString("PCONNAME");
+		const std::string& object = (*m_DB_pcons)[i]->getString("PCONNAME");
 		if(object == id1){
 			int key = (*m_DB_pcons)[i]->getInt("NZPLANE");
 			if(pcone.find(key) != pcone.end()){
@@ -400,7 +400,7 @@ for(int i = 0; i < nzplanes; ++ i){
 }
 #endif
 	} else {
-	if(id.find("FrontSupportMother") == 0){
+          if(boost::starts_with(id, "FrontSupportMother")){
 		zplane.resize(6);  rmin.resize(6);    rmax.resize(6);
 		zplane[0] =   0. *Gaudi::Units::mm; rmin[0] =  292.*Gaudi::Units::mm-1.*Gaudi::Units::mm; rmax[0] = 2077.*Gaudi::Units::mm-7.*Gaudi::Units::mm;
 		zplane[1] =  61. *Gaudi::Units::mm; rmin[1] =  292.*Gaudi::Units::mm-1.*Gaudi::Units::mm; rmax[1] = 2077.*Gaudi::Units::mm-7.*Gaudi::Units::mm;
@@ -417,7 +417,7 @@ for(int i = 0; i < nzplanes; ++ i){
 			rmax[0] = 614.*Gaudi::Units::mm;
 			rmax[1] = 614.*Gaudi::Units::mm;
 		}
-	} else if(id.find("BackSupportMother") == 0){
+	} else if(boost::starts_with(id, "BackSupportMother")){
 		zplane.resize(4);  rmin.resize(4);    rmax.resize(4);
 		zplane[0] =   0.001*Gaudi::Units::mm; rmin[0] =  333.*Gaudi::Units::mm-1.*Gaudi::Units::mm; rmax[0] = 2077.*Gaudi::Units::mm-7.*Gaudi::Units::mm;
 		zplane[1] =  55.   *Gaudi::Units::mm; rmin[1] =  333.*Gaudi::Units::mm-1.*Gaudi::Units::mm; rmax[1] = 2077.*Gaudi::Units::mm-7.*Gaudi::Units::mm;
@@ -1732,7 +1732,7 @@ void EMECSupportConstruction::put_front_outer_extracyl(GeoPhysVol *motherPhysica
       bool finloop=false;
       double dzmax=6.6;
       for(unsigned int i=0;i<nextra;i++){
-        std::string name=(*m_DB_emecExtraCyl)[i]->getString("CONE");
+        const std::string& name=(*m_DB_emecExtraCyl)[i]->getString("CONE");
           if(name.find("EmecCylAfterPS") != std::string::npos){
             double rmin=(*m_DB_emecExtraCyl)[i]->getDouble("RMIN1"); //PS rmin
             double rmax=(*m_DB_emecExtraCyl)[i]->getDouble("RMAX1"); //PS rmax
@@ -1744,12 +1744,12 @@ void EMECSupportConstruction::put_front_outer_extracyl(GeoPhysVol *motherPhysica
               if(svcLocator->service("DetectorStore", detStore, false) == StatusCode::FAILURE){
                 throw std::runtime_error("Error in EMECSupportConstruction/extracyl, cannot access DetectorStore");
               }
-              const StoredMaterialManager* materialManager = nullptr;
+              StoredMaterialManager* materialManager = nullptr;
               if (detStore->retrieve(materialManager, std::string("MATERIALS")).isFailure()) {
                 throw std::runtime_error("Error in EMECSupportConstruction: cannot find MATERIALS.");
               }
 
-              std::string material=(*m_DB_emecExtraCyl)[i]->getString("MATERIAL"); //lead
+              const std::string& material=(*m_DB_emecExtraCyl)[i]->getString("MATERIAL"); //lead
               const GeoMaterial *mat = materialManager->getMaterial(material);
               if (!mat) {
                 throw std::runtime_error("Error in EMECSupportConstruction/extracyl,material for CylBeforePS is not found.");

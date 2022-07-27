@@ -1,18 +1,21 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef DERIVATIONFRAMEWORKTRIGGER_TRIGGERMATCHINGTOOL_H
 #define DERIVATIONFRAMEWORKTRIGGER_TRIGGERMATCHINGTOOL_H
 
 #include "AthenaBaseComps/AthAlgTool.h"
+#include "CxxUtils/checker_macros.h"
 #include "DerivationFrameworkInterfaces/IAugmentationTool.h"
 #include "GaudiKernel/ToolHandle.h"
 #include "TriggerMatchingTool/IIParticleRetrievalTool.h"
+#include "TriggerMatchingTool/IMatchScoringTool.h"
 #include "TrigDecisionTool/TrigDecisionTool.h"
 #include "xAODBase/IParticle.h"
 #include "xAODBase/IParticleContainer.h"
 #include "xAODTrigger/TrigCompositeContainer.h"
+#include "StoreGate/ReadHandleKey.h"
 #include <vector>
 
 namespace DerivationFramework
@@ -45,25 +48,27 @@ namespace DerivationFramework
         const IInterface *pSvcLocator);
 
     /// Initialize the tool
-    StatusCode initialize() override;
+    virtual StatusCode initialize() override;
 
     /// Calculate the matchings
-    StatusCode addBranches() const override;
+    virtual StatusCode addBranches() const override;
 
   private:
     // Properties
     /// The list of chain names to match
-    mutable std::vector<std::string> m_chainNames;
+    mutable std::vector<std::string> m_chainNames ATLAS_THREAD_SAFE;
     // This being mutable isn't exactly the greatest thing but we can't check
     // whether the chains actually exist before the first event. A better
     // solution would be to filter the chains by what is available in the
     // input file but I don't know if that's possible.
+    // It is thread-safe because the mutable operation is done as part of a
+    // static const initialization on the first call of addBranches().
 
     /// The tool to retrieve the online candidates
     ToolHandle<Trig::IIParticleRetrievalTool> m_trigParticleTool{"Trig::IParticleRetrievalTool/OnlineParticleTool"};
 
     /// The input containers to use. These are keyed by xAOD object type
-    std::map<xAOD::Type::ObjectType, std::string> m_offlineInputs;
+    std::map<xAOD::Type::ObjectType, SG::ReadHandleKey<xAOD::IParticleContainer>> m_offlineInputs;
 
     /// The DR threshold to use
     float m_drThreshold;
@@ -85,8 +90,9 @@ namespace DerivationFramework
     /// The trig decision tool
     ToolHandle<Trig::TrigDecisionTool> m_tdt{"Trig::TrigDecisionTool/TrigDecisionTool"};
 
-    // Internal values
-    mutable bool m_firstEvent{true};
+    /// The pair scoring tool
+    ToolHandle<Trig::IMatchScoringTool> m_scoreTool{
+        this, "ScoringTool", "Trig::DRScoringTool", "The pair scoring tool"};
 
     // Internal functions
     /**

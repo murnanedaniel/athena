@@ -17,9 +17,9 @@
 #include "GaudiKernel/ToolHandle.h"
 #include "xAODTracking/Vertex.h"
 #include "xAODTracking/TrackParticle.h"
+#include "TrkVertexFitterUtils/TrackToVertexIPEstimator.h"
 
 
-namespace Trk { class ITrackToVertexIPEstimator; }
 
 namespace Rec { class TrackParticle; }
 
@@ -37,13 +37,13 @@ public:
 
         //if ReturnCopy is true the method will return a copy of the original vertex if the fit cannot be changed
         //if Returncopy is false the method returns a null
-  	const xAOD::Vertex* refitVertex(const xAOD::Vertex* vertex, const xAOD::Vertex* excludeVertex,
+  	xAOD::Vertex* refitVertex(const xAOD::Vertex* vertex, const xAOD::Vertex* excludeVertex,
             bool ReturnCopy = true, int* exitcode = nullptr) const;
- 	const xAOD::Vertex* refitVertex(const xAOD::Vertex* vertex, const std::vector<const xAOD::TrackParticle*> &tps,
+ 	xAOD::Vertex* refitVertex(const xAOD::Vertex* vertex, const std::vector<const xAOD::TrackParticle*> &tps,
             bool ReturnCopy = true, int* exitcode = nullptr) const;
 private:
-        unsigned int m_ntrk_min;
-        ToolHandle <Trk::ITrackToVertexIPEstimator> m_trackToVertexIPEstimator;
+        Gaudi::Property<unsigned int> m_ntrk_min {this,"MinimumNumberOfTracksInVertex",2};
+        ToolHandle <Trk::ITrackToVertexIPEstimator> m_trackToVertexIPEstimator{ this, "TrackToVertexIPEstimator", "Trk::TrackToVertexIPEstimator" };
 
 };
 } // end of namespace

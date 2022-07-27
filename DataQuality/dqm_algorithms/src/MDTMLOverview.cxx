@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2018 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // **********************************************************************
@@ -8,19 +8,13 @@
 
 #include "dqm_algorithms/MDTMLOverview.h"
 
-#include <cmath>
-#include <iostream>
-#include <map>
-#include <list>
-#include <string>
-#include <vector>
+
 
 #include <TClass.h>
 #include <TH1.h>
 #include <TAxis.h>
 #include <TF1.h>
 #include <TProfile.h>
-#include "TMath.h"
 
 #include "dqm_core/exceptions.h"
 #include "dqm_core/AlgorithmConfig.h"
@@ -28,6 +22,13 @@
 #include "dqm_core/Result.h"
 #include "dqm_algorithms/tools/AlgorithmHelper.h"
 #include "ers/ers.h"
+
+#include <cmath>
+#include <iostream>
+#include <map>
+#include <list>
+#include <string>
+#include <vector>
 
 static dqm_algorithms::MDTMLOverview staticInstance;
 
@@ -95,7 +96,7 @@ MDTMLOverview::execute( const std::string& name, const TObject& object, const dq
     ref = static_cast<TH1 *>( config.getReference() );
   }
   catch ( dqm_core::Exception & ex ) {
-    throw dqm_core::BadRefHist(ERS_HERE,name," Could not retreive reference");
+    throw dqm_core::BadRefHist(ERS_HERE,name," Could not retrieve reference");
   }
 
   if (hist->GetDimension() != ref->GetDimension() ) {
@@ -120,8 +121,9 @@ MDTMLOverview::execute( const std::string& name, const TObject& object, const dq
   int binX = hist->GetNbinsX();
   //double x_center=0;
 
-  std::list<int> hist_buffer;
-  std::list<int> ref_buffer;
+  std::vector<int> hist_buffer;
+  std::vector<int> ref_buffer;
+  
   std::vector< double > new_empty_bins;
   int count=0;
 
@@ -131,32 +133,30 @@ MDTMLOverview::execute( const std::string& name, const TObject& object, const dq
       if( ref->GetBinContent(x_index) != 0 ) ref_buffer.push_back((int)ref->GetBinContent(x_index));
     }
   };
-
-  hist_buffer.sort();
-  std::list<int>::iterator it_hist;
-  int size_hist = hist_buffer.size();
-  it_hist=hist_buffer.begin();
-  for(int i=1; i<(size_hist/2); i++) it_hist++;
-  int mediana_hist = *it_hist;
-
-  if(ref_y_n==1) {
-
-    ref_buffer.sort();
-    std::list<int>::iterator it_ref;
-    int size_ref = ref_buffer.size();
-    it_ref=ref_buffer.begin();
-    for(int j=1; j<(size_ref/2); j++) it_ref++;
-    int mediana_ref = *it_ref;
+  
+  
  
+  auto median=[](std::vector<int> & v)->int {
+    const auto midPoint = v.begin()+v.size()/2;
+    std::nth_element(v.begin(), midPoint, v.end());
+    return v[v.size()/2];
+  };
+  
+  
+  double percentThreshold = thresh*0.01;
+  const int mediana_hist = median(hist_buffer);
+  
+  if(ref_y_n==1) {
+    const int mediana_ref = median(ref_buffer);
     for(int xi=1; xi<=binX; xi++){
-      if( hist->GetBinContent(xi) < mediana_hist*thresh/100 && ref->GetBinContent(xi) >= mediana_ref*thresh/100){
+      if( hist->GetBinContent(xi) < mediana_hist*percentThreshold && ref->GetBinContent(xi) >= mediana_ref*percentThreshold){
         count++;
         new_empty_bins.push_back(hist->GetBinCenter(xi));
       };
     };
   } else if(ref_y_n==0){ 
     for(int xi=1; xi<=binX; xi++){
-      if( hist->GetBinContent(xi) < mediana_hist*thresh/100){
+      if( hist->GetBinContent(xi) < mediana_hist*percentThreshold){
         count++;
         new_empty_bins.push_back(hist->GetBinCenter(xi));
       };
@@ -186,7 +186,7 @@ MDTMLOverview::execute( const std::string& name, const TObject& object, const dq
     do{
       counter++;
       if(counter>=20) break;
-    }while(fabs(counter-new_empty_bins[i])>0.3);
+    }while(std::abs(counter-new_empty_bins[i])>0.3);
       
     snprintf(eta_num,sizeof(eta_num),"%d",counter);
     if( (counter-new_empty_bins[i])>=0)ml_num="1";

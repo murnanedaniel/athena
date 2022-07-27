@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "GaudiKernel/ServiceHandle.h"
@@ -12,6 +12,7 @@
 #include "TrigConfInterfaces/IJobOptionsSvc.h"
 
 #include "HLTConfigSvc.h"
+#include "TrigConfMD5.h"
 
 #include <memory>
 
@@ -37,7 +38,19 @@ StatusCode TrigConf::HLTConfigSvc::writeConfigToDetectorStore()
     fileLoader.setLevel(TrigConf::MSGTC::WARNING);
 
     ATH_CHECK( fileLoader.loadFile(m_hltFileName, *hltmenu) );
-    hltmenu->setSMK(m_smk);  // allow assigning a dummy SMK when running from FILE
+
+    uint32_t smk = m_smk.value();
+    if (!m_l1FileName.empty() && smk == 0u) {
+      auto l1menu = std::make_unique<TrigConf::L1Menu>();
+      const bool status = fileLoader.loadFile(m_l1FileName, *l1menu);
+      if (status) {
+        smk = TrigConf::truncatedHash(*l1menu, *hltmenu);
+      } else {
+        ATH_MSG_DEBUG("No L1 menu created, cannot compute a MC-SMK in this job");  
+      }
+    }
+    ATH_MSG_INFO("Setting file-loaded HLT Menu SMK to:" << smk);
+    hltmenu->setSMK(smk);  // allow assigning a specified or hashed SMK when running from FILE
 
     if (!m_monitoringFileName.empty()) {
       monitoring.reset( new TrigConf::HLTMonitoring() );
@@ -52,6 +65,8 @@ StatusCode TrigConf::HLTConfigSvc::writeConfigToDetectorStore()
             << ", the monitoring collection flagged as non-optional in this job.");
           return StatusCode::FAILURE;
         }
+      } else { // success
+        monitoring->setSMK(smk);
       }
     }
   }

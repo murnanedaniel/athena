@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "DenseEnvironmentsAmbiguityProcessorTool.h"
@@ -62,8 +62,7 @@ Trk::DenseEnvironmentsAmbiguityProcessorTool::
 }
 //==================================================================================================
 
-Trk::DenseEnvironmentsAmbiguityProcessorTool::~DenseEnvironmentsAmbiguityProcessorTool(){
-}
+Trk::DenseEnvironmentsAmbiguityProcessorTool::~DenseEnvironmentsAmbiguityProcessorTool()= default;
 //==================================================================================================
 
 StatusCode 
@@ -86,8 +85,7 @@ Trk::DenseEnvironmentsAmbiguityProcessorTool::initialize(){
      sc=StatusCode::FAILURE;
   }
   // Configuration of the material effects
-  Trk::ParticleSwitcher particleSwitch;
-  m_particleHypothesis = particleSwitch.particle[m_matEffects];
+  m_particleHypothesis = Trk::ParticleSwitcher::particle[m_matEffects];
 
   ATH_CHECK(AmbiguityProcessorBase::m_observerTool.retrieve(DisableTool{AmbiguityProcessorBase::m_observerTool.empty()}));
   ATH_CHECK(m_observerToolWriter.retrieve(DisableTool{m_observerToolWriter.empty()}));

@@ -1,11 +1,15 @@
 #!/usr/bin/env python
-# Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # art-description: transform test of BSRDOtoRAW + T0Reco + T0Mon, using v1PhysP1 menu
 # art-type: build
 # art-include: master/Athena
+# art-include: 22.0/Athena
 
 from TrigValTools.TrigValSteering import Test, ExecStep, CheckSteps
+
+# Specify trigger menu once here:
+triggermenu = 'PhysicsP1_pp_run3_v1_HLTReprocessing_prescale'
 
 #====================================================================================================
 # HLT BS_RDO->RAW
@@ -15,7 +19,7 @@ hlt.forks = 1
 hlt.threads = 4
 hlt.concurrent_events = 4
 hlt.max_events = 50
-hlt.args = '--precommand=\\\"setMenu=\\\'PhysicsP1_pp_run3_v1\\\'\\;doL1Sim=True\\;rewriteLVL1=True\\;\\\"'
+hlt.args = f'--precommand=\\\"setMenu=\\\'{triggermenu}\\\'\\;doL1Sim=True\\;rewriteLVL1=True\\;\\\"'
 hlt.args += ' --prodSysBSRDO True'
 hlt.args += ' --outputBSFile=RAW.pool.root'
 hlt.args += ' --outputHIST_HLTMONFile=hltmon.root'
@@ -28,9 +32,8 @@ hlt.input = 'data'
 # Tier-0 reco step BS->ESD->AOD
 tzrecoPreExec = ' '.join([
  "from AthenaConfiguration.AllConfigFlags import ConfigFlags;",
- "ConfigFlags.Trigger.triggerMenuSetup=\'PhysicsP1_pp_run3_v1\';",
+ f"ConfigFlags.Trigger.triggerMenuSetup=\'{triggermenu}\';",
  "ConfigFlags.Trigger.AODEDMSet=\'AODFULL\';",
- "ConfigFlags.Trigger.enableL1MuonPhase1=True;",
  "ConfigFlags.Trigger.enableL1CaloPhase1=True;",
 ])
 
@@ -56,7 +59,7 @@ tzmon.executable = 'Run3DQTestingDriver.py'
 tzmon.input = ''
 tzmon.args = '--threads=1'
 tzmon.args += ' --dqOffByDefault'
-tzmon.args += ' Input.Files="[\'AOD.pool.root\']" DQ.Steering.doHLTMon=True Trigger.triggerMenuSetup=\'PhysicsP1_pp_run3_v1\''
+tzmon.args += f' Input.Files="[\'AOD.pool.root\']" DQ.Steering.doHLTMon=True Trigger.triggerMenuSetup=\'{triggermenu}\''
 
 #====================================================================================================
 # Merging NTUP_TRIGRATE/COST

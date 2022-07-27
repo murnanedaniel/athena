@@ -11,6 +11,8 @@
 #include "xAODTruth/TruthParticleContainer.h"
 #include "xAODTruth/TruthVertexContainer.h"
 
+#include "xAODEventInfo/EventInfo.h"
+
 #include "TrigDecisionTool/FeatureRequestDescriptor.h"
 
 #include "TrigInDetAnalysis/Filter_AcceptAll.h"
@@ -42,7 +44,7 @@ void remove_duplicates(std::vector<T>& vec) {
 
 void AnalysisConfigMT_Ntuple::loop() {
 
-        m_provider->msg(MSG::DEBUG) << "[91;1m" << "AnalysisConfig_Ntuple::loop() for " << m_analysisInstanceName 
+        m_provider->msg(MSG::DEBUG) << "[91;1m" << "AnalysisConfigMT_Ntuple::loop() for " << m_analysisInstanceName 
 				   << " compiled " << __DATE__ << " " << __TIME__ << "\t: " << date() << "[m" << endmsg;
 
 
@@ -71,9 +73,7 @@ void AnalysisConfigMT_Ntuple::loop() {
 
 	std::vector<ChainString> chainNames;
 
-	static bool tida_first = true;
-	
-	if ( tida_first ) { 
+	if ( m_tida_first ) { 
 
 		std::vector<std::string> configuredChains  = (*m_tdt)->getListOfTriggers("L2_.*, EF_.*, HLT_.*");
 
@@ -88,7 +88,7 @@ void AnalysisConfigMT_Ntuple::loop() {
 		  configuredHLTChains.insert( configuredChains[i] );
 		}
 
-		tida_first = false;
+		m_tida_first = false;
 
 		std::vector<ChainString>::iterator chainitr = m_chainNames.begin();
 
@@ -107,15 +107,8 @@ void AnalysisConfigMT_Ntuple::loop() {
 		  
 		  for ( unsigned iselected=0 ; iselected<selectChains.size() ; iselected++ ) {
  
-		      if ( chainName.tail()!="" )    selectChains[iselected] += ":key="+chainName.tail();
-		      if ( chainName.extra()!="" )   selectChains[iselected] += ":extra="+chainName.extra();
-		   
-		      if ( chainName.element()!="" ) selectChains[iselected] += ":te="+chainName.element(); 
-		      if ( chainName.roi()!="" )     selectChains[iselected] += ":roi="+chainName.roi();
-		      if ( chainName.vtx()!="" )     selectChains[iselected] += ":vtx="+chainName.vtx();
-		     
-		      if ( !chainName.passed() )    selectChains[iselected] += ";DTE";
-		     
+		      selectChains[iselected] = chainName.subs( selectChains[iselected] );
+
 		      /// replace wildcard with actual matching chains ...
 		      chainNames.push_back( ChainString(selectChains[iselected]) );
 
@@ -215,11 +208,8 @@ void AnalysisConfigMT_Ntuple::loop() {
 
 	bool analyse = false;
 
-	unsigned decisiontype_ = TrigDefs::Physics;
+	unsigned decisiontype = TrigDefs::Physics;
 	
-	if ( requireDecision() ) decisiontype_ = TrigDefs::requireDecision;
-
-
 	/// bomb out if no chains passed and not told to keep all events  
 
 	int passed_chains = 0;
@@ -233,7 +223,7 @@ void AnalysisConfigMT_Ntuple::loop() {
 
 	for ( unsigned ichain=0 ; ichain<m_chainNames.size() ; ichain++ ) {
   
-		const std::string& chainName = m_chainNames[ichain].head();
+		std::string chainName = m_chainNames[ichain].head();
 
 		// Only for trigger chains
 
@@ -247,7 +237,9 @@ void AnalysisConfigMT_Ntuple::loop() {
 				<< endmsg;
 			continue;
 		}
-
+		
+		if ( m_chainNames[ichain].passed() ) decisiontype = TrigDefs::Physics;
+		else                                 decisiontype = TrigDefs::includeFailedDecisions;
 		
 		std::string roistring = "";
 		if ( m_chainNames[ichain].roi()!=""  ) roistring += "\troi " + m_chainNames[ichain].roi();  
@@ -257,15 +249,15 @@ void AnalysisConfigMT_Ntuple::loop() {
 		m_provider->msg(MSG::DEBUG) << "Chain "  << chainName << "\troi " << roistring 
 					   << "\tpres " << (*m_tdt)->getPrescale(chainName)
 					   << ( passPhysics ? "[91;1m" : "" ) << "\tpass physics  " <<  passPhysics << ( passPhysics ? "[m" : "" ) 
-					   << "\t: ( pass " << (*m_tdt)->isPassed(chainName, decisiontype_ ) << "\tdec type " << decisiontype_ << " ) " << endmsg;
+					   << "\t: ( pass " << (*m_tdt)->isPassed(chainName, decisiontype ) << "\tdec type " << decisiontype << " ) " << endmsg;
 
-		if ( (*m_tdt)->isPassed(chainName, decisiontype_ ) ||  !m_chainNames[ichain].passed() ) { 
+		if ( (*m_tdt)->isPassed(chainName, decisiontype ) ||  !m_chainNames[ichain].passed() ) { 
 		  analyse = true;
 		  passed_chains++;
 		}
 
 	} /// finished loop over chains
-
+ 
 
 
 	/// bomb out if no chains passed and not told to keep all events and found no 
@@ -345,28 +337,49 @@ void AnalysisConfigMT_Ntuple::loop() {
 	
 
 	/// get the offline vertices into our structure
-	
-	std::vector<TIDA::Vertex> vertices;
-	
-	m_provider->msg(MSG::VERBOSE) << "fetching AOD Primary vertex container" << endmsg;
+	for ( size_t iv=0; iv<m_vertexType.size(); iv++ ) {
 
-	const xAOD::VertexContainer* xaodVtxCollection = 0;
+		std::vector<TIDA::Vertex> vertices;
+		
+		std::string vertexType = "PrimaryVertices";
+		std::string vertexChainname = "Vertex";
+		if ( m_vertexType[iv]!="" ) { 
+			vertexType = m_vertexType[iv];
+			vertexChainname += ":" + vertexType;
+		}
 
-	if ( m_provider->evtStore()->retrieve( xaodVtxCollection, "PrimaryVertices" ).isFailure()) {
-	  m_provider->msg(MSG::WARNING) << "xAOD Primary vertex container not found with key " << "PrimaryVertices" <<  endmsg;
+		m_provider->msg(MSG::VERBOSE) << "fetching offline AOD vertex container with key " << vertexType << endmsg;
+
+		const xAOD::VertexContainer* xaodVtxCollection = 0;
+
+		if ( m_provider->evtStore()->retrieve( xaodVtxCollection, vertexType ).isFailure()) {
+		  if (m_provider->msg().level() <= MSG::WARNING) m_provider->msg(MSG::WARNING) << "xAOD vertex container not found with key " << vertexType <<  endmsg;
+		}
+		
+		if ( xaodVtxCollection!=0 ) { 
+		
+			m_provider->msg(MSG::DEBUG) << "xAOD vertex container " << vertexType << " found with " << xaodVtxCollection->size() <<  " entries" << endmsg;
+			
+			// Vertex types in some secondary vertex collections are not properly set and are all 0, 
+			// allow these vertices if primary vertices are not used
+			if ( vertexType.find("SecVtx") != std::string::npos ) {
+				vertices = vertexBuilder.select( xaodVtxCollection, &selectorRef.tracks(), true );
+			}
+			else {
+				vertices = vertexBuilder.select( xaodVtxCollection, &selectorRef.tracks() );
+			}
+		}
+
+		// now add the offline vertices
+		if ( m_doOffline || m_doVertices ) { 
+			m_event->addChain( vertexChainname );
+			m_event->back().addRoi(TIDARoiDescriptor(true));
+			m_event->back().back().addVertices( vertices );
+		}	 
 	}
-	
-	if ( xaodVtxCollection!=0 ) { 
-	  
-	  m_provider->msg(MSG::DEBUG) << "xAOD Primary vertex container " << xaodVtxCollection->size() <<  " entries" << endmsg;
-
-	  vertices = vertexBuilder.select( xaodVtxCollection, &selectorRef.tracks() );
-	}
-
 
 	/// add offline Vertices to the Offline chain
-	
-	
+
 	/// add the truth particles if needed
 	
 	if ( m_mcTruth ) {
@@ -375,14 +388,8 @@ void AnalysisConfigMT_Ntuple::loop() {
 	  m_event->back().back().addTracks(selectorTruth.tracks());
 	}
 
-
-	/// now add the vertices
-
-	/// useful debug information - leave in  
-	//	std::cout << "SUTT Nvertices " << vertices.size() << "\ttype 101 " << vertices_full.size() << std::endl;
-
 #if 0
-	/// don;t add them to the event - since now we store them in the Vertex chain ...
+	/// don't add them to the event - since now we store them in the Vertex chain ...
 	for ( unsigned i=0 ; i<vertices.size() ; i++ )  { 
 	  m_provider->msg(MSG::DEBUG) << "vertex " << i << " " << vertices[i] << endmsg;
 	  m_event->addVertex(vertices[i]);
@@ -395,16 +402,6 @@ void AnalysisConfigMT_Ntuple::loop() {
 	int Nmu   = 0;
 	int Nel   = 0;
         int Ntau  = 0;
-
-
-	/// now add the offline vertices
-
-	if ( m_doOffline || m_doVertices ) { 	  
-	  m_event->addChain( "Vertex" );
-	  m_event->back().addRoi(TIDARoiDescriptor(true));
-	  m_event->back().back().addVertices( vertices );
-	}	 
-
 
 	/// now add the offline tracks
 
@@ -448,12 +445,7 @@ void AnalysisConfigMT_Ntuple::loop() {
 	  chainname = collectionname;
 	  if ( vtx_name!="" ) chainname += ":" + vtx_name; 
   
-      // useful debug information - leave this here
-
-	  //	  const std::string& index          = m_chainNames[ichain].extra();
-	  //	  const std::string& element        = m_chainNames[ichain].element();
-
-	  //	  std::cout << "\tchain: " << chainname << "\tcollection: " << collectionname << "\tindex: " << index << "\tte: " << element << std::endl;  
+	  // useful debug information - leave this here
 
 	  /// here we *only* want collections with no specified chain
 	  /// name, then we look in storegate for the collections directly
@@ -498,7 +490,7 @@ void AnalysisConfigMT_Ntuple::loop() {
 	    const xAOD::VertexContainer* xaodVtxCollection = 0;
 	    
 	    if ( m_provider->evtStore()->retrieve( xaodVtxCollection, vtx_name ).isFailure() ) {
-	      m_provider->msg(MSG::WARNING) << "xAOD vertex container not found with key " << vtx_name <<  endmsg;
+	      if (m_provider->msg().level() <= MSG::WARNING) m_provider->msg(MSG::WARNING) << "xAOD vertex container not found with key " << vtx_name <<  endmsg;
 	    }
 	    
 	    if ( xaodVtxCollection!=0 ) { 
@@ -506,7 +498,14 @@ void AnalysisConfigMT_Ntuple::loop() {
 	      m_provider->msg(MSG::DEBUG) << "\txAOD::VertexContainer found with size  " << xaodVtxCollection->size()
 					  << "\t" << vtx_name << endmsg;
 
-		  tidavertices = vertexBuilder.select( xaodVtxCollection );  
+		  // Vertex types in some secondary vertex collections are not properly set and are all 0, 
+	      // allow these vertices if primary vertices are not used
+		  if ( vtx_name.find("SecVtx") != std::string::npos ) {
+		    tidavertices = vertexBuilder.select( xaodVtxCollection, 0, true );
+		  }
+		  else {
+		    tidavertices = vertexBuilder.select( xaodVtxCollection );
+		  }		   
 		}
 
 	  }
@@ -553,14 +552,9 @@ void AnalysisConfigMT_Ntuple::loop() {
 
 	  std::vector<TrackTrigObject> elevec;
 	  
-	  /// useful debug information ...
-	  //	  std::cout << "\tElectrons selection " << ielec << " " << m_electronType[ielec] 
-	  //		    << "\t" << itype << " " << ElectronRef[itype] << "\t" << m_rawElectrons[ielec] << std::endl;
-	  
 	  int Nel_ = processElectrons( selectorRef, &elevec, itype, ( m_rawElectrons[ielec]=="raw" ? true : false ) );
 	  
-	  	  
-          if ( Nel_ < 1 ) continue;
+	  if ( Nel_ < 1 ) continue;
       
           Nel += Nel_;	
 
@@ -573,9 +567,6 @@ void AnalysisConfigMT_Ntuple::loop() {
 	  m_event->back().back().addTracks(selectorRef.tracks());
 	  m_event->back().back().addObjects( elevec );
 
-	  // leave this in util fully validated ...
-	  // std::cout << m_event->back() << std::endl;
-	  
 	  if ( selectorRef.getBeamX()!=0 || selectorRef.getBeamY()!=0 || selectorRef.getBeamZ()!=0 ) { 
 	    std::vector<double> beamline_;
 	    beamline_.push_back( selectorRef.getBeamX() );
@@ -686,9 +677,6 @@ void AnalysisConfigMT_Ntuple::loop() {
 	    m_event->back().back().addTracks(selectorRef.tracks());
 	    m_event->back().back().addObjects( tauvec ) ; 
 
-	    // leave this in util fully validated ...
-	    //	    std::cout << m_event->back() << std::endl;
-
 	    if ( selectorRef.getBeamX()!=0 || selectorRef.getBeamY()!=0 || selectorRef.getBeamZ()!=0 ) { 
 	      std::vector<double> beamline_;
 	      beamline_.push_back( selectorRef.getBeamX() );
@@ -699,9 +687,6 @@ void AnalysisConfigMT_Ntuple::loop() {
 
 	  }
 	}
-	
-	/// useful debug information 0 leave here 
-	//	std::cout << "SUTT Ntaus: " << Ntau << std::endl;
 	
 	if ( Nmu==0 && Noff==0 && Nel==0 && Ntau==0 ) m_provider->msg(MSG::DEBUG) << "No offline objects found " << endmsg;
 	else foundOffline = true;
@@ -714,37 +699,30 @@ void AnalysisConfigMT_Ntuple::loop() {
 		// create chains for ntpl
 
 		/// get the chain name
-		const std::string& chainName = m_chainNames[ichain].head();
+		const std::string&  chainName = m_chainNames[ichain].head();
 
 		/// and the name of the collection (if any)    
 		const std::string& collectionName = m_chainNames[ichain].tail();
-
 
 		if( chainName.find("L2_")==std::string::npos && 
 		    chainName.find("EF_")==std::string::npos && 
 		    chainName.find("HLT_")==std::string::npos ) continue;
 
-		
+		if ( m_chainNames[ichain].passed() ) decisiontype = TrigDefs::Physics;
+		else                                 decisiontype = TrigDefs::includeFailedDecisions;
+
+
 		m_provider->msg(MSG::DEBUG) << "chain " << chainName 
 					    << "\tprescale " << (*m_tdt)->getPrescale(chainName)
 					    << "\tpass "     << (*m_tdt)->isPassed(chainName) << " physics " 
-					    << "  (req dec " << (*m_tdt)->isPassed(chainName, decisiontype_ ) << " dec type " << decisiontype_ << ")"
+					    << "  (req dec " << (*m_tdt)->isPassed(chainName, decisiontype ) << " dec type " << decisiontype << ")"
 					    << endmsg;
 		
 		/// now decide whether we want all the TEs for this chain, or just those 
 		/// that are still active
 
-
-		unsigned decisiontype;
-                if ( m_chainNames[ichain].passed() ) {
-		  decisiontype = decisiontype_;
-		} else {
-		
-		  decisiontype = TrigDefs::alsoDeactivateTEs;
-		  decisiontype_ = TrigDefs::requireDecision;		
-		}
 		/// if the chain did not pass, skip this chain completely 
-		if ( !(*m_tdt)->isPassed( chainName, decisiontype_ ) ) continue;
+		if ( !(*m_tdt)->isPassed( chainName, decisiontype ) ) continue;
 
 		/// new MT TDT feature access  
 		
@@ -770,7 +748,7 @@ void AnalysisConfigMT_Ntuple::loop() {
 		    roi_tename   = roi_name.substr( 0, roi_name.find("/") );
 		  }
 		  
-		  roist = comb->get<TrigRoiDescriptor>( roi_name_tmp, decisiontype_, roi_tename );
+		  roist = comb->get<TrigRoiDescriptor>( roi_name_tmp, decisiontype, roi_tename );
 		  
 		  if ( roist.size()>0 ) { 
 		    for ( unsigned ir=0 ; ir<roist.size() ; ir++ ) m_provider->msg(MSG::DEBUG) << "\t\tRetrieved roi  " << roi_name << "\t" << *roist[ir].cptr() << endmsg; 
@@ -806,7 +784,6 @@ void AnalysisConfigMT_Ntuple::loop() {
 													    feature_type,
 													    "roi", 
 													    leg ) );
-		
 		int iroi = 0; /// count of how many rois processed so far
 
 		/// if no rois for this chain then move along
@@ -819,16 +796,18 @@ void AnalysisConfigMT_Ntuple::loop() {
 
 		TIDA::Chain& chain = m_event->back();
 
-
+		/// I really, *really* hate range based loops ...
 		for ( const TrigCompositeUtils::LinkInfo<TrigRoiDescriptorCollection>& roi_info : rois ) {
-		    
+		  
 		  iroi++;
-
+		  
 		  /// don't extract any additional rois if a superRoi is requested: 
 		  /// In this case, the superRoi would be shared between the different 
 		  /// chains 
 
-		  if ( roi_key=="SuperRoi" && iroi>1 ) continue; 
+		  if ( roi_key=="SuperRoi" && iroi>1 ) continue;
+ 
+		  if ( roi_key.find("JetSuper")!=std::string::npos && iroi>1 ) continue; 
 		  
 		  const ElementLink<TrigRoiDescriptorCollection> roi_link = roi_info.link;
 
@@ -850,8 +829,8 @@ void AnalysisConfigMT_Ntuple::loop() {
 
 		  /// get the tracks 
 
-
-		  m_provider->msg(MSG::VERBOSE) << "TIDARoi " << *roi_tmp << "\tcollectionName: " << collectionName << endmsg;
+		  /// useful diagnostic - leave in place ...
+		  ///		  m_provider->msg(MSG::INFO) << "TIDARoi " << *roi_tmp << "\tcollectionName: " << collectionName << endmsg;
 			      
 		  /// this should *never* be the case, and we should only run this 
 		  /// bit of code once the first time round the loop anyhow
@@ -882,17 +861,24 @@ void AnalysisConfigMT_Ntuple::loop() {
 			       xAOD::VertexContainer::const_iterator > vtx_itrpair = getCollection<xAOD::VertexContainer>( roi_link, vtx_name );
 		    
 		    if ( vtx_itrpair.first == vtx_itrpair.second ) { 
-		      m_provider->msg(MSG::WARNING) << "\tNo xAOD::Vertex for chain " << chainName << " for key " << vtx_name << endmsg;
+		      if ( m_provider->msg().level() <= MSG::DEBUG ) {
+			m_provider->msg(MSG::WARNING) << "\tNo xAOD::Vertex for chain " << chainName << " for key " << vtx_name << endmsg;
+		      }
 		    }
 		    else {
 		      
 		      m_provider->msg(MSG::DEBUG) << "\txAOD::VertexContainer found with size  " << (vtx_itrpair.second - vtx_itrpair.first) 
 						 << "\t" << vtx_name << endmsg;
 
-			  tidavertices = vertexBuilder.select( vtx_itrpair.first, vtx_itrpair.second, &selectorTest.tracks() );
-		      
+			  // Vertex types in some secondary vertex collections are not properly set and are all 0, 
+			  // allow these vertices if primary vertices are not used
+			  if ( vtx_name.find("SecVtx") != std::string::npos ) {
+				tidavertices = vertexBuilder.select( vtx_itrpair.first, vtx_itrpair.second, &selectorRef.tracks(), true );
+			  }
+			  else {
+				tidavertices = vertexBuilder.select( vtx_itrpair.first, vtx_itrpair.second, &selectorTest.tracks() );
+			  }		      
 			}
-		    
 		  }
 
 #if 0 
@@ -919,8 +905,8 @@ void AnalysisConfigMT_Ntuple::loop() {
 		    roi_tmp = new TIDARoiDescriptor(true);
 		  }
 		  
-		  
 		  chain.addRoi( *roi_tmp );
+
 		  chain.back().addTracks(testTracks);
 		  chain.back().addVertices(tidavertices);
 
@@ -939,13 +925,13 @@ void AnalysisConfigMT_Ntuple::loop() {
 	  
 		  if ( roi_tmp ) delete roi_tmp;
 		  roi_tmp = 0;
+
 		}
-		
 		
 	}
 
 #if 0
-	/// don;t include this code at the moment ...
+	/// don't include this code yet - it is still being validated ...
 
 	{ 
 	  /// strip out the offline tracks not in any Roi ...

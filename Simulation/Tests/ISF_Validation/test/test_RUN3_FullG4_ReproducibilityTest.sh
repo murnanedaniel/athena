@@ -1,9 +1,12 @@
 #!/bin/sh
 #
 # art-description: MC21-style simulation using FullG4, checking that the SkipEvents argument works (7 TeV ttbar input - needs updating)
+# art-include: 22.0/Athena
+# art-include: 22.0/AthSimulation
 # art-include: master/Athena
 # art-include: master/AthSimulation
 # art-type: grid
+# art-architecture:  '#x86_64-intel'
 # art-output: hitsFull.ttbar.pool.root
 # art-output: hitsHalf1.ttbar.pool.root
 # art-output: hitsHalf2.ttbar.pool.root

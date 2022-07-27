@@ -1,7 +1,7 @@
 ///////////////////////// -*- C++ -*- /////////////////////////////
 
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // PerfMonSvc.cxx
@@ -46,6 +46,7 @@
 #include "GaudiKernel/IIoComponentMgr.h"
 
 #include "CxxUtils/AthDsoCbk.h"
+#include "CxxUtils/checker_macros.h"
 #include "CxxUtils/read_athena_statm.h"
 
 #include "RootUtils/PyAthenaGILStateEnsure.h"
@@ -162,7 +163,7 @@ namespace {
   void    capture(int idx, PerfMon::Component& c);
 
   extern "C"
-  int pmon_dso_cbk(const struct ath_dso_event *evt, void *userdata);
+  int pmon_dso_cbk ATLAS_NOT_THREAD_SAFE (const struct ath_dso_event *evt, void *userdata);
 
 }
 
@@ -422,13 +423,6 @@ PerfMonSvc::io_reinit()
   stream_name = m_workerDir + "/" + my_basename(orig_stream_name);
 
   ATH_MSG_INFO("reopening [" << stream_name << "]...");
-  fflush(NULL); //> flushes all output streams...
-  int close_sc = close(m_stream);
-  if (close_sc < 0) {
-    ATH_MSG_ERROR("could not close previously open fd [" << m_stream << "]: "
-                  << strerror(errno));
-    return StatusCode::FAILURE;
-  }
 
   // re-open the previous file
   int old_stream = open(orig_stream_name.c_str(), O_RDONLY);
@@ -441,8 +435,10 @@ PerfMonSvc::io_reinit()
                   O_WRONLY | O_CREAT,
                   S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
   if (m_stream < 0) {
+    char errbuf[256];
+    strerror_r(errno, errbuf, sizeof(errbuf));
     ATH_MSG_ERROR("could not reopen [" << stream_name << "]: "
-                  << strerror(errno));
+                  << errbuf);
     close (old_stream);
     return StatusCode::FAILURE;
   }
@@ -454,11 +450,34 @@ PerfMonSvc::io_reinit()
       write(m_stream, line, bytes);
   }
   // close the old stream
-  close_sc = close(old_stream);
+  int close_sc = close(old_stream);
   if (close_sc < 0) {
     ATH_MSG_INFO("could not close the re-open old pmon.stream file");
   }
   ATH_MSG_INFO("reopening [" << stream_name << "]... [ok]");
+  return StatusCode::SUCCESS;
+}
+//@}
+
+/// @c IIoComponent interface
+//@{
+/** @brief callback method to finalize the internal state of
+ *         the component for I/O purposes (e.g. upon @c fork(2))
+ */
+StatusCode
+PerfMonSvc::io_finalize()
+{
+  ATH_MSG_INFO("closing previously open fd [" << m_stream << "] for the pmon stream...");
+  fflush(NULL); //> flushes all output streams...
+  int close_sc = close(m_stream);
+  if (close_sc < 0) {
+    char errbuf[256];
+    strerror_r(errno, errbuf, sizeof(errbuf));
+    ATH_MSG_ERROR("could not close previously open fd [" << m_stream << "]: "
+                  << errbuf);
+    return StatusCode::FAILURE;
+  }
+  m_stream = -1; // reset the fd
   return StatusCode::SUCCESS;
 }
 //@}
@@ -1117,9 +1136,7 @@ void PerfMonSvc::startAud( const std::string& stepName,
 {
   // Performing performance-monitoring for BeginEvent
   if ( compName == m_compBeginEvent && stepName == "evt" ) {
-    static bool s_firstEvt = true;
-    if ( s_firstEvt ) {
-      s_firstEvt = false;
+    [[maybe_unused]] static const bool firstEvt = [&] ATLAS_NOT_THREAD_SAFE () {
       stopAud( "ini", "PerfMonSlice" );
       // capture the number of algorithms - here
       ServiceHandle<IAlgManager> mgr("ApplicationMgr", this->name());
@@ -1127,7 +1144,8 @@ void PerfMonSvc::startAud( const std::string& stepName,
       m_ntuple.comp["ini"].clear();
       m_ntuple.comp["cbk"].clear();
       m_ntuple.comp["preLoadProxies"].clear();
-    }
+      return false;
+    }();
     startAud( "evt", "PerfMonSlice" );
     return;
   }
@@ -1239,6 +1257,23 @@ PerfMonSvc::comp_startAud(const std::string& stepName,
      ((unsigned long)c.mem.nmall[0]),
      ((unsigned long)c.mem.nfree[0])
      );
+  // In AthenaMP, we need to re-open the pmon stream
+  // before we write the results that come from the
+  // finalization of the mother process. Otherwise,
+  // we shouldn't be going into this block...
+  if (m_stream<0) {
+    const std::string stream_name = m_outFileName.value()+".pmon.stream";
+
+    PMON_INFO("re-opening pmon-stream file [" << stream_name << "]...");
+    m_stream = open(stream_name.c_str(),
+                  O_WRONLY | O_APPEND,
+                  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+    if (m_stream<0) {
+      PMON_ERROR("could not re-open pmon-stream file ["
+          << stream_name << "] !");
+    }
+  }
   write(m_stream, buf, buf_sz);
   free(buf);
 
@@ -1481,7 +1516,7 @@ namespace {
     // capture mem data
     PerfMon::Mem& mem = c.mem;
     athena_statm s = read_athena_statm();
-    static long  pg_size = sysconf(_SC_PAGESIZE);
+    static const long  pg_size = sysconf(_SC_PAGESIZE);
     mem.vmem[idx] = static_cast<float>(s.vm_pages * pg_size / (float)Units::kb);
     mem.rss[idx]  = static_cast<float>(s.rss_pages* pg_size / (float)Units::kb);
     mem.mall[idx] = static_cast<float>(PerfMon::MemStats::nbytes()/Units::kb);
@@ -1490,7 +1525,7 @@ namespace {
   }
 
   int
-  pmon_dso_cbk(const struct ath_dso_event *evt, void *userdata)
+  pmon_dso_cbk ATLAS_NOT_THREAD_SAFE (const struct ath_dso_event *evt, void *userdata)
   {
     if (userdata) {
       PerfMonSvc *svc = (PerfMonSvc*)userdata;

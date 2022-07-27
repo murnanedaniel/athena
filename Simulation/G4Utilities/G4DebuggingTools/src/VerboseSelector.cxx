@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "VerboseSelector.h"
@@ -24,8 +24,7 @@
 #include "GaudiKernel/ISvcLocator.h"
 #include "GaudiKernel/IMessageSvc.h"
 // to retrieve the event number
-#include "EventInfo/EventInfo.h"
-#include "EventInfo/EventID.h"
+#include "xAODEventInfo/EventInfo.h"
 #include "StoreGate/ReadHandle.h"
 
 namespace G4UA
@@ -40,11 +39,11 @@ namespace G4UA
 
   void VerboseSelector::BeginOfEventAction(const G4Event*)
   {
-    SG::ReadHandle<EventInfo> eic("McEventInfo");
+    SG::ReadHandle<xAOD::EventInfo> eic("EventInfo");
     if (!eic.isValid()){
       ATH_MSG_WARNING( "Failed to retrieve EventInfo" );
     } else {
-      m_evtCount = eic->event_ID()->event_number();
+      m_evtCount = eic->eventNumber();
     }
   }
 
@@ -102,9 +101,7 @@ namespace G4UA
     if(m_evtCount==(uint64_t)m_config.targetEvent||m_config.targetEvent<0)
       {
         int trackID = aTrack->GetTrackID();
-        // FIXME: can we remove this const_cast?
-        G4Track *itr = const_cast<G4Track*>(aTrack);
-        TrackHelper trackHelper(itr);
+        TrackHelper trackHelper(aTrack);
 
         AtlasG4EventUserInfo* atlasG4EvtUserInfo = static_cast<AtlasG4EventUserInfo*>
           (G4EventManager::GetEventManager()->GetConstCurrentEvent()->

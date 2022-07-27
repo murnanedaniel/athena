@@ -1,12 +1,13 @@
 #!/usr/bin/env python
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 # art-description: art job for mu_Zmumu_pu40
 # art-type: grid
 # art-include: master/Athena
-# art-input: mc15_13TeV.361107.PowhegPythia8EvtGen_AZNLOCTEQ6L1_Zmumu.recon.RDO.e3601_s2576_s2132_r7143
+# art-include: 22.0/Athena
+# art-input: mc21.601190.PhPy8EG_AZNLO_Zmumu.recon.RDO.e8392_e7400_s3775_r13614
 # art-input-nfiles: 4
 # art-athena-mt: 8
-# art-memory: 4096
 # art-html: https://idtrigger-val.web.cern.ch/idtrigger-val/TIDAWeb/TIDAart/?jobdir=
 # art-output: *.txt
 # art-output: *.log
@@ -33,8 +34,6 @@ Threads = 8
 Slots   = 8
 Input   = 'Zmumu_pu40'    # defined in TrigValTools/share/TrigValInputs.json
 GridFiles=True
-
-preinclude_file = 'all:TrigInDetValidation/TIDV_cond_fix.py' #conditions fix for ATR-23982. In future find a more recent RDO  
 
 Jobs = [ ( "Truth",       " TIDAdata-run3.dat                    -o data-hists.root -p 13" ),
          ( "Offline",     " TIDAdata-run3-offline.dat -r Offline -o data-hists-offline.root" ) ]

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #include "TrkTrack/Track.h"
@@ -37,7 +37,6 @@ namespace Trk {
     , m_alignModuleTool("Trk::AlignModuleTool/AlignModuleTool")
     , m_idHelper(nullptr)
     , m_measTypeIdHelper(nullptr)
-    , m_firstEvent(true)
     , m_residualType(HitOnly)
     , m_residualTypeSet(false)
     , m_storeDerivatives(false)
@@ -62,7 +61,7 @@ namespace Trk {
 
   //________________________________________________________________________
   AnalyticalDerivCalcTool::~AnalyticalDerivCalcTool()
-  {}
+  = default;
 
   //________________________________________________________________________
   StatusCode AnalyticalDerivCalcTool::initialize()
@@ -102,10 +101,10 @@ namespace Trk {
 
     // loop over AlignTSOSCollection, 
     // find modules that are in the AlignModuleList,
-    std::vector<const AlignModule *> alignModules;    
-    AlignTSOSCollection::const_iterator atsosItr = alignTrack->firstAtsos();
+    std::vector<AlignModule *> alignModules;
+    AlignTSOSCollection::iterator atsosItr = alignTrack->firstAtsos();
     for (; atsosItr != alignTrack->lastAtsos(); ++atsosItr) {      
-      const AlignModule * module=(*atsosItr)->module();
+      AlignModule * module=(*atsosItr)->module();
       if (module)
         ATH_MSG_DEBUG("have ATSOS for module "<<module->identify());
       else
@@ -123,7 +122,7 @@ namespace Trk {
 
     // Determine derivatives from shifting these modules
     std::vector<AlignModuleDerivatives> * derivatives = new std::vector<AlignModuleDerivatives>;
-    std::vector<const AlignModule *>::const_iterator moduleIt = alignModules.begin();
+    std::vector<AlignModule *>::iterator moduleIt = alignModules.begin();
     for ( ; moduleIt!=alignModules.end(); ++moduleIt) {
       std::vector<Amg::VectorX> deriv_vec = getDerivatives(alignTrack,*moduleIt);
       derivatives->push_back(make_pair(*moduleIt,deriv_vec));
@@ -141,7 +140,8 @@ namespace Trk {
   //________________________________________________________________________
   bool AnalyticalDerivCalcTool::setResidualCovMatrix(AlignTrack * alignTrack) const
   {
-    if (m_firstEvent) {
+    static std::once_flag flag;
+    std::call_once(flag, [&]() {
       if(m_logStream) {
         *m_logStream<<"*************************************************************"<<std::endl;
         *m_logStream<<"*************************************************************"<<std::endl;
@@ -164,8 +164,7 @@ namespace Trk {
         *m_logStream<<"***                                                     *****"<<std::endl;
         *m_logStream<<"*************************************************************"<<std::endl;
       }
-      m_firstEvent = false;
-    }
+    });
 
     // get inverse local error matrix of the track
     const Amg::MatrixX * Vinv = alignTrack->localErrorMatrixInv();

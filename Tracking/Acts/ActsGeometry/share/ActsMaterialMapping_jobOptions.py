@@ -48,14 +48,12 @@ def ActsMaterialMappingCfg(configFlags, name = "ActsMaterialMapping", **kwargs):
   return result
 
 if "__main__" == __name__:
-  from AthenaCommon.Configurable import Configurable
   from AthenaCommon.Logging import log
   from AthenaCommon.Constants import INFO
   from AthenaConfiguration.AllConfigFlags import ConfigFlags
   from AthenaConfiguration.MainServicesConfig import MainServicesCfg
   from AthenaPoolCnvSvc.PoolReadConfig import PoolReadCfg
   from ActsGeometry.ActsGeometryConfig import ActsMaterialTrackWriterSvcCfg
-  Configurable.configurableRun3Behavior = True
 
   ## Just enable ID for the moment.
   ConfigFlags.Input.isMC             = True
@@ -70,7 +68,6 @@ if "__main__" == __name__:
   ConfigFlags.Detector.GeometryTRT   = True
   ConfigFlags.Acts.TrackingGeometry.MaterialSource = "geometry-maps.json"
   # ConfigFlags.Acts.TrackingGeometry.MaterialSource = "/eos/project-a/acts/public/MaterialMaps/ATLAS/geometry-maps.json"
-  ConfigFlags.Acts.TrackingGeometry.buildAllAvailableSubDetectors = True
   ConfigFlags.Concurrency.NumThreads = 1
   ConfigFlags.Concurrency.NumConcurrentEvents = 1
 

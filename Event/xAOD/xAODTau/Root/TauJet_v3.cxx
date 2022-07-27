@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 // System include(s):
@@ -522,21 +522,6 @@ namespace xAOD {
     return tracksWithMask( mask );
   }
 
-#ifndef XAOD_STANDALONE
-  /// Get the v<pointer> to all tracks associated with this tau, regardless of classification
-  std::vector<TauTrack*> TauJet_v3::allTracks() {
-    std::vector<TauTrack*> trks;
-    for(ElementLink< xAOD::TauTrackContainer >& link : tauTrackAcc(*this) ){
-      const TauTrack* c_trk = *link;
-      xAOD::TauTrackContainer* tauTrackContainer = link.getDataNonConstPtr();
-      TauTrack* trk=tauTrackContainer->at(link.index());
-      if(trk!=c_trk) std::cout << "Did not properly retrieve non-const tauTrack" << std::endl;
-      trks.push_back(trk);
-    }
-    return trks;
-  }
-#endif
-
   //number of tracks with a given classification
   size_t TauJet_v3::nTracks(TauJetParameters::TauTrackFlag flag/*=TauJetParameters::TauTrackFlag::classifiedCharged*/) const{
     TauTrack::TrackFlagType mask=1<<flag;
@@ -688,7 +673,10 @@ namespace xAOD {
   static const SG::AuxElement::Accessor< TauJet_v3::JetLink_t > jetAcc( "jetLink" );
 
   const Jet* TauJet_v3::jet() const {
-   return ( *jetAcc( *this ) );
+    if (!jetAcc( *this ).isValid()) {
+      return nullptr;
+    }
+    return ( *jetAcc( *this ) );
   }
 
 
@@ -709,7 +697,10 @@ namespace xAOD {
   static const SG::AuxElement::Accessor< TauJet_v3::VertexLink_t > vertexAcc( "vertexLink" );
 
   const Vertex* TauJet_v3::vertex() const {
-   return ( *vertexAcc( *this ) );
+    if ( !vertexAcc(*this).isValid() ) {
+      return nullptr;
+    }
+    return ( *vertexAcc( *this ) );
   }
 
 

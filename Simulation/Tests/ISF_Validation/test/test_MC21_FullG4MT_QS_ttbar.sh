@@ -1,8 +1,10 @@
 #!/bin/sh
 #
 # art-description: Run simulation using ISF with the FullG4MT_QS simulator, reading 13 TeV ttbar events, writing HITS, using 2021 geometry and MC21 conditions
+# art-include: 22.0/Athena
 # art-include: master/Athena
 # art-type: grid
+# art-architecture:  '#x86_64-intel'
 # art-output: *.pool.root
 # art-output: log.*
 # art-output: Config*.pkl

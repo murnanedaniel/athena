@@ -1,4 +1,4 @@
-# Copyright (C) 2002-2020 CERN for the benefit of the ATLAS collaboration
+# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 ######################################################
 # AtlasTrackSummaryTool module
@@ -38,18 +38,11 @@ class AtlasTrackSummaryTool( Trk__TrackSummaryTool ):
         ToolSvc += AtlasPrdAssociationTool
         #print      AtlasPrdAssociationTool
 
-        TestPixelLayerTool = TrackingCommon.getInDetTestPixelLayerTool()
         
         # 
         # Setup Boundary Check Tool
         #
-        from InDetBoundaryCheckTool.InDetBoundaryCheckToolConf import InDet__InDetBoundaryCheckTool
-        AtlasBoundaryCheckTool = InDet__InDetBoundaryCheckTool(
-            name="AtlasBoundaryCheckTool",
-            UsePixel      = DetFlags.haveRIO.pixel_on(),
-            UseSCT        = DetFlags.haveRIO.SCT_on(),
-            PixelLayerTool = TestPixelLayerTool
-        )
+        AtlasBoundaryCheckTool = TrackingCommon.getInDetBoundaryCheckTool(name="AtlasBoundaryCheckTool")
     
         #
         # Loading Configurable HoleSearchTool
@@ -71,7 +64,6 @@ class AtlasTrackSummaryTool( Trk__TrackSummaryTool ):
             HoleSearch     = AtlasHoleSearchTool,
             AssoTool       = AtlasPrdAssociationTool,
             DoSharedHits   = False,
-            TestBLayerTool = TrackingCommon.getInDetRecTestBLayerTool(),
             useTRT         = DetFlags.haveRIO.TRT_on()
         )
 

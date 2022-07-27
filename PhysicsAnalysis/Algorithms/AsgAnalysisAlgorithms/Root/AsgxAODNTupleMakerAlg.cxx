@@ -1,4 +1,4 @@
-// Copyright (C) 2002-2019 CERN for the benefit of the ATLAS collaboration
+// Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 
 // Local include(s):
 #include "AsgAnalysisAlgorithms/AsgxAODNTupleMakerAlg.h"
@@ -117,7 +117,7 @@ namespace {
       // Find all proxies with this key:
       auto proxies = evtStore.proxies();
       proxies.erase( std::remove_if( proxies.begin(), proxies.end(),
-                                     std::not1( ProxyWithName( key ) ) ),
+                                     std::not_fn( ProxyWithName( key ) ) ),
                      proxies.end() );
       // Now iterate over them:
       for( const SG::DataProxy* proxy : proxies ) {
@@ -182,7 +182,7 @@ namespace {
       // Find all proxies with this key:
       auto proxies = evtStore.proxies();
       proxies.erase( std::remove_if( proxies.begin(), proxies.end(),
-                                     std::not1( ProxyWithName( key ) ) ),
+                                     std::not_fn( ProxyWithName( key ) ) ),
                      proxies.end() );
       // Now iterate over them:
       for( const SG::DataProxy* proxy : proxies ) {
@@ -466,7 +466,31 @@ namespace CP {
       if( auxName.find( "%SYS%" ) != std::string::npos )
       {
          systematicsDecoration = true;
-         const CP::SystematicSet affecting = m_systematicsService->getDecorSystematics( match[ 1 ], auxName );
+         CP::SystematicSet affecting = m_systematicsService->getDecorSystematics( match[ 1 ], auxName );
+         if( affecting.empty() )
+         {
+            // Sometimes while object systematics were applied we are not interested in them,
+            // NOSYS will then be used on the container name.
+            // Decoration systematics however will only be aware of containers with %SYS% included.
+            // Some special handling is needed to translate from NOSYS back to %SYS%.
+            const auto nosysInKey = key.find( "NOSYS" );
+            if( nosysInKey != std::string::npos )
+            {
+               std::string sysKey = key;
+               sysKey.replace (nosysInKey, 5, "%SYS%");
+               // these will be all systematics (object+decor)
+               const CP::SystematicSet affectingDecor = m_systematicsService->getDecorSystematics( sysKey, auxName );
+               // we now need to filter-out object systematics
+               const CP::SystematicSet affectingObject = m_systematicsService->getObjectSystematics( sysKey );
+               for( const CP::SystematicVariation &variation : affectingDecor )
+               {
+                  if( affectingObject.find( variation ) == affectingObject.end() )
+                  {
+                     affecting.insert( variation );
+                  }
+               }
+            }            
+         }
          CP::SystematicSet matching;
          ANA_CHECK( SystematicSet::filterForAffectingSystematics( sys, affecting, matching ) );
          if( !nominal && matching.empty() ) {

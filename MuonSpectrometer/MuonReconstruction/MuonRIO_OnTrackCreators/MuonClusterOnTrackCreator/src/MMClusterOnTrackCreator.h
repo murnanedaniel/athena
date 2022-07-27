@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2002-2021 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
 */
 
 #ifndef MMClusterOnTrackCreator_H
@@ -76,13 +76,13 @@ namespace Muon {
             @return a pointer to a new Muon::MuonClusterOnTrack object, zero if calibration failed.
             The ownership of the new Muon::MuonClusterOnTrack is passed to the client calling the tool
         */
-        virtual const MuonClusterOnTrack* calibratedCluster(const Trk::PrepRawData& RIO, const Amg::Vector3D& GP) const override;
+        virtual const MuonClusterOnTrack* calibratedCluster(const Trk::PrepRawData& RIO, const Amg::Vector3D& GP, const Amg::Vector3D& GD) const override;
 
     private:
         ServiceHandle<Muon::IMuonIdHelperSvc> m_idHelperSvc{this, "MuonIdHelperSvc", "Muon::MuonIdHelperSvc/MuonIdHelperSvc"};
         ToolHandle<Muon::IMMClusterBuilderTool> m_clusterBuilderTool{this, "SimpleMMClusterBuilder",
                                                                      "Muon::SimpleMMClusterBuilderTool/SimpleMMClusterBuilderTool"};
-        ToolHandle<Muon::INSWCalibTool> m_calibTool{this, "NSWCalibTool", "Muon::NSWCalibTool/NSWCalibTool"};
+        ToolHandle<Muon::INSWCalibTool> m_calibTool{this, "NSWCalibTool", ""};
 
     };  // end of class def
 }  //  namespace Muon
