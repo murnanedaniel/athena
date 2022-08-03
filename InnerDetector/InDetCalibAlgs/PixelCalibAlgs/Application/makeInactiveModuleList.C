@@ -427,21 +427,17 @@ void checkInactiveFEs(bool isIBL, TFile* hitMapFile, int &npush_backFE,
 	if(k<=18){
           if(l<=164){
             if(((!disk1A or !disk2A or !disk3A) and (M1_find==11 or M2_find==11 or M3_find==11)) or  ((!disk1C or !disk2C or !disk3C) and (M4_find==11 or M5_find==11 or M6_find==11))){
-              //FE7=FE7+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE7++;}
             }
             else{
-              //FE8=FE8+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE8++;}
             }
           }
           else if(l>=165){
             if(((!disk1A or !disk2A or !disk3A) and (M1_find==11 or M2_find==11 or M3_find==11)) or  ((!disk1C or !disk2C or !disk3C) and (M4_find==11 or M5_find==11 or M6_find==11))){
-              //FE8=FE8+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE8++;}
             }
             else{
-              //FE7=FE7+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE7++;}
             }
           }
@@ -452,21 +448,17 @@ void checkInactiveFEs(bool isIBL, TFile* hitMapFile, int &npush_backFE,
         if(k>=19 and k<=36){
           if(l<=164){
             if(((!disk1A or !disk2A or !disk3A) and (M1_find==11 or M2_find==11 or M3_find==11)) or  ((!disk1C or !disk2C or !disk3C) and (M4_find==11 or M5_find==11 or M6_find==11))){
-              //FE6=FE6+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE6++;}
             }
             else{
-              //FE9=FE9+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE9++;}
             }
           }
           else if(l>=165){
             if(((!disk1A or !disk2A or !disk3A) and (M1_find==11 or M2_find==11 or M3_find==11)) or  ((!disk1C or !disk2C or !disk3C) and (M4_find==11 or M5_find==11 or M6_find==11))){
-              //FE9=FE9+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE9++;}
             }
             else{
-              //FE6=FE6+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE6++;}
             }
           }
@@ -477,21 +469,17 @@ void checkInactiveFEs(bool isIBL, TFile* hitMapFile, int &npush_backFE,
         if(k>=37 and k<=54){
           if(l<=164){
             if(((!disk1A or !disk2A or !disk3A) and (M1_find==11 or M2_find==11 or M3_find==11)) or  ((!disk1C or !disk2C or !disk3C) and (M4_find==11 or M5_find==11 or M6_find==11))){
-              //FE5=FE5+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE5++;}
             }
             else{
-              //FE10=FE10+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE10++;}
             }
           }
           else if(l>=165){
             if(((!disk1A or !disk2A or !disk3A) and (M1_find==11 or M2_find==11 or M3_find==11)) or  ((!disk1C or !disk2C or !disk3C) and (M4_find==11 or M5_find==11 or M6_find==11))){
-              //FE10=FE10+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE10++;}
             }
             else{
-              //FE5=FE5+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE5++;}
             }
           }
@@ -502,21 +490,17 @@ void checkInactiveFEs(bool isIBL, TFile* hitMapFile, int &npush_backFE,
         if(k>=55 and k<=72){
           if(l<=164){
             if(((!disk1A or !disk2A or !disk3A) and (M1_find==11 or M2_find==11 or M3_find==11)) or  ((!disk1C or !disk2C or !disk3C) and (M4_find==11 or M5_find==11 or M6_find==11))){
-              //FE4=FE4+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE4++;}
             }
             else{
-              //FE11=FE11+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE11++;}
             }
           }
           else if(l>=165){
             if(((!disk1A or !disk2A or !disk3A) and (M1_find==11 or M2_find==11 or M3_find==11)) or  ((!disk1C or !disk2C or !disk3C) and (M4_find==11 or M5_find==11 or M6_find==11))){
-              //FE11=FE11+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE11++;}
             }
             else{
-              //FE4=FE4+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE4++;}
             }
           }
@@ -527,21 +511,17 @@ void checkInactiveFEs(bool isIBL, TFile* hitMapFile, int &npush_backFE,
         if(k>=73 and k<=90){
           if(l<=164){
             if(((!disk1A or !disk2A or !disk3A) and (M1_find==11 or M2_find==11 or M3_find==11)) or  ((!disk1C or !disk2C or !disk3C) and (M4_find==11 or M5_find==11 or M6_find==11))){
-              //FE3=FE3+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE3++;}
             }
             else{
-              //FE12=FE12+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE12++;}
             }
           }
           else if(l>=165){
             if(((!disk1A or !disk2A or !disk3A) and (M1_find==11 or M2_find==11 or M3_find==11)) or  ((!disk1C or !disk2C or !disk3C) and (M4_find==11 or M5_find==11 or M6_find==11))){
-              //FE12=FE12+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE12++;}
             }
             else{
-              //FE3=FE3+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE3++;}
             }
           }
@@ -552,21 +532,17 @@ void checkInactiveFEs(bool isIBL, TFile* hitMapFile, int &npush_backFE,
         if(k>=91 and k<=108){
           if(l<=164){
             if(((!disk1A or !disk2A or !disk3A) and (M1_find==11 or M2_find==11 or M3_find==11)) or  ((!disk1C or !disk2C or !disk3C) and (M4_find==11 or M5_find==11 or M6_find==11))){
-              //FE2=FE2+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE2++;}
             }
             else{
-              //FE13=FE13+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE13++;}
             }
           }
           else if(l>=165){
             if(((!disk1A or !disk2A or !disk3A) and (M1_find==11 or M2_find==11 or M3_find==11)) or  ((!disk1C or !disk2C or !disk3C) and (M4_find==11 or M5_find==11 or M6_find==11))){
-              //FE13=FE13+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE13++;}
             }
             else{
-              //FE2=FE2+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE2++;}
             }
           }
@@ -577,21 +553,17 @@ void checkInactiveFEs(bool isIBL, TFile* hitMapFile, int &npush_backFE,
         if(k>=109 and k<=126){
           if(l<=164){
             if(((!disk1A or !disk2A or !disk3A) and (M1_find==11 or M2_find==11 or M3_find==11)) or  ((!disk1C or !disk2C or !disk3C) and (M4_find==11 or M5_find==11 or M6_find==11))){
-              //FE1=FE1+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE1++;}
             }
             else{
-              //FE14=FE14+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE14++;}
             }
           }
           else if(l>=165){
             if(((!disk1A or !disk2A or !disk3A) and (M1_find==11 or M2_find==11 or M3_find==11)) or  ((!disk1C or !disk2C or !disk3C) and (M4_find==11 or M5_find==11 or M6_find==11))){
-              //FE14=FE14+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE14++;}
             }
             else{
-              //FE1=FE1+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE1++;}
             }
           }
@@ -602,21 +574,17 @@ void checkInactiveFEs(bool isIBL, TFile* hitMapFile, int &npush_backFE,
         if(k>=127){
           if(l<=164){
             if(((!disk1A or !disk2A or !disk3A) and (M1_find==11 or M2_find==11 or M3_find==11)) or  ((!disk1C or !disk2C or !disk3C) and (M4_find==11 or M5_find==11 or M6_find==11))){
-              //FE0=FE0+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE0++;}
             }
             else{
-              //FE15=FE15+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE15++;}
             }
           }
           else if(l>=165){
             if(((!disk1A or !disk2A or !disk3A) and (M1_find==11 or M2_find==11 or M3_find==11)) or  ((!disk1C or !disk2C or !disk3C) and (M4_find==11 or M5_find==11 or M6_find==11))){
-              //FE15=FE15+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE15++;}
             }
             else{
-              //FE0=FE0+hitMaps[moduleID]->GetBinContent(k,l);
               if(hitMaps[moduleID]->GetBinContent(k,l)!=0){FE0++;}
             }
           }
@@ -909,12 +877,9 @@ std::vector<int> getPositionFromDCSID (std::string module_name){
   for(unsigned int ii = 0; ii < pixelMapping.size(); ii++) {
   
     if (pixelMapping[ii].first == module_name){
-      //std::cout<<pixelMapping[ii].first<<" "<<module_name<<std::endl;
       return pixelMapping[ii].second;
     }
   }
-  //std::cout<<pixelMapping[0].first<<" "<<module_name<<std::endl;
-  //std::cout << "[getPositionFromDCSID] Not found!" << std::endl;
   return pixelMapping[0].second;
 }
 
