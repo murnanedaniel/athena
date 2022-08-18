@@ -27,10 +27,10 @@ double KtDeltaR::result(const fastjet::PseudoJet &jet) const
   }
 
   // TODO: Switch to JetUtils helpers for dR when package is migrated
-  static double twopi = 2.0*acos(-1.0);
+  static double pi = acos(-1.0);
   double deta = outjets[1].eta() - outjets[0].eta();
   double dphi = std::abs(outjets[1].phi() - outjets[0].phi());
-  if ( dphi > twopi ) dphi -= twopi;
+  if ( dphi > pi ) dphi -= 2*pi;
   double dr = sqrt(deta*deta + dphi*dphi);
   return dr;
 }
