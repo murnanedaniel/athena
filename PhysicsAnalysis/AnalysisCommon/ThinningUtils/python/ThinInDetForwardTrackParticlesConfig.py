@@ -17,6 +17,10 @@ def ThinInDetForwardTrackParticlesCfg(flags, name="ThinInDetForwardTrackParticle
     if "xAOD::TrackParticleContainer#InDetForwardTrackParticles" not in flags.Input.TypedCollections and not (flags.Detector.GeometryPixel and flags.InDet.Tracking.doForwardTracks):
         mlog.info("Not attempting to thin InDetForwardParticles, because the container InDetForwardTrackParticles does not seem to be available")
         return acc
+    
+    if "xAOD::MuonContainer#Muons" not in flags.Input.TypedCollections and not (flags.Detector.GeometryMuon and flags.Detector.EnableMuon):
+        mlog.info("Not attempting to thin InDetForwardParticles, because the container Muons does not seem to be available")
+        return acc
 
     kwargs.setdefault("StreamName", "StreamAOD")
     acc.addEventAlgo(CompFactory.ThinInDetForwardTrackParticlesAlg(name, **kwargs))
