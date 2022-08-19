@@ -18,7 +18,7 @@ def ThinInDetForwardTrackParticlesCfg(flags, name="ThinInDetForwardTrackParticle
         mlog.info("Not attempting to thin InDetForwardParticles, because the container InDetForwardTrackParticles does not seem to be available")
         return acc
     
-    if "xAOD::MuonContainer#Muons" not in flags.Input.TypedCollections and not (flags.Detector.GeometryMuon and flags.Detector.EnableMuon):
+    if "xAOD::MuonContainer#Muons" not in flags.Input.TypedCollections and not flags.Reco.EnableCombinedMuon:
         mlog.info("Not attempting to thin InDetForwardParticles, because the container Muons does not seem to be available")
         return acc
 
