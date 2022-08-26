@@ -26,6 +26,7 @@ AtlasDetectorIDHelper::initialize_from_dictionary(const IdDictMgr& dict_mgr,
     const IdDictDictionary* 	dict = dict_mgr.find_dictionary ("InnerDetector"); 
     if(!dict) {
         ATH_MSG_WARNING("initialize_from_dictionary - cannot access InnerDetector dictionary");
+		return 1;
     }
     else {
 	// Check if this is High Luminosity LHC layout
@@ -62,6 +63,7 @@ AtlasDetectorIDHelper::initialize_from_dictionary(const IdDictMgr& dict_mgr,
     dict = dict_mgr.find_dictionary ("LArCalorimeter"); 
     if(!dict) {
         ATH_MSG_WARNING("initialize_from_dictionary - cannot access LArCalorimeter dictionary");
+		return 1;
     }
     else {
 	
@@ -91,6 +93,7 @@ AtlasDetectorIDHelper::initialize_from_dictionary(const IdDictMgr& dict_mgr,
     dict = dict_mgr.find_dictionary ("Calorimeter"); 
     if(!dict) {
         ATH_MSG_WARNING("initialize_from_dictionary - cannot access Calorimeter dictionary");
+		return 1;
     }
     else {
 	
@@ -116,6 +119,7 @@ AtlasDetectorIDHelper::initialize_from_dictionary(const IdDictMgr& dict_mgr,
     dict = dict_mgr.find_dictionary ("TileCalorimeter"); 
     if(!dict) {
         ATH_MSG_WARNING("initialize_from_dictionary - cannot access TileCalorimeter dictionary");
+		return 1;
     }
     else {
 	
@@ -129,6 +133,7 @@ AtlasDetectorIDHelper::initialize_from_dictionary(const IdDictMgr& dict_mgr,
     dict = dict_mgr.find_dictionary ("MuonSpectrometer"); 
     if(!dict) {
         ATH_MSG_WARNING("initialize_from_dictionary - cannot access MuonSpectrometer dictionary");
+		return 1;
     }
     else {
 	
@@ -250,6 +255,7 @@ AtlasDetectorIDHelper::initialize_from_dictionary(const IdDictMgr& dict_mgr,
     dict = dict_mgr.find_dictionary ("ForwardDetectors"); 
     if(!dict) {
         ATH_MSG_WARNING("initialize_from_dictionary - cannot access ForwardDetectors dictionary");
+		return 1;
     }
     else {
 	
