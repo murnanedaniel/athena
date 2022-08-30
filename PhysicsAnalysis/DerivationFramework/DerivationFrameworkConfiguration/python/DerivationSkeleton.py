@@ -41,7 +41,6 @@ def fromRunArgs(runArgs):
         if 'PHYSVAL' in getattr(runArgs, 'formats'):
             ConfigFlags.BTagging.SaveSV1Probabilities = True
             ConfigFlags.BTagging.RunJetFitterNN = True
-            ConfigFlags.BTagging.RunFlipTaggers = True
     else:
         logDerivation.error('Derivation job started, but with no output formats specified - aborting')
         raise ValueError('No derived formats specified')
