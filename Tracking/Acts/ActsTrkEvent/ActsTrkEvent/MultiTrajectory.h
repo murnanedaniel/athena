@@ -48,10 +48,16 @@ namespace ActsTrk {
             MultiTrajectory( ActsTrk::MultiTrajectory<IsReadWrite>&& rhs);
 
 
-
+            /* MWMW
             ATH_MEMBER_REQUIRES(RWState==IsReadWrite, IndexType) addTrackState_impl(
                 Acts::TrackStatePropMask mask,
                 IndexType iprevious);
+            */
+               
+            std::size_t addTrackState_impl(
+                Acts::TrackStatePropMask mask,
+                IndexType iprevious);
+                
 
             /**
              * @brief Access component by key
@@ -111,6 +117,11 @@ namespace ActsTrk {
         private:
             // bare pointers to the backend (need to be fast and we do not claim ownership anyways)
             TrackStateContainerBackendPtr m_trackStates = nullptr;
+            //MWMW
+            inline const xAOD::TrackStateContainer& trackStates() const { return *m_trackStates; }
+            inline xAOD::TrackStateContainer& trackStates() { return *m_trackStates; }
+
+            
             TrackParametersContainerBackendPtr m_trackParameters = nullptr;
             friend class ActsTrk::MultiTrajectory<IsReadWrite>;
             friend class ActsTrk::MultiTrajectory<IsReadOnly>;
