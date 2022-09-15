@@ -12,8 +12,11 @@ namespace xAOD {
  class TrackParametersAuxContainer_v1 : public AuxContainerBase {
     public:
         TrackParametersAuxContainer_v1();
-        std::vector<double> parameters;
-        std::vector<double> covariance;
+        // we use vector instead of array even though the size is fixed
+        // this saves on generating ROOT dictionaries for all array dimensions
+        typedef std::vector<double> Storage;
+        std::vector<Storage> parameters;
+        std::vector<Storage> covariance;
     };
 }
 
