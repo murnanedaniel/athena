@@ -147,7 +147,7 @@ namespace MuonCalib {
     }
 
     T0CalibrationClassic::MdtCalibOutputPtr T0CalibrationClassic::analyseSegments(const MuonSegVec &segs) {
-        for (const auto & seg : segs) handleSegment(*seg);
+        for (unsigned int i = 0; i < segs.size(); i++) handleSegment(*segs[i]);
         analyse();
         return getResults();
     }
