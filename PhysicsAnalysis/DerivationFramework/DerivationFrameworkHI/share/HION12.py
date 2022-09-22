@@ -204,7 +204,6 @@ AllVarContent=["AntiKt4EMPFlowJets",                          # Include R = 0.4 
 			   "HLT_xAOD__JetContainer_a4ionemsubjesISFS",    # Include the HLT R = 0.4 heavy ion trigger jets (2015 HI Run)
 			   "HLT_xAOD__JetContainer_a10tclcwsubjesFS"]     # Include the HLT R = 1.0 LCW Topo trigger jets (2018 HI Run)
 
-
 # Here, we are adding information about the MC truth-level to our derivation. Most of this works for all UPC derivations, but parts to change are marked.
 # HepMC Status codes which are used are taken from page 13 of: http://hepmc.web.cern.ch/hepmc/releases/HepMC2_user_manual.pdf
 # For generator-dependent status codes, 
