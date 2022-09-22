@@ -25,12 +25,6 @@ fileName   = buildFileName( derivationFlags.WriteDAOD_HION12Stream ) # Get the f
 DerivationName=streamName.split('_')[-1] # Get the derivation name from the first part of the stream name
 
 #====================================================================
-# AUTO-CONFIGURE CONDITIONS -> set HIDerivationFlags
-#====================================================================
-
-GetConditionsFromMetaData()
-
-#====================================================================
 # SKIMMING TOOLS
 #====================================================================
 
@@ -124,7 +118,8 @@ MB_triggers += ['HLT_mb_sptrk_ion_L1ZDC_A_C_VTE50'] # 2015 MB trigger with full 
 # Need to apply a ZDC veto in order to assess actual efficiencies for comparison.
 
 MB_triggers += ['HLT_mb_sp_L1VTE50']  # Min-bias stream for dijet photoproduction up to 50 GeV. No minimum cut so high pre-scale.
-MB_triggers += ['HLT_noalg_pc_L1TE50_VTE600.0ETA490']  # Part of the main heavy ion min-bias stream from 50 to 600 GeV. In the PC stream so requires special attention.
+MB_triggers += ['HLT_noalg_pc_L1TE50_VTE600.0ETA49']  # Part of the main heavy ion min-bias stream from 50 to 600 GeV. In the PC stream so requires special attention.
+MB_triggers += ['HLT_mb_sptrk_L1ZDC_A_C_VTE50']  # Part of the main heavy ion min-bias stream from 0 to 50 GeV. In the PC stream so requires special attention.
 
 expression = '( (' + ' || '.join(triggers+MB_triggers) + ') && '+objectSelection+ ' && ' + '(' + ' || '.join(nJetCuts) + ')' + ')'
 # if HIDerivationFlags.doMinBiasSelection() : expression = FCal_Cut
@@ -200,8 +195,7 @@ AllVarContent=["AntiKt4EMPFlowJets",                          # Include R = 0.4 
 			   "NeutralParticleFlowIsoForwardEventShape",     # Part of the event shape for PFlow jets
 			   "ParticleFlowIsoForwardEventShape",            # Part of the event shape for PFlow jets
 			   "HLT_xAOD__JetContainer_a4tcemsubjesISFS",     # Include the HLT R = 0.4 EM Topo trigger jets (2018 HI Run)
-			   "HLT_xAOD__JetContainer_a4ionemsubjesISFS",    # Include the HLT R = 0.4 heavy ion trigger jets (2015 HI Run)
-			   "HLT_xAOD__JetContainer_a10tclcwsubjesFS"]     # Include the HLT R = 1.0 LCW Topo trigger jets (2018 HI Run)
+			   "HLT_xAOD__JetContainer_a4ionemsubjesISFS"]    # Include the HLT R = 0.4 heavy ion trigger jets (2015 HI Run)
 
 # Here, we are adding information about the MC truth-level to our derivation. Most of this works for all UPC derivations, but parts to change are marked.
 # HepMC Status codes which are used are taken from page 13 of: http://hepmc.web.cern.ch/hepmc/releases/HepMC2_user_manual.pdf
