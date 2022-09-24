@@ -17,6 +17,7 @@ class TFCSExtrapolationState;
 
 // Define Athena like message macro's such that they work stand alone and inside athena
 #if defined(__FastCaloSimStandAlone__)
+  #define ATLAS_THREAD_SAFE
   #include <iostream>
   #include <iomanip>
   typedef std::ostream MsgStream;
