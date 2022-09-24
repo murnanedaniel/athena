@@ -21,5 +21,13 @@
 # So in that case you should not bother with using such a filter file.
 
 #
-+ Control/AthenaExamples/AthExHelloWorld
++ PhysicsAnalysis/DerivationFramework/DerivationFrameworkTools
++ PhysicsAnalysis/ElectronPhotonID/ElectronPhotonSelectorTools
++ PhysicsAnalysis/DerivationFramework/DerivationFrameworkEGamma
++ PhysicsAnalysis/JpsiUpsilonTools
++ PhysicsAnalysis/DerivationFramework/DerivationFrameworkBPhys
++ Tracking/TrkVertexFitter/TrkVKalVrtFitter
++ PhysicsAnalysis/DerivationFramework/DerivationFrameworkInDet
++ PhysicsAnalysis/DerivationFramework/DerivationFrameworkMCTruth
++ PhysicsAnalysis/DerivationFramework/DerivationFrameworkCore
 - .*

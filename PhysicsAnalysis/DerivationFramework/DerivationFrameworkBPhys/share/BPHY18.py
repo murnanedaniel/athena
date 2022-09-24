@@ -124,12 +124,14 @@ ToolSvc += ElectronLHSelectorLHvloose_nod0
 print(ElectronLHSelectorLHvloose_nod0)
 
 # decorate electrons with the output of LH vloose nod0
-ElectronPassLHvloosenod0 = DerivationFramework__EGSelectionToolWrapper(name = "ElectronPassLHvloosenod0",
-                                                                       EGammaSelectionTool = ElectronLHSelectorLHvloose_nod0,
-                                                                       EGammaFudgeMCTool = "",
-                                                                       CutType = "",
-                                                                       StoreGateEntryName = "DFCommonElectronsLHVeryLoosenod0",
-                                                                       ContainerName = "Electrons")
+from DerivationFrameworkEGamma.DerivationFrameworkEGammaConf import DerivationFramework__EGElectronLikelihoodToolWrapper
+ElectronPassLHvloosenod0 = DerivationFramework__EGElectronLikelihoodToolWrapper(name = "ElectronPassLHvloosenod0",
+                                                                                EGammaElectronLikelihoodTool = ElectronLHSelectorLHvloose_nod0,
+                                                                                EGammaFudgeMCTool = "",
+                                                                                CutType = "",
+                                                                                StoreGateEntryName = "DFCommonElectronsLHVeryLoosenod0",
+                                                                                ContainerName = "Electrons",
+                                                                                StoreTResult=False)
 ToolSvc += ElectronPassLHvloosenod0
 print(ElectronPassLHvloosenod0)
 
@@ -169,7 +171,7 @@ print(BPHY18DiElectronFinder)
 from DerivationFrameworkBPhys.DerivationFrameworkBPhysConf import DerivationFramework__Reco_Vertex
 BPHY18DiElectronSelectAndWrite = DerivationFramework__Reco_Vertex(
     name                   = "BPHY18DiElectronSelectAndWrite",
-    VertexSearchTool             = BPHY18DiElectronFinder,
+    VertexSearchTool       = BPHY18DiElectronFinder,
     OutputVtxContainerName = "BPHY18DiElectronCandidates",
     PVContainerName        = "PrimaryVertices",
     V0Tools                = TrackingCommon.getV0Tools(),
@@ -220,16 +222,16 @@ BPHY18BeeKst = Analysis__JpsiPlus2Tracks(
     oppChargesOnly          = False,
     SameChargesOnly         = False,
     trkThresholdPt          = 500.0,
-    trkMaxEta		        = 3.0, 
+    trkMaxEta		            = 3.0, 
     BThresholdPt            = 1000.,
     BMassLower              = 3000.0,
-    BMassUpper		        = 6500.0,
-    JpsiContainerKey	    = "BPHY18DiElectronCandidates",
+    BMassUpper		          = 6500.0,
+    JpsiContainerKey	      = "BPHY18DiElectronCandidates",
     TrackParticleCollection = "InDetTrackParticles",
     ExcludeCrossJpsiTracks  = False,   
     TrkVertexFitterTool	    = BeeKstVertexFit,
-    TrackSelectorTool	    = BPHY18_VertexTools.InDetTrackSelectorTool,
-    UseMassConstraint	    = False, 
+    TrackSelectorTool	      = BPHY18_VertexTools.InDetTrackSelectorTool,
+    UseMassConstraint	      = False, 
     DiTrackMassUpper        = 1110., 
     DiTrackMassLower        = 690.,  
     Chi2Cut                 = 15.0, 
@@ -247,7 +249,7 @@ print(BPHY18BeeKst)
 from DerivationFrameworkBPhys.DerivationFrameworkBPhysConf import DerivationFramework__Reco_Vertex	
 BPHY18BeeKstSelectAndWrite  = DerivationFramework__Reco_Vertex(
     name                   = "BPHY18BeeKstSelectAndWrite",
-    Jpsi2PlusTrackName     = BPHY18BeeKst,
+    VertexSearchTool       = BPHY18BeeKst,
     OutputVtxContainerName = "BeeKstCandidates",
     PVContainerName        = "PrimaryVertices",
     RefPVContainerName     = "BPHY18RefittedPrimaryVertices",
@@ -457,7 +459,7 @@ BPHY18Stream.AcceptAlgs(["BPHY18Kernel"])
 # Added by ASC
 from DerivationFrameworkCore.SlimmingHelper import SlimmingHelper
 BPHY18SlimmingHelper = SlimmingHelper("BPHY18SlimmingHelper")
-AllVariables   = ["EventInfo"]
+AllVariables   = []
 StaticContent  = []
 ExtraVariables = []
 BPHY18SlimmingHelper.SmartCollections = ["Electrons", "Muons", "InDetTrackParticles" ] 
