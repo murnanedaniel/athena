@@ -58,12 +58,12 @@ namespace DerivationFramework {
     }
     for (const std::string& trig_orhltonly : m_triggerListORHLTOnly) {
         ATH_MSG_DEBUG("ORHLTOnly - Trigger "<<trig_orhltonly<<" passed "<<m_trigDec->isPassed(trig_orhltonly, TrigDefs::requireDecision));
-        cntrORHLTOnly +=(m_trigDec->isPassed(trig_orhltonly));
+        cntrORHLTOnly +=(m_trigDec->isPassed(trig_orhltonly, TrigDefs::requireDecision));
     }
 
-    bool passAND = cntrAND==m_triggerListAND.size() && !m_triggerListAND.empty();
-    bool passOR = cntrOR > 0 && !m_triggerListOR.empty();
-    bool passORHLTOnly = cntrORHLTOnly > 0 && !m_triggerListOR.empty();
+    bool passAND = (cntrAND==m_triggerListAND.size() && !m_triggerListAND.empty());
+    bool passOR = (cntrOR > 0 && !m_triggerListOR.empty());
+    bool passORHLTOnly = (cntrORHLTOnly > 0 && !m_triggerListORHLTOnly.empty());
 
     bool pass(false);
     pass = passAND || passOR || passORHLTOnly;
