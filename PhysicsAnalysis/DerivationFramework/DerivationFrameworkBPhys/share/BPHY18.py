@@ -160,7 +160,7 @@ BPHY18DiElectronFinder = Analysis__JpsiFinder_ee(
     TrkVertexFitterTool         = BPHY18_VertexTools.TrkVKalVrtFitter,      
     TrackSelectorTool           = BPHY18_VertexTools.InDetTrackSelectorTool,
     VertexPointEstimator        = BPHY18_VertexTools.VtxPointEstimator,
-    ElectronSelection 		      = "d0_or_nod0"
+    ElectronSelection 		      = "nod0"  #"d0_or_nod0"
     )
 
 ToolSvc += BPHY18DiElectronFinder
