@@ -100,13 +100,13 @@ triggerList_unseeded = ["HLT_2e5_lhvloose_nod0_bBeexM6000t",  #37,143,877  inb
 "HLT_e5_lhvloose_nod0_bBeexM6000t"  #37,143,877
 ]
 
-from DerivationFrameworkTools.DerivationFrameworkToolsConf import DerivationFramework__TriggerSkimmingTool
-BPHY18TriggerSkim = DerivationFramework__TriggerSkimmingTool(name = "BPHY18TriggerSkim",
-                                                             TriggerListOR = triggerList,
-							                                 TriggerListORHLTOnly = triggerList_unseeded )
+#from DerivationFrameworkTools.DerivationFrameworkToolsConf import DerivationFramework__TriggerSkimmingTool   # May need to update the trigger names
+#BPHY18TriggerSkim = DerivationFramework__TriggerSkimmingTool(name = "BPHY18TriggerSkim",
+#                                                             TriggerListOR = triggerList,
+#							                                 TriggerListORHLTOnly = triggerList_unseeded )
 
-ToolSvc += BPHY18TriggerSkim
-print(BPHY18TriggerSkim)
+#ToolSvc += BPHY18TriggerSkim
+#print(BPHY18TriggerSkim)
 
 #do not know what this does, but let's leave it for now, until we see if it's useful or not!
 from DerivationFrameworkBPhys.DerivationFrameworkBPhysConf import DerivationFramework__AugOriginalCounts
@@ -352,7 +352,8 @@ if True:
     from DerivationFrameworkTools.DerivationFrameworkToolsConf import DerivationFramework__FilterCombinationAND
     BPHY18SkimmingAND = CfgMgr.DerivationFramework__FilterCombinationAND(
         "BPHY18SkimmingAND",
-        FilterList = [BPHY18_SelectBeeKstEvent, BPHY18TriggerSkim]) 
+        #FilterList = [BPHY18_SelectBeeKstEvent, BPHY18TriggerSkim])   # May need to update the trigger names
+        FilterList = [BPHY18_SelectBeeKstEvent]
     ToolSvc += BPHY18SkimmingAND
     print(BPHY18SkimmingAND)
 
