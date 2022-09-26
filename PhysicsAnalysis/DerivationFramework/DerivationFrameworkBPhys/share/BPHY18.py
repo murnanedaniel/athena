@@ -353,7 +353,7 @@ if True:
     BPHY18SkimmingAND = CfgMgr.DerivationFramework__FilterCombinationAND(
         "BPHY18SkimmingAND",
         #FilterList = [BPHY18_SelectBeeKstEvent, BPHY18TriggerSkim])   # May need to update the trigger names
-        FilterList = [BPHY18_SelectBeeKstEvent]
+        FilterList = [BPHY18_SelectBeeKstEvent])
     ToolSvc += BPHY18SkimmingAND
     print(BPHY18SkimmingAND)
 
