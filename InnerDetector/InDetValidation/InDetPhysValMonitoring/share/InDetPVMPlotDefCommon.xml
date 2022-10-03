@@ -2491,10 +2491,14 @@
 </h>
 
 <h id="ntracks_vs_mu" type="TH2" title="Number of tracks versus #GT#mu#LT">
-  <x title="#GT#mu#LT" n="100" lo="0.0" hi="&EXPMU;"/>
+  <x title="#LT#mu#GT" n="&EXPMU;" lo="0.0" hi="&EXPMU;"/>
   <y title="Number of Tracks" n="200" lo="0.0" hi="&EXPTRK;"/>
 </h> 
 <h id="ntracks_vs_nvertices" type="TH2" title="Number of tracks versus number ofvertices">
-  <x title="Number of Vertices" n="100" lo="0.0" hi="&EXPMU;"/>
+  <x title="Number of Vertices" n="&EXPMU;" lo="0.0" hi="&EXPMU;"/>
   <y title="Number of Tracks" n="200" lo="0.0" hi="&EXPTRK;"/>
+</h>
+<h id="vx_n_vs_mu" type="TH2" title="Number of vertices vs #mu;N vertices;#mu;Entries">
+  <x title="#LT#mu#GT" n="&EXPMU;" lo="0.0" hi="&EXPMU;"/>
+  <y title="Number of Vertices" n="&EXPMU;" lo="0.0" hi="&EXPMU;"/>
 </h>
