@@ -127,6 +127,8 @@ def Run1Run2DecisionMakerCfg(flags):
 def Run3DecisionMakerCfg(flags):
     acc = ComponentAccumulator()
     tdm = CompFactory.TrigDec.TrigDecisionMakerMT()
+    tdm.doL1 = flags.Trigger.L1.doCTP
+    tdm.doHLT = flags.Trigger.DecodeHLT
     if flags.Input.Format is not Format.BS:
         # Construct trigger bits from HLTNav_summary instead of reading from BS
         tdm.BitsMakerTool = CompFactory.TriggerBitsMakerTool()
@@ -137,7 +139,7 @@ def Run3DecisionMakerCfg(flags):
     tdmv.doL1 = flags.Trigger.L1.doCTP
     tdmv.doHLT = True
     tdmv.samplingFrequency = 1
-    tdmv.errorOnFailure = False
+    tdmv.errorOnFailure = True
     tdmv.EDMVersion = flags.Trigger.EDMVersion
     from TrigDecisionTool.TrigDecisionToolConfig import TrigDecisionToolCfg, getRun3NavigationContainerFromInput
     tdmv.TrigDecisionTool = acc.getPrimaryAndMerge(TrigDecisionToolCfg(flags))

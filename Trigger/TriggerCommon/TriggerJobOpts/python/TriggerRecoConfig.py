@@ -27,23 +27,38 @@ def TriggerRecoCfg(flags):
     """
     acc = ComponentAccumulator()
     acc.merge( ByteStreamReadCfg(flags) )
-    acc.merge( L1TriggerByteStreamDecoderCfg(flags) )
+    if flags.Trigger.L1.doMuon or flags.Trigger.L1.doCalo or flags.Trigger.L1.doTopo or flags.Trigger.L1.doCTP:
+        acc.merge( L1TriggerByteStreamDecoderCfg(flags) )
 
     metadataAcc, _ = TriggerMetadataWriterCfg(flags)
     acc.merge( metadataAcc )
 
     # Run 3+
     if flags.Trigger.EDMVersion >= 3:
-        acc.merge(Run3TriggerBSUnpackingCfg(flags))
+        if flags.Trigger.DecodeHLT:
+            acc.merge(Run3TriggerBSUnpackingCfg(flags))
+
         from TrigDecisionMaker.TrigDecisionMakerConfig import Run3DecisionMakerCfg
         acc.merge(Run3DecisionMakerCfg(flags))
-        if flags.Trigger.doNavigationSlimming:
+
+        if flags.Trigger.DecodeHLT and flags.Trigger.doNavigationSlimming:
             from TrigNavSlimmingMT.TrigNavSlimmingMTConfig import TrigNavSlimmingMTCfg
             acc.merge(TrigNavSlimmingMTCfg(flags))
+
     # Run 1+2
     elif flags.Trigger.EDMVersion in [1, 2]:
         acc.merge( Run1Run2BSExtractionCfg(flags) )
 
+        from TrigDecisionMaker.TrigDecisionMakerConfig import Run1Run2DecisionMakerCfg
+        acc.merge (Run1Run2DecisionMakerCfg(flags) )
+
+        if flags.Trigger.DecodeHLT and flags.Trigger.doNavigationSlimming:
+            acc.merge(Run2Run1NavigationSlimingCfg(flags))
+    else:
+        raise RuntimeError("Invalid EDMVersion=%s " % flags.Trigger.EDMVersion)
+
+    # Legacy L1Calo, L1Topo reco
+    if flags.Trigger.enableL1CaloLegacy:
         from AnalysisTriggerAlgs.AnalysisTriggerAlgsCAConfig import RoIBResultToxAODCfg
         xRoIBResultAcc, _ = RoIBResultToxAODCfg(flags)
         acc.merge( xRoIBResultAcc )
@@ -51,14 +66,6 @@ def TriggerRecoCfg(flags):
         if flags.Input.Format is Format.BS:
             from L1TopoByteStream.L1TopoByteStreamConfig import L1TopoRawDataContainerBSCnvCfg
             acc.merge( L1TopoRawDataContainerBSCnvCfg(flags) )
-
-        from TrigDecisionMaker.TrigDecisionMakerConfig import Run1Run2DecisionMakerCfg
-        acc.merge (Run1Run2DecisionMakerCfg(flags) )
-
-        if flags.Trigger.doNavigationSlimming:
-            acc.merge(Run2Run1NavigationSlimingCfg(flags))
-    else:
-        raise RuntimeError("Invalid EDMVersion=%s " % flags.Trigger.EDMVersion)
 
     if flags.Output.doWriteESD or flags.Output.doWriteAOD:
         acc.merge(TriggerEDMCfg(flags))
@@ -173,7 +180,7 @@ def Run1Run2BSExtractionCfg( flags ):
 
     # Add fictional output to ensure data dependency in AthenaMT
     extr.ExtraOutputs += [("TrigBSExtractionOutput", "StoreGateSvc+TrigBSExtractionOutput")]
-    if 'HLT' in flags.Trigger.availableRecoMetadata:
+    if flags.Trigger.DecodeHLT:
         serialiserTool = CompFactory.TrigTSerializer()
         acc.addPublicTool(serialiserTool)
         extr.NavigationForL2 = CompFactory.HLT.Navigation("NavigationForL2", 

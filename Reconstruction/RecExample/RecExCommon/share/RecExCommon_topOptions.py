@@ -137,6 +137,9 @@ svcMgr.TagInfoMgr.ExtraTagValuePairs.update({"beam_type": jobproperties.Beam.bea
                                             "project_name": str(rec.projectName()),
                                             "AtlasRelease_" + rec.OutputFileNameForRecoStep(): rec.AtlasReleaseVersion()
                                             })
+if athenaCommonFlags.MCCampaign():
+    svcMgr.TagInfoMgr.ExtraTagValuePairs.update({"mc_campaign": athenaCommonFlags.MCCampaign()})
+
 # Set AMITag in /TagInfo
 from PyUtils import AMITagHelper
 AMITagHelper.SetAMITag(outputTag=rec.AMITag())
@@ -1307,6 +1310,13 @@ if rec.doWriteBS():
     StreamBSFileOutput.ItemList +=["2927#*"]
     StreamBSFileOutput.ItemList +=["2934#*"]
 
+    from TileByteStream.TileByteStreamConfig import TileRawChannelContByteStreamToolConfig
+    ToolSvc+=TileRawChannelContByteStreamToolConfig(InitializeForWriting=True,
+                                                    stream = StreamBSFileOutput)
+
+    from TileByteStream.TileByteStreamConfig import TileL2ContByteStreamToolConfig
+    ToolSvc+=TileL2ContByteStreamToolConfig(InitializeForWriting=True,
+                                            stream = StreamBSFileOutput)
 
     # Muon
     StreamBSFileOutput.ItemList +=["MdtCsmContainer#*"]
