@@ -31,7 +31,6 @@ def addTLAStep(chain, chainDict):
     # we add one step per TLA chain, with sequences matching the list of signatures
     # and multiplicities matching those of the previous step of the chain (already merged if combined)
     prevStep = chain.steps[-1]
-    #stepName = 'Step{:d}_merged{:d}_TLAStep_{:s}'.format(len(chain.steps)+1,len(prevStep.legIds), prevStep.name)
     stepName = 'Step_merged{:d}_TLAStep_{:s}'.format(len(prevStep.legIds), prevStep.name)
     step = ChainStep(name         = stepName,
                     Sequences     = tlaSequencesList,
