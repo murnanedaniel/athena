@@ -98,12 +98,13 @@ def alignTLASteps(chain_configs, chain_dicts):
 
     def getTLAStepPosition(chainConfig):
         tlaStep = findTLAStep(chainConfig)
-        log.debug('getTLAStepPosition found step %s and return %d',tlaStep,chainConfig.steps.index(tlaStep) + 1)
+
         try:
             if isRun3Cfg() and tlaStep is None:
                 raise NoCAmigration ("[alignTLASteps] Missing TLA sequence with CA configurables")
         except NoCAmigration:
             return 0
+        log.debug('getTLAStepPosition found step %s and return %d',tlaStep,chainConfig.steps.index(tlaStep) + 1)
         return chainConfig.steps.index(tlaStep) + 1
 
     # First loop to find the maximal TLA step positions to which we need to align
