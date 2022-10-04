@@ -100,12 +100,11 @@ triggerList_unseeded = ["HLT_2e5_lhvloose_nod0_bBeexM6000t",  #37,143,877  inb
 "HLT_e5_lhvloose_nod0_bBeexM6000t"  #37,143,877
 ]
 
-# Testing : Need to update the trigger names
+# TODO: Need to update the trigger lists. No trigger skimming for now
 #from DerivationFrameworkTools.DerivationFrameworkToolsConf import DerivationFramework__TriggerSkimmingTool
 #BPHY18TriggerSkim = DerivationFramework__TriggerSkimmingTool(name = "BPHY18TriggerSkim",
 #                                                             TriggerListOR = triggerList,
 #							                                 TriggerListORHLTOnly = triggerList_unseeded )
-
 #ToolSvc += BPHY18TriggerSkim
 #print(BPHY18TriggerSkim)
 
@@ -116,19 +115,16 @@ BPHY18_AugOriginalCounts = DerivationFramework__AugOriginalCounts(name = "BPHY18
                                                                   TrackContainer = "InDetTrackParticles" )
 ToolSvc += BPHY18_AugOriginalCounts
 
-################################# Testing ################################# 
-
+#lhvloose and lhvloose_nod0
 from ElectronPhotonSelectorTools.ElectronPhotonSelectorToolsConf import AsgElectronLikelihoodTool
-#lhvloose
 ElectronLHSelectorLHvloose = AsgElectronLikelihoodTool("ElectronLHSelectorLHvloose", 
 ConfigFile="ElectronPhotonSelectorTools/offline/mc20_20210514/ElectronLikelihoodVeryLooseOfflineConfig2017_Smooth.conf")
 ElectronLHSelectorLHvloose.primaryVertexContainer = "PrimaryVertices"
 ToolSvc += ElectronLHSelectorLHvloose
 print(ElectronLHSelectorLHvloose)
 
-#lhvloose_nod0
 ElectronLHSelectorLHvloose_nod0 = AsgElectronLikelihoodTool("ElectronLHSelectorLHvloosenod0", 
-ConfigFile="ElectronPhotonSelectorTools/offline/mc16_20190328_nod0/ElectronLikelihoodVeryLooseOfflineConfig2017_Smooth_nod0.conf")   # Still OK to use?
+ConfigFile="ElectronPhotonSelectorTools/offline/mc16_20190328_nod0/ElectronLikelihoodVeryLooseOfflineConfig2017_Smooth_nod0.conf")   # Still OK to use in Run3?
 ElectronLHSelectorLHvloose_nod0.primaryVertexContainer = "PrimaryVertices"
 ToolSvc += ElectronLHSelectorLHvloose_nod0
 print(ElectronLHSelectorLHvloose_nod0)
@@ -154,8 +150,6 @@ ElectronPassLHvloosenod0 = DerivationFramework__EGElectronLikelihoodToolWrapper(
                                                                                 StoreTResult=False)
 ToolSvc += ElectronPassLHvloosenod0
 print(ElectronPassLHvloosenod0)
-
-############################################################################
 
 #--------------------------------------------------------------------
 ## 2/ setup JpsiFinder tool
@@ -374,7 +368,7 @@ if True:
     from DerivationFrameworkTools.DerivationFrameworkToolsConf import DerivationFramework__FilterCombinationAND
     BPHY18SkimmingAND = CfgMgr.DerivationFramework__FilterCombinationAND(
         "BPHY18SkimmingAND",
-        #FilterList = [BPHY18_SelectBeeKstEvent, BPHY18TriggerSkim])   # Testing: May need to update the trigger names
+        #FilterList = [BPHY18_SelectBeeKstEvent, BPHY18TriggerSkim])   # TODO: Need to update the trigger names
         FilterList = [BPHY18_SelectBeeKstEvent])
     ToolSvc += BPHY18SkimmingAND
     print(BPHY18SkimmingAND)
@@ -454,7 +448,7 @@ from DerivationFrameworkCore.DerivationFrameworkCoreConf import DerivationFramew
 DerivationFrameworkJob += CfgMgr.DerivationFramework__DerivationKernel(
     "BPHY18Kernel",
 
-    AugmentationTools = [ ElectronPassLHvloose, ElectronPassLHvloosenod0,BPHY18DiElectronSelectAndWrite,  #Testing : ElectronPassLHvloose
+    AugmentationTools = [ ElectronPassLHvloose, ElectronPassLHvloosenod0,BPHY18DiElectronSelectAndWrite,
                           BPHY18_Select_DiElectrons,
                           BPHY18BeeKstSelectAndWrite, BPHY18_Select_BeeKst, BPHY18_Select_BeeKstbar,
                           BPHY18_diMeson_revertex, BPHY18_Select_Kpi, BPHY18_Select_piK ],
