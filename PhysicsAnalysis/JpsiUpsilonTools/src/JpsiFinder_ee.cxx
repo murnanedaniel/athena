@@ -609,13 +609,6 @@ namespace Analysis {
     // Apply the current cuts of the MCP group recommendation.
     // ---------------------------------------------------------------------------------
 
-//    bool JpsiFinder_ee::passesEgammaCuts(const xAOD::Electron* electron) const {
-//
-//      bool passesSelection =  electron->passSelection(m_elSelection);
-//      ATH_MSG_DEBUG("Electron with pT, eta: " << electron->pt() << " " << electron->eta() << " passes " << m_elSelection << " " << passesSelection);
-//      return passesSelection;
-//
-//    }
     bool JpsiFinder_ee::passesEgammaCuts(const xAOD::Electron* electron) const {
 
       static const SG::AuxElement::Accessor<char> isLHVeryLoosenod0("DFCommonElectronsLHVeryLoosenod0");
