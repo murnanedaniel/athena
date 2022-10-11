@@ -62,16 +62,10 @@ namespace DerivationFramework {
     }
 
     bool passAND = (cntrAND==m_triggerListAND.size() && !m_triggerListAND.empty());
-    bool passOR = (cntrOR > 0 && !m_triggerListOR.empty());
-    bool passORHLTOnly = (cntrORHLTOnly > 0 && !m_triggerListORHLTOnly.empty());
+    bool passOR = (cntrOR > 0);
+    bool passORHLTOnly = (cntrORHLTOnly > 0);
 
-    bool pass(false);
-    pass = passAND || passOR || passORHLTOnly;
-    if (m_triggerListAND.empty() && m_triggerListORHLTOnly.empty()) pass = passOR;
-    if (m_triggerListOR.empty() && m_triggerListORHLTOnly.empty()) pass = passAND;
-    if (m_triggerListAND.empty() && m_triggerListOR.empty()) pass = passORHLTOnly ;
-    if (m_triggerListAND.empty() && !m_triggerListORHLTOnly.empty()) pass = passORHLTOnly || passOR;
-
+    bool pass = passAND || passOR || passORHLTOnly;
     return pass;
   }
 }
