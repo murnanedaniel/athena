@@ -34,7 +34,7 @@ def createTauConfigFlags():
 
     # Settings common to Run2 and Run3
     tau_cfg.addFlag("Tau.SeedMinPt", 0.0*Units.GeV)
-    tau_cfg.addFlag("Tau.SeedMaxEta", lambda pdf: 2.5 if pcf.GeoModel.Run <= LHCPeriod.Run3 else 4.0)
+    tau_cfg.addFlag("Tau.SeedMaxEta", lambda pcf: 2.5 if pcf.GeoModel.Run <= LHCPeriod.Run3 else 4.0)
     # FIXME: MaxNTracks is not used, drop at the next occasion
     tau_cfg.addFlag("Tau.MaxNTracks", -1)
     tau_cfg.addFlag("Tau.RemoveDupeCoreTracks", True)
