@@ -100,6 +100,7 @@ namespace Analysis
 
     /** flag whether the initialization has been carried out */
     bool m_initialized;
+    bool m_validate; // <------ flag that says you want to validate the systematic strategies, and the merging schemes
 
     /** named variations */
     std::map<std::string, unsigned int> m_namedIndices;

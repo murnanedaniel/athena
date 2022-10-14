@@ -333,7 +333,7 @@ ClassImp(CalibrationDataEigenVariations)
 #endif
 //________________________________________________________________________________
 CalibrationDataEigenVariations::CalibrationDataEigenVariations(std::string cdipath, std::string tagger, std::string wp, std::string jetcollection, const CalibrationDataHistogramContainer* cnt, bool excludeRecommendedUncertaintySet, bool base) :
-    m_cnt(cnt), m_initialized(false), m_namedExtrapolation(-1), m_statVariations(false), m_cdipath(cdipath), m_taggername(tagger), m_wp(wp), m_jetauthor(jetcollection), m_totalvariance(0), m_capturedvariance(0)
+    m_cnt(cnt), m_initialized(false), m_validate(false), m_namedExtrapolation(-1), m_statVariations(false), m_cdipath(cdipath), m_taggername(tagger), m_wp(wp), m_jetauthor(jetcollection), m_totalvariance(0), m_capturedvariance(0)
 {
 
   std::cout << " CDEV Constructor : info " << cdipath << " " << tagger << " " << wp << " " << jetcollection << std::endl;
@@ -929,10 +929,11 @@ CalibrationDataEigenVariations::initialize(double min_variance)
 
   std::cout << " The total variance is " << m_totalvariance << " and the reduction captured " << 100*(m_capturedvariance/m_totalvariance) << "% of this." << std::endl;
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  ///// uncomment the following line if you want to include a validation of the 'SFEigen' method, similar to 'SFGlobalEigen'./////
+  ///// optionally: perform a validation of the 'SFEigen' method alongside the 'SFGlobalEigen'.                              /////
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  
-  //validate_reduction(cov.GetNrows(), corr, m_eigen, result, "SFEigen", m_taggername, m_wp, m_jetauthor); // <------ This method is simply here to report the matrix comparison, for reduction scheme validation
+  if (m_validate){ // <---- this flag can be set manually in a local checkout of this package (temporary fix)
+    validate_reduction(cov.GetNrows(), corr, m_eigen, result, "SFEigen", m_taggername, m_wp, m_jetauthor); // <------ This method is simply here to report the matrix comparison, for reduction scheme validation
+  }
 
   m_initialized = true;
 }
@@ -1962,11 +1963,12 @@ CalibrationDataGlobalEigenVariations::initialize(double min_variance)
 
   std::cout << " The total variance is " << m_totalvariance << " and the reduction captured " << std::setprecision(9) << 100*(m_capturedvariance/m_totalvariance) << "% of this." << std::endl;
   
-  /////////////////////////////////////////////////////////////////////////////////////////////////////
-  //Uncomment the following line if you want to perform a visual validation of the reduction scheme////
-  /////////////////////////////////////////////////////////////////////////////////////////////////////
-
-  //validate_reduction(m_blockmatrixsize, corr, m_eigen, comb_result, "SFGlobalEigen", m_taggername, m_wp, m_jetauthor); // This method is simply here to report the matrix comparison, for reduction scheme validation
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///// optionally: perform a visual validation of the 'SFGlobalEigen' method alongside the 'SFEigen'.                       /////
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  if (m_validate){ // <---- this flag can be set manually in a local checkout of this package (temporary fix)
+    validate_reduction(m_blockmatrixsize, corr, m_eigen, comb_result, "SFGlobalEigen", m_taggername, m_wp, m_jetauthor); // This method is simply here to report the matrix comparison, for reduction scheme validation
+  }
 
 
   ///////////////////////////////////////////////////////////////////////////////////////////
