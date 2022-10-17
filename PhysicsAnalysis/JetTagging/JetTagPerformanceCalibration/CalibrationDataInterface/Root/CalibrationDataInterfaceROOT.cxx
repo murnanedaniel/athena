@@ -655,7 +655,7 @@ Analysis::CalibrationDataInterfaceROOT::~CalibrationDataInterfaceROOT()
           // and set pointer to nullptr. This loops through remaining objects, but should retain same behaviour for SFEigen too, since
           // SFEigen only points to unique CalibrationDataEigenVariations objects.
           for (std::vector<CalibrationDataContainer*>::iterator nit = it ; nit != m_objects.end(); ++nit){
-            if(m_eigenVariationsMap[*nit] = cdev_object){
+            if(m_eigenVariationsMap[*nit] == cdev_object){
               m_eigenVariationsMap[*nit] = nullptr;
             }
           }
@@ -1124,7 +1124,7 @@ Analysis::CalibrationDataInterfaceROOT::getEfficiency (const CalibrationDataVari
   }
   
   Analysis::CalibResult result;
-  return (getEfficiency(variables, indexSF, indexEff, unc, numVariation, result, label) == Analysis::kError) ? Analysis::dummyResult : result;
+  return (getEfficiency(variables, indexSF, indexEff, unc, numVariation, result, flavour) == Analysis::kError) ? Analysis::dummyResult : result;
 }
 
 //________________________________________________________________________________
