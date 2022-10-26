@@ -128,7 +128,7 @@ StatusCode MuonClusterHypoAlg::execute(const EventContext& ctx) const
     d->setObjectLink( featureString(), ElementLink<xAOD::TrigCompositeContainer>(*compCont, 0, ctx) );
 
     // Link our parentes (L1 muon ROI)
-    for (cost Decision* previousDecision : previousDecisionsHandle) {
+    for (cost Decision* previousDecision : *previousDecisionsHandle) {
         linkToPrevious(d, previousDecision, ctx);
         decisionIDs(previousDecision, prev);  // Collate active chains on this L1 ROI (previousDecision) into prev
     }
