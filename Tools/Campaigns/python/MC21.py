@@ -12,9 +12,6 @@ def MC21a(flags):
     from LArConfiguration.LArConfigRun3 import LArConfigRun3PileUp
     LArConfigRun3PileUp(flags)
 
-    flags.Tile.BestPhaseFromCOOL = False
-    flags.Tile.correctTime = False
-
     # radiation damage
     flags.Digitization.DoPixelPlanarRadiationDamage = True
 
@@ -49,9 +46,6 @@ def MC21NoPileUp(flags):
 
     from LArConfiguration.LArConfigRun3 import LArConfigRun3NoPileUp
     LArConfigRun3NoPileUp(flags)
-
-    flags.Tile.BestPhaseFromCOOL = False
-    flags.Tile.correctTime = False
 
     # radiation damage
     flags.Digitization.DoPixelPlanarRadiationDamage = True
@@ -101,3 +95,19 @@ def MC21SimulationMultiBeamSpot(flags):
     from RunDependentSimComps.PileUpUtils import generateRunAndLumiProfile
     generateRunAndLumiProfile(flags,
                               profile= 'RunDependentSimData.PileUpProfile_run410000_MC21a_MultiBeamspot')
+
+
+def MC21SimulationCalibrationHits(flags):
+    """MC21 flags for simulation with CalibrationHits"""
+    MC21Simulation(flags)
+    from SimuJobTransforms import CalHits, ParticleID
+    CalHits(flags)
+    ParticleID(flags)
+
+
+def MC21SimulationMultiBeamSpotCalibrationHits(flags):
+    """MC21 flags for simulation with CalibrationHits"""
+    MC21SimulationMultiBeamSpot(flags)
+    from SimuJobTransforms import CalHits, ParticleID
+    CalHits(flags)
+    ParticleID(flags)

@@ -275,6 +275,7 @@ trigMuonEFInvMassThresholds = {
     'invmJPsiOS' : [2.5, 4.3],
     'invmDimu'   : [1.5, 14.],
     'idZmumu'    : [50., 130.],
+    'idJpsimumu' : [1., 5.],
 }
 
 # Monitoring groups to monitor
@@ -480,7 +481,7 @@ def TrigmuCombHypoToolFromDict( chainDict ):
 
 def TrigmuCombHypoToolwORFromDict( chainDict ):
 
-    if 'idperf' in chainDict['chainParts'][0]['addInfo']:
+    if 'idperf' in chainDict['chainParts'][0]['addInfo'] or 'idtp' in chainDict['chainParts'][0]['addInfo'] :
        thresholds = ['passthrough']
     else:
        thresholds = getThresholdsFromDict( chainDict )
@@ -548,7 +549,7 @@ def Trigl2IOHypoToolwORFromDict( chainDict ):
 # muComb Hypo for L2 multi-track SA mode
 def Trigl2mtCBHypoToolwORFromDict( chainDict ):
 
-    if 'idperf' in chainDict['chainParts'][0]['addInfo']:
+    if 'idperf' in chainDict['chainParts'][0]['addInfo'] or 'idtp' in chainDict['chainParts'][0]['addInfo'] :
        thresholds = ['passthrough']
     else:
        thresholds = getThresholdsFromDict( chainDict )
@@ -1006,7 +1007,15 @@ class TrigMuonEFIdtpHypoConfig(object):
         return tool
 
 def TrigMuonEFIdtpInvMassHypoToolFromDict( chainDict ) :
-    thresholds = 'idZmumu'
+    cname = chainDict['chainName']
+    if 'idZmumu' in cname : 
+        thresholds = 'idZmumu'
+    elif 'idJpsimumu' in cname :
+        thresholds = 'idJpsimumu'
+    else :
+        log.warning("unknown chain name for IdtpInvmassHypo, chain name= %s, setting threshold of Z mass",cname)
+        thresholds = 'idZmumu'
+
     config = TrigMuonEFIdtpInvMassHypoConfig()
     tool = config.ConfigurationHypoTool( chainDict['chainName'], thresholds )
 

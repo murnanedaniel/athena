@@ -95,6 +95,8 @@ def StandaloneMuonOutputCfg(flags):
     esd_items += ["TrackCollection#MuonSpectrometerTracks"]
     if flags.Muon.runCommissioningChain:
         esd_items += ["TrackCollection#EMEO_MuonSpectrometerTracks"]
+    if flags.Detector.EnableMM or flags.Detector.EnablesTGC:
+            esd_items += ["Trk::SegmentCollection#TrackMuonNSWSegments"]
 
     # Truth
     if flags.Input.isMC:
@@ -185,7 +187,8 @@ def MuonReconstructionCfg(flags):
 
     if flags.Muon.doMSVertex:
         msvertexrecotool = CompFactory.Muon.MSVertexRecoTool(
-            MyExtrapolator=result.popToolsAndMerge(AtlasExtrapolatorCfg(flags)))
+            MyExtrapolator=result.popToolsAndMerge(AtlasExtrapolatorCfg(flags)),
+            TGCKey = 'TGC_MeasurementsAllBCs' if not flags.Muon.useTGCPriorNextBC else 'TGC_Measurements')
         the_alg = CompFactory.MSVertexRecoAlg(
             name="MSVertexRecoAlg", MSVertexRecoTool=msvertexrecotool)
         # Not explicitly configuring MSVertexTrackletTool

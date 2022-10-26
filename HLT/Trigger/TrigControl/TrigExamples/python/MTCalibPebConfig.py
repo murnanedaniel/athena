@@ -117,6 +117,7 @@ def set_flags(flags, options=default_options):
     flags.Input.isMC = False
     flags.IOVDb.DatabaseInstance = 'CONDBR2'
     flags.IOVDb.GlobalTag = flags.Trigger.OnlineCondTag
+    flags.GeoModel.AtlasVersion = flags.Trigger.OnlineGeoTag
     flags.Trigger.doHLT = True
     flags.Trigger.EDMVersion = 3
     flags.Trigger.Online.isPartition = True
@@ -130,6 +131,10 @@ def set_flags(flags, options=default_options):
     flags.Trigger.doID = False
     flags.Trigger.doCalo = False
     flags.Trigger.doMuon = False
+    # Disable L1 data decoding (except for CTP)
+    flags.Trigger.L1.doMuon = False
+    flags.Trigger.L1.doCalo = False
+    flags.Trigger.L1.doTopo = False
 
 
 def l1_seq_cfg(flags, options=default_options):

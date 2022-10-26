@@ -23,9 +23,10 @@ def RecoSteering(flags):
         from ByteStreamCnvSvc.ByteStreamConfig import ByteStreamReadCfg
         acc.merge(ByteStreamReadCfg(flags))
         # Decorate EventInfo obj with Beam Spot information
-        from xAODEventInfoCnv.EventInfoBeamSpotDecoratorAlgConfig import (
-            EventInfoBeamSpotDecoratorAlgCfg)
-        acc.merge(EventInfoBeamSpotDecoratorAlgCfg(flags))
+        if flags.Reco.EnableBeamSpotDecoration:
+            from xAODEventInfoCnv.EventInfoBeamSpotDecoratorAlgConfig import (
+                EventInfoBeamSpotDecoratorAlgCfg)
+            acc.merge(EventInfoBeamSpotDecoratorAlgCfg(flags))
         log.info("---------- Configured BS reading")
     else:
         from AthenaPoolCnvSvc.PoolReadConfig import PoolReadCfg
@@ -136,8 +137,9 @@ def RecoSteering(flags):
     if flags.Reco.EnableJet:
         from JetRecConfig.JetRecoSteering import JetRecoSteeringCfg
         acc.merge(JetRecoSteeringCfg(flags))
-        #We also need to build links between the newly created jet constituents (GlobalFE)
-        #and electrons,photons,muons and taus
+        # We also need to build links between the newly
+        # created jet constituents (GlobalFE)
+        # and electrons,photons,muons and taus
         from eflowRec.PFCfg import PFGlobalFlowElementLinkingCfg
         acc.merge(PFGlobalFlowElementLinkingCfg(flags))
         log.info("---------- Configured jets")
@@ -189,6 +191,13 @@ def RecoSteering(flags):
         acc.merge(AFPRecCfg(flags))
         log.info("---------- Configured AFP reconstruction")
 
+    # ZDC under construction but disabled as per APR-90
+    #acc.flagPerfmonDomain('ZDC')
+    #if flags.Reco.EnableZDC:
+    #    from ForwardRec.ZDCRecConfig import ZDCRecCfg
+    #    acc.merge(ZDCRecCfg(flags))
+    #    log.info("---------- Configured ZDC reconstruction")
+
     # Monitoring
     acc.flagPerfmonDomain('DQM')
     if flags.DQ.doMonitoring:
@@ -215,8 +224,7 @@ def RecoSteering(flags):
         log.info("setup POOL format writing")
 
     if flags.Output.doWriteESD:
-        # Needed for Trk::Tracks TPCnv/
-        # Assumes we write Trk::Track on ESD
+        # Needed for Trk::Tracks TPCnv
         from TrkEventCnvTools.TrkEventCnvToolsConfigCA import (
             TrkEventCnvSuperToolCfg)
         acc.merge(TrkEventCnvSuperToolCfg(flags))

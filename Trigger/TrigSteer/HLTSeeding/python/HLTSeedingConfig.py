@@ -3,9 +3,10 @@
 #
 
 import math
+from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
+from AthenaConfiguration.ComponentFactory import CompFactory
 from AthenaCommon.Logging import logging
 log = logging.getLogger('HLTSeedingConfig')
-from AthenaConfiguration.ComponentFactory import CompFactory
 
 _mapL1ThresholdToDecisionCollection = {
     # Full-scan
@@ -217,19 +218,20 @@ def createKeyWriterTool():
     keyWriter.IncludeBunchgroupKey = False
     return keyWriter
 
-def getL1TriggerResultMaker(flags):
+def L1TriggerResultMakerCfg(flags):
+    acc = ComponentAccumulator()
     l1trMaker = CompFactory.L1TriggerResultMaker()
 
     # Muon RoIs
-    if flags.Trigger.enableL1MuonPhase1:
-       l1trMaker.MuRoIKey = "LVL1MuonRoIs"
-       from TrigT1MuctpiPhase1.TrigT1MuctpiPhase1Config import getTrigThresholdDecisionTool
-       l1trMaker.ThresholdPatternTools += [getTrigThresholdDecisionTool()]
+    if flags.Trigger.L1.doMuon and flags.Trigger.enableL1MuonPhase1:
+        l1trMaker.MuRoIKey = "LVL1MuonRoIs"
+        from TrigT1MuctpiPhase1.TrigT1MuctpiPhase1Config import TrigThresholdDecisionToolCfg
+        l1trMaker.ThresholdPatternTools += [acc.popToolsAndMerge(TrigThresholdDecisionToolCfg(flags))]
     else:
-       l1trMaker.MuRoIKey = ""
+        l1trMaker.MuRoIKey = ""
 
     # L1Calo RoIs
-    if flags.Trigger.enableL1CaloPhase1:
+    if flags.Trigger.L1.doCalo and flags.Trigger.enableL1CaloPhase1:
         l1trMaker.eFexEMRoIKey = "L1_eEMRoI"
         l1trMaker.eFexTauRoIKey = "L1_eTauRoI"
         l1trMaker.jFexTauRoIKey = "L1_jFexTauRoI"
@@ -250,22 +252,22 @@ def getL1TriggerResultMaker(flags):
             CompFactory.gFexLRJetRoIThresholdsTool(),
         ]
     else:
-       l1trMaker.eFexEMRoIKey = ""
-       l1trMaker.eFexTauRoIKey = ""
-       l1trMaker.jFexTauRoIKey = ""
-       l1trMaker.jFexSRJetRoIKey = ""
-       l1trMaker.jFexLRJetRoIKey = ""
-       l1trMaker.gFexSRJetRoIKey = ""
-       l1trMaker.gFexLRJetRoIKey = ""
-       l1trMaker.cTauRoIKey = ""
-       l1trMaker.cjTauLinkKey = ""
+        l1trMaker.eFexEMRoIKey = ""
+        l1trMaker.eFexTauRoIKey = ""
+        l1trMaker.jFexTauRoIKey = ""
+        l1trMaker.jFexSRJetRoIKey = ""
+        l1trMaker.jFexLRJetRoIKey = ""
+        l1trMaker.gFexSRJetRoIKey = ""
+        l1trMaker.gFexLRJetRoIKey = ""
+        l1trMaker.cTauRoIKey = ""
+        l1trMaker.cjTauLinkKey = ""
 
     # Placeholder for other L1 xAOD outputs:
     # - CTP result
     # - L1Topo result
-    # - the remaining Run-3 L1Calo RoIs
 
-    return l1trMaker
+    acc.addEventAlgo(l1trMaker, primary=True)
+    return acc
 
 
 class HLTSeeding(CompFactory.HLTSeeding) :
@@ -288,14 +290,14 @@ class HLTSeeding(CompFactory.HLTSeeding) :
                                             Decisions=mapThresholdToL1DecisionCollection("FSNOSEED"),
                                             OutputTrigRoIs = recordable(mapThresholdToL1RoICollection("FSNOSEED") )) ]
         # EM unpacker
-        if flags.Trigger.doID or flags.Trigger.doCalo:
+        if flags.Trigger.L1.doCalo:
             if flags.Trigger.enableL1CaloPhase1:
                 self.xAODRoIUnpackers += createCaloRoIUnpackers(flags)
             if flags.Trigger.enableL1CaloLegacy:
                 self.RoIBRoIUnpackers += createLegacyCaloRoIUnpackers()
 
         # MU unpacker
-        if flags.Trigger.doMuon:
+        if flags.Trigger.L1.doMuon:
             if flags.Trigger.enableL1MuonPhase1:
                 self.xAODRoIUnpackers += createMuonRoIUnpackers(flags)
             else:
@@ -311,9 +313,6 @@ class HLTSeeding(CompFactory.HLTSeeding) :
 
 
 def HLTSeedingCfg(flags, seqName = None):
-
-    from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
-
     if seqName:
         from AthenaCommon.CFElements import parOR
         acc = ComponentAccumulator(sequence=parOR(seqName)) # TODO - once rec-ex-common JO are phased out this can also be dropped
@@ -349,20 +348,17 @@ def HLTSeedingCfg(flags, seqName = None):
         CompFactory.FSRoIsUnpackingTool("FSRoIsUnpackingTool", Decisions=mapThresholdToL1DecisionCollection("FSNOSEED"),
                                         OutputTrigRoIs = recordable(mapThresholdToL1RoICollection("FSNOSEED")) ) ]
 
-    if flags.Trigger.doCalo:
+    if flags.Trigger.L1.doCalo:
         if flags.Trigger.enableL1CaloPhase1:
             decoderAlg.xAODRoIUnpackers += createCaloRoIUnpackers(flags)
         if flags.Trigger.enableL1CaloLegacy:
             decoderAlg.RoIBRoIUnpackers += createLegacyCaloRoIUnpackers()
 
-    if flags.Trigger.doMuon:
+    if flags.Trigger.L1.doMuon:
         if flags.Trigger.enableL1MuonPhase1:
             decoderAlg.xAODRoIUnpackers += createMuonRoIUnpackers(flags)
         else:
             decoderAlg.RoIBRoIUnpackers += createLegacyMuonRoIUnpackers(flags)
-        from MuonConfig.MuonCablingConfig import RPCCablingConfigCfg, TGCCablingConfigCfg
-        acc.merge( TGCCablingConfigCfg( flags ) )
-        acc.merge( RPCCablingConfigCfg( flags ) )
 
     decoderAlg.prescaler = createPrescalingTool()
     decoderAlg.KeyWriterTool = createKeyWriterTool()
@@ -376,7 +372,7 @@ def HLTSeedingCfg(flags, seqName = None):
 
     # Add the algorithm creating L1TriggerResult which is the input to HLTSeeding (Run-3 L1)
     if flags.Trigger.enableL1MuonPhase1 or flags.Trigger.enableL1CaloPhase1:
-        acc.addEventAlgo( getL1TriggerResultMaker(flags), sequenceName = seqName )
+        acc.merge( L1TriggerResultMakerCfg(flags), sequenceName = seqName )
 
     acc.addEventAlgo( decoderAlg, sequenceName = seqName )
 

@@ -14,6 +14,8 @@ class ROBPrefetching(FlagEnum):
     StepRoI = 'StepRoI'
     # Enable mapping chains' first step to pre-HLT prefetching rules based on initial RoIs
     InitialRoI = 'InitialRoI'
+    # Enable using larger RoI in TauCore step to speculatively prefetch ROBs for the subsequent TauIso step (ATR-26419)
+    TauCoreLargeRoI = 'TauCoreLargeRoI'
 
 def createTriggerFlags(doTriggerRecoFlags):
     flags = AthConfigFlags()
@@ -91,7 +93,7 @@ def createTriggerFlags(doTriggerRecoFlags):
     flags.addFlag('Trigger.doRuntimeNaviVal', False)
 
     # Select ROBPrefetching options, out of ROBPrefetching enum, empty list means no prefetching
-    flags.addFlag('Trigger.ROBPrefetchingOptions', [ROBPrefetching.InitialRoI, ROBPrefetching.StepRoI])
+    flags.addFlag('Trigger.ROBPrefetchingOptions', [ROBPrefetching.InitialRoI, ROBPrefetching.StepRoI, ROBPrefetching.TauCoreLargeRoI])
 
     # if 1, Run1 decoding version is set; if 2, Run2; if 3, Run 3
     def EDMVersion(flags):
@@ -318,6 +320,11 @@ def createTriggerRecoFlags():
         return createTrigTrackingPassFlags()
     flags.addFlagsCategory( 'Trigger.InDetTracking', __idTrk )
 
+    def __idITk():
+        from TrigInDetConfig.TrigTrackingPassFlagsITk import createTrigTrackingPassFlagsITk
+        return createTrigTrackingPassFlagsITk()
+    flags.addFlagsCategory( 'Trigger.ITkTracking', __idITk )
+     
     # NB: Longer term it may be worth moving these into a PF set of config flags, but right now the only ones that exist do not seem to be used in the HLT.
     # When we use component accumulators for this in the HLT maybe we should revisit this
     # PFO-muon removal option for the full-scan hadronic signatures.

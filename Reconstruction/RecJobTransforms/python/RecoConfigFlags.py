@@ -16,6 +16,7 @@ _all_domains = [
     "CaloRinger",
     "AFP",
     "HI",
+    "BeamSpotDecoration",
     "PostProcessing",
 ]
 
@@ -73,17 +74,25 @@ def createRecoConfigFlags():
     flags.addFlag("Reco.EnableHI",
                   lambda prevFlags: "_hi" in prevFlags.Input.ProjectName)
 
+    # enable alg for decorating EventInfo with BeamSpot info
+    # (maybe not always available for calibration runs, etc)
+    flags.addFlag("Reco.EnableBeamSpotDecoration", True)
+
     # common thinning and other post-processing
     flags.addFlag("Reco.EnablePostProcessing", True)
     flags.addFlag("Reco.PostProcessing.TRTAloneThinning",
                   lambda prevFlags: prevFlags.Reco.EnablePostProcessing and
-                  prevFlags.Reco.EnableTracking)
+                  prevFlags.Reco.EnableTracking and
+                  prevFlags.Output.doWriteAOD)
     flags.addFlag("Reco.PostProcessing.GeantTruthThinning",
                   lambda prevFlags: prevFlags.Reco.EnablePostProcessing and
-                  prevFlags.Input.isMC)
+                  prevFlags.Input.isMC and
+                  prevFlags.Output.doWriteAOD)
     flags.addFlag("Reco.PostProcessing.InDetForwardTrackParticleThinning",
                   lambda prevFlags: prevFlags.Reco.EnablePostProcessing and
-                  prevFlags.Reco.EnableTracking)
+                  prevFlags.Reco.EnableTracking and
+                  prevFlags.Reco.EnableCombinedMuon and
+                  prevFlags.Output.doWriteAOD)
     return flags
 
 

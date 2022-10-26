@@ -142,22 +142,28 @@ StatusCode jFexInputByteStreamTool::convertFromBS(const std::vector<const ROBF*>
                     unsigned int intID = mapIndex(jfex, fpga, channel, idata);
 
                     // Exists the jTower in the mapping?
-                    if(m_Firm2Tower_map.find(intID) == m_Firm2Tower_map.end()){
+                    auto it_Firm2Tower_map = m_Firm2Tower_map.find(intID);
+                    if(it_Firm2Tower_map == m_Firm2Tower_map.end()){
+
                         // jTower not found in the mapping.. skipping. 
                         // If we are here means that the jTower is not actually used in the firmware
                         continue;
                     }
+
+                    const auto [IDsim, eta, phi, source, iEta, iPhi] = it_Firm2Tower_map->second;
+
                     
-                    const auto [IDsim, eta, phi, source, iEta, iPhi] = m_Firm2Tower_map.at(intID);
+                    std::vector<uint16_t> vtower_ET;
+                    vtower_ET.clear();
+                    vtower_ET.push_back(allDATA[idata]);
                     
-                    std::vector<uint16_t> vtower;
-                    vtower.clear();
-                    vtower.push_back(allDATA[idata]);
-                    
+                    std::vector<char> vtower_SAT;
+                    vtower_SAT.clear();
+                    vtower_SAT.push_back(et_saturation);
                     
                     //initilize the jTower EDM
                     jTowersContainer->push_back( std::make_unique<xAOD::jFexTower>() );
-                    jTowersContainer->back()->initialize(eta, phi, iEta, iPhi, IDsim, source, vtower, jfex, fpga, channel, idata, et_saturation );                    
+                    jTowersContainer->back()->initialize(eta, phi, iEta, iPhi, IDsim, source, vtower_ET, jfex, fpga, channel, idata, vtower_SAT );                    
                 }
                 
                 // keeping this for future x-checks

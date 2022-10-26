@@ -5,7 +5,6 @@
 # art-type: grid
 # art-include: master/Athena
 # art-include: 22.0/Athena
-# art-include: 21.3/Athena
 # art-include: 21.9/Athena
 # art-output: trkPerformance_MuonSpectrometerTracks.txt
 # art-output: trkPerformance_ExtrapolatedMuonTracks.txt
@@ -26,7 +25,7 @@ Reco_tf.py --inputRDOFile /cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/Muon
            --autoConfiguration everything \
            --imf False \
            --postInclude MuonPRDTest/NSWPRDValAlg.reco.py \
-           --conditionsTag 'default:OFLCOND-MC21-SDR-RUN3-05' \
+           --conditionsTag 'default:OFLCOND-MC21-SDR-RUN3-09' \
            --outputESDFile OUT_ESD.root
 exit_code=$?
 echo  "art-result: ${exit_code} Reco_tf.py"
