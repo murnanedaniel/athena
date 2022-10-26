@@ -129,7 +129,7 @@ StatusCode MuonCluster::execute(const EventContext& ctx) const
     auto roiCollection = roiCollectionHdl.get();
 
     if (roiCollection->size() < 2){ //should be the L1 Muon RoI container
-        ATH_MSG_WARNING("Input TrigRoiDescriptorCollection isn't the correct size! Potential L1 menu inconsitency. Got " << roiCollection->size() << " RoIs");
+        ATH_MSG_WARNING("Input TrigRoiDescriptorCollection isn't the correct size! Potential L1 menu inconsistency. Got " << roiCollection->size() << " RoIs");
         return StatusCode::SUCCESS;
     }
 

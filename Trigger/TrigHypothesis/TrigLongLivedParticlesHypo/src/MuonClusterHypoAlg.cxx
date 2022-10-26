@@ -100,7 +100,7 @@ StatusCode MuonClusterHypoAlg::execute(const EventContext& ctx) const
     auto decisions = outputHandle.ptr();
 
     if (previousDecisionsHandle->size() == 0) {
-        ATH_MSG_DEBUG( "No incoming decsion objects, nothing to do");
+        ATH_MSG_DEBUG( "No incoming decision objects, nothing to do");
         return StatusCode::SUCCESS;
     }
 
@@ -127,7 +127,7 @@ StatusCode MuonClusterHypoAlg::execute(const EventContext& ctx) const
     // Link our physics object ("muCluster")
     d->setObjectLink( featureString(), ElementLink<xAOD::TrigCompositeContainer>(*compCont, 0, ctx) );
 
-    // Link our parentes (L1 muon ROI)
+    // Link our parents (L1 muon ROI)
     for (const Decision* previousDecision : *previousDecisionsHandle) {
         linkToPrevious(d, previousDecision, ctx);
         decisionIDs(previousDecision, prev);  // Collate active chains on this L1 ROI (previousDecision) into prev
