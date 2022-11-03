@@ -123,7 +123,9 @@ def MdtSegmentT0FitterCfg(flags, name="MdtSegmentT0Fitter", **kwargs):
     result.setPrivateTools(CompFactory.TrkDriftCircleMath.MdtSegmentT0Fitter(name, **kwargs))    
     return result
 
-def DCMathSegmentMakerCfg(flags, **kwargs):
+def DCMathSegmentMakerCfg(flags,
+                          doSegmentT0Fit=None, # Probably need to be removed, kept for now as it creates more differences in muon outputs
+                          **kwargs):
     doSegmentT0Fit = kwargs.pop('doSegmentT0Fit', flags.Muon.doSegmentT0Fit)
     
     from MuonConfig.MuonRIO_OnTrackCreatorToolConfig import MdtDriftCircleOnTrackCreatorCfg, MuonClusterOnTrackCreatorCfg, TriggerChamberClusterOnTrackCreatorCfg
