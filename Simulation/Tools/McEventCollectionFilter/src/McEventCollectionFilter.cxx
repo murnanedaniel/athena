@@ -126,14 +126,10 @@ StatusCode McEventCollectionFilter::execute(const EventContext &ctx) const
   // electrons from TRT hits
   if (m_keepElectronsLinkedToTRTHits) {
     std::vector<int> barcodes;
-    ATH_CHECK(findElectronsLinkedToTRTHits(ctx, &barcodes));
-
-    for (int barcode : barcodes) {
-      HepMC::ConstGenParticlePtr particle = HepMC::barcode_to_particle(genEvt, barcode);
-      if (particle == nullptr) {
-        ATH_MSG_DEBUG("Could not find particle for barcode " << barcode);
-        continue;
-      }
+    std::vector<const HepMcParticleLink> links;
+    ATH_CHECK(findElectronsLinkedToTRTHits(ctx, links));
+    for (auto link : links) {
+      HepMC::ConstGenParticlePtr particle = link.cptr();
       HepMC::ConstGenVertexPtr vx = particle->production_vertex();
       HepMC::GenParticlePtr newParticle = HepMC::newGenParticlePtr(particle->momentum(),
                                                                    particle->pdg_id(),
@@ -159,7 +155,7 @@ StatusCode McEventCollectionFilter::execute(const EventContext &ctx) const
 }
 
 
-StatusCode McEventCollectionFilter::findElectronsLinkedToTRTHits(const EventContext &ctx, std::vector<int> *barcodes) const
+StatusCode McEventCollectionFilter::findElectronsLinkedToTRTHits(const EventContext &ctx, std::vector<const HepMcParticleLink> &links) const
 {
   SG::ReadHandle<TRTUncompressedHitCollection> inputCollection(m_inputTRTHitsKey, ctx);
   if (!inputCollection.isValid()) {
@@ -168,15 +164,12 @@ StatusCode McEventCollectionFilter::findElectronsLinkedToTRTHits(const EventCont
   }
   ATH_MSG_DEBUG("Found input hits collection " << inputCollection.name() << " in store " << inputCollection.store());
 
-  std::set<int> barcodeSet;
   for (const TRTUncompressedHit &hit : *inputCollection) {
     const HepMcParticleLink link = hit.particleLink();
     int pdgID = hit.GetParticleEncoding();
     if (std::abs(pdgID) == 11 && link.barcode() != 0) {
-      barcodeSet.insert(link.barcode());
+      links.push_back(link);
     }
   }
-  barcodes->assign(barcodeSet.begin(), barcodeSet.end());
-
   return StatusCode::SUCCESS;
 }
