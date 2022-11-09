@@ -135,14 +135,14 @@ StatusCode McEventCollectionFilter::execute(const EventContext &ctx) const
                                                                    particle->pdg_id(),
                                                                    particle->status());
 #ifndef HEPMC3
-      HepMC::suggest_barcode(newParticle, barcode);
+      HepMC::suggest_barcode(newParticle, link.barcode());
 #endif
       const HepMC::FourVector &position = vx->position();
       HepMC::GenVertexPtr newVertex = HepMC::newGenVertexPtr(position);
       newVertex->add_particle_out(newParticle);
       evt->add_vertex(newVertex);
 #ifdef HEPMC3
-      HepMC::suggest_barcode(newParticle, barcode);
+      HepMC::suggest_barcode(newParticle, link.barcode());
 #endif
     }
   }
