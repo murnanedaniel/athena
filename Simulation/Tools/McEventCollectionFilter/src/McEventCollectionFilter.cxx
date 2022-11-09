@@ -125,7 +125,6 @@ StatusCode McEventCollectionFilter::execute(const EventContext &ctx) const
 
   // electrons from TRT hits
   if (m_keepElectronsLinkedToTRTHits) {
-    std::vector<int> barcodes;
     std::vector<HepMcParticleLink> links;
     ATH_CHECK(findElectronsLinkedToTRTHits(ctx, links));
     for (auto link : links) {
