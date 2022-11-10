@@ -8,6 +8,18 @@ class TrackFitterType(FlagEnum):
     GlobalChi2Fitter = 'GlobalChi2Fitter'
     GaussianSumFilter = 'GaussianSumFilter'
 
+def cutLevel(flags):
+    if flags.Reco.EnableHI:
+        return 2
+    elif flags.InDet.Tracking.doLowMu:
+        return 3
+    elif flags.Beam.Type is BeamType.Cosmics:
+        return 8
+    elif flags.InDet.Tracking.doMinBias:
+        return 12
+    else:
+        return 19
+
 def createInDetConfigFlags():
     icf = AthConfigFlags()
 
@@ -64,7 +76,7 @@ def createInDetConfigFlags():
     icf.addFlag("InDet.Tracking.perigeeExpression",
                 lambda prevFlags: "Vertex" if prevFlags.Reco.EnableHI else "BeamLine")
     # Control cuts and settings for different lumi to limit CPU and disk space
-    icf.addFlag("InDet.Tracking.cutLevel", 19)
+    icf.addFlag("InDet.Tracking.cutLevel", cutLevel)
     # Switch for running TIDE Ambi
     icf.addFlag("InDet.Tracking.doTIDE_Ambi", True)
     # Turn on running of Brem Recovery in tracking
