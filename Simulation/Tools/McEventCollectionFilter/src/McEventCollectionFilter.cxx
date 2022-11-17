@@ -135,7 +135,7 @@ StatusCode McEventCollectionFilter::execute(const EventContext &ctx) const
     for (const TRTUncompressedHit &hit : *inputCollectionH) {
       HepMcParticleLink link = hit.particleLink();
       int pdgID = hit.GetParticleEncoding();
-      if (!(std::abs(pdgID) == 11 && link.barcode() != 0)) continue;
+      if (std::abs(pdgID) != 11 || link.barcode() == 0) continue;
       HepMC::ConstGenParticlePtr particle = link.cptr();
       HepMC::ConstGenVertexPtr vx = particle->production_vertex();
       HepMC::GenParticlePtr newParticle = HepMC::newGenParticlePtr(particle->momentum(), particle->pdg_id(), particle->status());
