@@ -203,5 +203,6 @@ def createITkPriVertexingFlags():
     flags.minNPixelHits = 3
     flags.minNSctHits = 0
     flags.minNSiHits = 7
+    flags.maxZinterval = 0.5
 
     return flags
