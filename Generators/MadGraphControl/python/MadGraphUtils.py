@@ -1689,6 +1689,7 @@ def get_SUSY_variations( process , masses , syst_mod , ktdurham = None ):
                       'el':'1000011','mul':'1000013','ta1':'1000015','sve':'1000012','svm':'1000014','svt':'1000016',
                       'er':'2000011','mur':'2000013','ta2':'2000015'}
             for l in process:
+                if "#" in l: l = l[:l.find("#")]
                 if 'generate' in l or 'add process' in l:
                     clean_proc = l.replace('generate','').replace('+','').replace('-','').replace('~','').replace('add process','').split('>')[1].split(',')[0]
                     for particle in clean_proc.split():
