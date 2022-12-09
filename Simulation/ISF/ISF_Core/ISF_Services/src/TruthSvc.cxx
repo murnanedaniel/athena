@@ -493,7 +493,9 @@ HepMC::GenVertexPtr  ISF::TruthSvc::createGenVertexFromTruthIncident( ISF::ITrut
       oldVertex->add_attribute("weights",std::make_shared<HepMC3::VectorFloatAttribute>(weights));
 #else
       oldVertex->set_id( vtxID );
-      oldVertex->weights() = weights;
+      std::vector<double> tmp_weights;
+      std::transform(weights.begin(), weights.end(), tmp_weights.begin(), [](float x) { return (double)x;});
+      oldVertex->weights() = tmp_weights;
 #endif
 #ifdef DEBUG_TRUTHSVC
       ATH_MSG_VERBOSE("createGVfromTI Existing QS GenVertex 2: " << *oldVertex );
