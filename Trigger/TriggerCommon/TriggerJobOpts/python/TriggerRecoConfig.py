@@ -268,14 +268,15 @@ def Run1Run2BSExtractionCfg( flags ):
                 extr.DSResultKeysIn += [ ds_tag+"_BS" ]
                 extr.DSResultKeysOut += [ ds_tag ]
 
-        HLTResults = [ f"HLT::HLTResult/{k}" for k in robIDMap.keys() ]
-        acc.addService( CompFactory.ByteStreamAddressProviderSvc( TypeNames = HLTResults) )
     else:
         log.info("Will not schedule real HLT bytestream extraction, instead EDM gap filling is running")
         # if data doesn't have HLT info set HLTResult keys as empty strings to avoid warnings
         # but the extraction algorithm must run
         extr.HLTResultKeyIn = ""
         extr.HLTResultKeyOut = ""
+
+    HLTResults = [ f"HLT::HLTResult/{k}" for k in robIDMap.keys() ]
+    acc.addService( CompFactory.ByteStreamAddressProviderSvc( TypeNames = HLTResults) )
 
     from TrigEDMConfig.TriggerEDM import getTPList
     acc.addPublicTool( CompFactory.TrigSerTPTool(TPMap = getTPList((flags.Trigger.EDMVersion))) )
