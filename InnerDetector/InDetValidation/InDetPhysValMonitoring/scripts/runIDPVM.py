@@ -37,7 +37,14 @@ def GetCustomAthArgs():
 # Parse the arguments
 MyArgs = GetCustomAthArgs()
 
+from AthenaConfiguration.Enums import LHCPeriod
 from AthenaConfiguration.AllConfigFlags import ConfigFlags
+
+ConfigFlags.Input.Files = []
+for path in MyArgs.filesInput.split(','):
+    ConfigFlags.Input.Files += glob(path)
+ConfigFlags.PhysVal.OutputFileName = MyArgs.outputFile
+
 ConfigFlags.PhysVal.IDPVM.setTruthStrategy = MyArgs.HSFlag
 ConfigFlags.PhysVal.IDPVM.doExpertOutput   = MyArgs.doExpertPlots
 ConfigFlags.PhysVal.IDPVM.doPhysValOutput  = not MyArgs.doExpertPlots
@@ -59,14 +66,12 @@ ConfigFlags.PhysVal.IDPVM.requiredSiHits = MyArgs.requiredSiHits
 ConfigFlags.PhysVal.IDPVM.maxProdVertRadius = MyArgs.maxProdVertRadius
 ConfigFlags.PhysVal.IDPVM.ancestorIDs = MyArgs.ancestorIDList
 ConfigFlags.PhysVal.IDPVM.hardScatterStrategy = int(MyArgs.hardScatterStrategy)
+# If truthMinPt is the 500 MeV default, update to 1000 MeV for Run 4
+if ConfigFlags.GeoModel.Run >= LHCPeriod.Run4 and int(MyArgs.truthMinPt)==500:
+    MyArgs.truthMinPt = 1000
 ConfigFlags.PhysVal.IDPVM.truthMinPt = MyArgs.truthMinPt
 ConfigFlags.PhysVal.IDPVM.GRL = MyArgs.GRL
 ConfigFlags.PhysVal.IDPVM.validateExtraTrackCollections = MyArgs.validateExtraTrackCollections
-
-ConfigFlags.Input.Files = []
-for path in MyArgs.filesInput.split(','):
-    ConfigFlags.Input.Files += glob(path)
-ConfigFlags.PhysVal.OutputFileName = MyArgs.outputFile
 
 ConfigFlags.lock()
 
