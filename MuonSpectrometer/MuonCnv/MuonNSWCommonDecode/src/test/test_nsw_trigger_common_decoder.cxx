@@ -1,6 +1,6 @@
 /*
-  Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
-*/
+   Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+   */
 
 // STL include files
 
@@ -119,7 +119,7 @@ struct outBranches
 void test_nsw_trigger_common_decoder_help (char *progname)
 {
   std::cout << "Usage: " << progname
-	    << " [-v] [-r] [-t] [-f] [-d <MMG/STG>] [-n events] [-h] file1, file2, ..." << std::endl;
+    << " [-v] [-r] [-t] [-f] [-d <MMG/STG>] [-n events] [-h] file1, file2, ..." << std::endl;
   std::cout << "\t\t[-n events] maximum number of events to read (default = all)" << std::endl;
   std::cout << "\t\t[-p] only print raw fragments" << std::endl;
   std::cout << "\t\tMultiple [-v] options increase printout detail level" << std::endl;
@@ -135,17 +135,17 @@ int test_nsw_trigger_common_decoder_opt (int argc, char **argv, Params& params)
           ++params.printout_level;
           break;
         case 'p':
-	        params.print_only = true;
-	        break;
+          params.print_only = true;
+          break;
         case 'n':
           params.max_events = static_cast <unsigned int> (atoi (argv[++i]));
           break;
         case 'h':
-	        test_nsw_trigger_common_decoder_help (argv[0]);
+          test_nsw_trigger_common_decoder_help (argv[0]);
           return 1;
         default:
-	        test_nsw_trigger_common_decoder_help (argv[0]);
-	        return 1;
+          test_nsw_trigger_common_decoder_help (argv[0]);
+          return 1;
       }
     } else {
       std::string data_file_name (argv[i]);
@@ -249,7 +249,7 @@ int test_nsw_trigger_common_decoder_event (const eformat::read::FullEventFragmen
 
   for (auto r = robs.begin (); r != robs.end (); ++r)
   {
-    bool is_nsw = false, is_mmg = false, is_stg = false, is_tp = false, is_pt = false;
+    bool is_nsw = false, is_mmg = false, is_stg = false, is_tp = false, is_tpmon = false, is_pt = false;
 
     // check fragment for errors
     try{ r->check (); }
@@ -266,8 +266,10 @@ int test_nsw_trigger_common_decoder_event (const eformat::read::FullEventFragmen
       is_nsw = is_stg = true;
 
     //int sector = m & 0xf;
-    if ((m & 0xf0) == 0x10) {is_tp = true;}
+    if ((m & 0xf0) == 0x10 ) {is_tp = true;}
     else if ((m & 0xf0) == 0x20) {is_pt = true;}
+    else if ((m & 0xf0) == 0x50 ) {is_tpmon = true;}
+
 
 
     if (params.printout_level > 1 && is_nsw){
@@ -282,143 +284,154 @@ int test_nsw_trigger_common_decoder_event (const eformat::read::FullEventFragmen
     }
 
 
-    if (is_nsw && (is_pt || is_tp)){
+    if (is_nsw && (is_pt || is_tp || is_tpmon)){
 
       //this has to be fixed to get TP data, filtering DAQ no! (need to add an offset)
       if (params.printout_level > 0 || params.print_only){
         std::cout << "NSW Trigger fragment found: length " << r->rod_ndata () << std::endl;
       }
-	      // Print out raw fragment
-	    if (params.print_only){
+      // Print out raw fragment
+      if (params.print_only){
         std::cout << "ROD Fragment size in words:" << std::endl;
         std::cout << "ROD Total: " << r->rod_fragment_size_word () << std::endl;
         std::cout << "ROD Header: " << r->rod_header_size_word () << std::endl;
         std::cout << "ROD Trailer: " << r->rod_trailer_size_word () << std::endl;
         std::cout << "ROD L1 ID: " << std::hex << r->rod_lvl1_id () << std::dec << std::endl;
-	      std::cout << "ROD Data words: " << r->rod_ndata () << std::endl;
+        std::cout << "ROD Data words: " << r->rod_ndata () << std::endl;
       }
 
-	     const uint32_t *bs = r->rod_data ();
+      const uint32_t *bs = r->rod_data ();
 
-       if (params.print_only){
-         std::cout << "Printing raw data (ignoring any structure)" << std::endl;
-         std::cout << std::hex;
-         for (unsigned int i = 0; i < r->rod_ndata (); ++i){
-           std::cout << " " << std::setfill('0') << std::setw(8) << bs[i];
-           if (i % 4 == 3) std::cout << std::endl;
-         }
-         std::cout << std::dec;
-         std::cout << std::endl;
-       }
+      if (params.print_only){
+        std::cout << "Printing raw data (ignoring any structure)" << std::endl;
+        std::cout << std::hex;
+        for (unsigned int i = 0; i < r->rod_ndata (); ++i){
+          std::cout << " " << std::setfill('0') << std::setw(8) << bs[i];
+          if (i % 4 == 3) std::cout << std::endl;
+        }
+        std::cout << std::dec;
+        std::cout << std::endl;
+      }
 
-       if (!params.print_only){
+      if (!params.print_only){
 
-         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now ();
-         Muon::nsw::NSWTriggerCommonDecoder nsw_trigger_decoder (*r, (is_pt?"PadL1A":(is_mmg?"MML1A":"STGL1A")) );
-         //ignoring monitoring for now; rob ids not defined yet
-         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now ();
-         unsigned int time_elapsed = std::chrono::duration_cast <std::chrono::microseconds> (end - begin).count ();
-  	     float time_elapsed_ms = static_cast <float> (time_elapsed) / 1000;
-         if (params.printout_level > 1){
-           std::cout << "Time for decoding this event: " << time_elapsed_ms << std::endl;
-           std::cout << std::endl;
-         }
-         statistics.total_decoding_time += time_elapsed_ms;
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now ();
+        Muon::nsw::NSWTriggerCommonDecoder nsw_trigger_decoder (*r, "MMMon"  );
+        // Muon::nsw::NSWTriggerCommonDecoder nsw_trigger_decoder (*r, (is_tpmon ? (is_mmg?"MMMon":"STGMon") : (is_pt?"PadL1A":(is_mmg?"MML1A":"STGL1A")))  );
+        //ignoring monitoring for now; rob ids not defined yet
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now ();
+        unsigned int time_elapsed = std::chrono::duration_cast <std::chrono::microseconds> (end - begin).count ();
+        float time_elapsed_ms = static_cast <float> (time_elapsed) / 1000;
+        if (params.printout_level > 1){
+          std::cout << "Time for decoding this event: " << time_elapsed_ms << std::endl;
+          std::cout << std::endl;
+        }
+        statistics.total_decoding_time += time_elapsed_ms;
 
-         if (is_pt){
-           for (size_t i = 0; i < nsw_trigger_decoder.get_elinks().size(); i++) {
-	     std::shared_ptr<Muon::nsw::NSWPadTriggerL1a> link = std::dynamic_pointer_cast<Muon::nsw::NSWPadTriggerL1a>(nsw_trigger_decoder.get_elinks()[i]);
-             data.b_PadL1A_ROD_sourceID.push_back( sid );
-             data.b_PadL1A_ROD_subdetID.push_back( s );
-             data.b_PadL1A_ROD_moduleID.push_back( m );
-             data.b_PadL1A_ROD_L1ID.push_back( r->rod_lvl1_id () );
-             data.b_PadL1A_ROD_n_words.push_back( r->rod_ndata () );
-             data.b_PadL1A_flags.push_back( link->getFlags() );
-             data.b_PadL1A_ec.push_back( link->getEc() );
-             data.b_PadL1A_fragid.push_back( link->getFragid() );
-             data.b_PadL1A_secid.push_back( link->getSecid() );
-             data.b_PadL1A_spare.push_back( link->getSpare() );
-             data.b_PadL1A_orbit.push_back( link->getOrbit() );
-             data.b_PadL1A_bcid.push_back( link->getBcid() );
-             data.b_PadL1A_l1id.push_back( link->getL1id() );
-             data.b_PadL1A_hit_n.push_back( link->getNumberOfHits() );
-             data.b_PadL1A_pfeb_n.push_back( link->getNumberOfPfebs() );
-             data.b_PadL1A_trigger_n.push_back( link->getNumberOfTriggers() );
-             data.b_PadL1A_bcid_n.push_back( link->getNumberOfBcids() );
-             data.b_PadL1A_hit_relbcid.push_back( link->getHitRelBcids() );
-             data.b_PadL1A_hit_pfeb.push_back( link->getHitPfebs() );
-             data.b_PadL1A_hit_tdschannel.push_back( link->getHitTdsChannels() );
-             data.b_PadL1A_hit_vmmchannel.push_back( link->getHitVmmChannels() );
-             data.b_PadL1A_hit_vmm.push_back( link->getHitVmms() );
-             data.b_PadL1A_hit_padchannel.push_back( link->getHitPadChannels() );
-             data.b_PadL1A_pfeb_addr.push_back( link->getPfebAddresses() );
-             data.b_PadL1A_pfeb_nchan.push_back( link->getPfebNChannels() );
-             data.b_PadL1A_pfeb_disconnected.push_back( link->getPfebDisconnecteds() );
-             data.b_PadL1A_trigger_bandid.push_back( link->getTriggerBandIds() );
-             data.b_PadL1A_trigger_phiid.push_back( link->getTriggerPhiIds() );
-             data.b_PadL1A_trigger_relbcid.push_back( link->getTriggerRelBcids() );
-             data.b_PadL1A_bcid_rel.push_back( link->getBcidRels() );
-             data.b_PadL1A_bcid_status.push_back( link->getBcidStatuses() );
-             data.b_PadL1A_bcid_multzero.push_back( link->getBcidMultZeros() );
-           }
-         } else if (is_mmg) {
-           for (size_t i = 0; i < nsw_trigger_decoder.get_elinks().size(); i++) {
-	     std::shared_ptr<Muon::nsw::NSWTriggerMML1AElink> link = std::dynamic_pointer_cast<Muon::nsw::NSWTriggerMML1AElink>(nsw_trigger_decoder.get_elinks()[i]);
-             data.b_MML1A_ROD_sourceID.push_back( sid );
-             data.b_MML1A_ROD_subdetID.push_back( s );
-             data.b_MML1A_ROD_moduleID.push_back( m );
-             data.b_MML1A_ROD_L1ID.push_back( r->rod_lvl1_id () );
-             data.b_MML1A_ROD_n_words.push_back( r->rod_ndata () );
-             data.b_MML1A_head_fragID.push_back( link->head_fragID() );
-             data.b_MML1A_head_sectID.push_back( link->head_sectID() );
-             data.b_MML1A_head_EC.push_back( link->head_EC() );
-             data.b_MML1A_head_flags.push_back( link->head_flags() );
-             data.b_MML1A_head_BCID.push_back( link->head_BCID() );
-             data.b_MML1A_head_orbit.push_back( link->head_orbit() );
-             data.b_MML1A_head_spare.push_back( link->head_spare() );
-             data.b_MML1A_L1ID.push_back( link->L1ID() );
-             data.b_MML1A_head_wdw_open.push_back( link->head_wdw_open() );
-             data.b_MML1A_head_l1a_req.push_back( link->head_l1a_req() );
-             data.b_MML1A_head_wdw_close.push_back( link->head_wdw_close() );
-             data.b_MML1A_head_overflowCount.push_back( link->head_overflowCount() );
-             data.b_MML1A_head_wdw_matching_engines_usage.push_back( link->head_wdw_matching_engines_usage() );
-             data.b_MML1A_head_cfg_wdw_open_offset.push_back( link->head_cfg_wdw_open_offset() );
-             data.b_MML1A_head_cfg_l1a_req_offset.push_back( link->head_cfg_l1a_req_offset() );
-             data.b_MML1A_head_cfg_wdw_close_offset.push_back( link->head_cfg_wdw_close_offset() );
-             data.b_MML1A_head_cfg_timeout.push_back( link->head_cfg_timeout() );
-             data.b_MML1A_head_link_const.push_back( link->head_link_const() );
-             data.b_MML1A_stream_head_nbits.push_back( link->stream_head_nbits() );
-             data.b_MML1A_stream_head_nwords.push_back( link->stream_head_nwords() );
-             data.b_MML1A_stream_head_fifo_size.push_back( link->stream_head_fifo_size() );
-             data.b_MML1A_stream_head_streamID.push_back( link->stream_head_streamID() );
+        if (is_pt){
+          for (size_t i = 0; i < nsw_trigger_decoder.get_elinks().size(); i++) {
+            std::shared_ptr<Muon::nsw::NSWPadTriggerL1a> link = std::dynamic_pointer_cast<Muon::nsw::NSWPadTriggerL1a>(nsw_trigger_decoder.get_elinks()[i]);
+            data.b_PadL1A_ROD_sourceID.push_back( sid );
+            data.b_PadL1A_ROD_subdetID.push_back( s );
+            data.b_PadL1A_ROD_moduleID.push_back( m );
+            data.b_PadL1A_ROD_L1ID.push_back( r->rod_lvl1_id () );
+            data.b_PadL1A_ROD_n_words.push_back( r->rod_ndata () );
+            data.b_PadL1A_flags.push_back( link->getFlags() );
+            data.b_PadL1A_ec.push_back( link->getEc() );
+            data.b_PadL1A_fragid.push_back( link->getFragid() );
+            data.b_PadL1A_secid.push_back( link->getSecid() );
+            data.b_PadL1A_spare.push_back( link->getSpare() );
+            data.b_PadL1A_orbit.push_back( link->getOrbit() );
+            data.b_PadL1A_bcid.push_back( link->getBcid() );
+            data.b_PadL1A_l1id.push_back( link->getL1id() );
+            data.b_PadL1A_hit_n.push_back( link->getNumberOfHits() );
+            data.b_PadL1A_pfeb_n.push_back( link->getNumberOfPfebs() );
+            data.b_PadL1A_trigger_n.push_back( link->getNumberOfTriggers() );
+            data.b_PadL1A_bcid_n.push_back( link->getNumberOfBcids() );
+            data.b_PadL1A_hit_relbcid.push_back( link->getHitRelBcids() );
+            data.b_PadL1A_hit_pfeb.push_back( link->getHitPfebs() );
+            data.b_PadL1A_hit_tdschannel.push_back( link->getHitTdsChannels() );
+            data.b_PadL1A_hit_vmmchannel.push_back( link->getHitVmmChannels() );
+            data.b_PadL1A_hit_vmm.push_back( link->getHitVmms() );
+            data.b_PadL1A_hit_padchannel.push_back( link->getHitPadChannels() );
+            data.b_PadL1A_pfeb_addr.push_back( link->getPfebAddresses() );
+            data.b_PadL1A_pfeb_nchan.push_back( link->getPfebNChannels() );
+            data.b_PadL1A_pfeb_disconnected.push_back( link->getPfebDisconnecteds() );
+            data.b_PadL1A_trigger_bandid.push_back( link->getTriggerBandIds() );
+            data.b_PadL1A_trigger_phiid.push_back( link->getTriggerPhiIds() );
+            data.b_PadL1A_trigger_relbcid.push_back( link->getTriggerRelBcids() );
+            data.b_PadL1A_bcid_rel.push_back( link->getBcidRels() );
+            data.b_PadL1A_bcid_status.push_back( link->getBcidStatuses() );
+            data.b_PadL1A_bcid_multzero.push_back( link->getBcidMultZeros() );
+          }
+        } else if (is_tp && is_mmg) {
+          for (size_t i = 0; i < nsw_trigger_decoder.get_elinks().size(); i++) {
+            std::shared_ptr<Muon::nsw::NSWTriggerMML1AElink> link = std::dynamic_pointer_cast<Muon::nsw::NSWTriggerMML1AElink>(nsw_trigger_decoder.get_elinks()[i]);
+            data.b_MML1A_ROD_sourceID.push_back( sid );
+            data.b_MML1A_ROD_subdetID.push_back( s );
+            data.b_MML1A_ROD_moduleID.push_back( m );
+            data.b_MML1A_ROD_L1ID.push_back( r->rod_lvl1_id () );
+            data.b_MML1A_ROD_n_words.push_back( r->rod_ndata () );
+            data.b_MML1A_head_fragID.push_back( link->head_fragID() );
+            data.b_MML1A_head_sectID.push_back( link->head_sectID() );
+            data.b_MML1A_head_EC.push_back( link->head_EC() );
+            data.b_MML1A_head_flags.push_back( link->head_flags() );
+            data.b_MML1A_head_BCID.push_back( link->head_BCID() );
+            data.b_MML1A_head_orbit.push_back( link->head_orbit() );
+            data.b_MML1A_head_spare.push_back( link->head_spare() );
+            data.b_MML1A_L1ID.push_back( link->L1ID() );
+            data.b_MML1A_head_wdw_open.push_back( link->head_wdw_open() );
+            data.b_MML1A_head_l1a_req.push_back( link->head_l1a_req() );
+            data.b_MML1A_head_wdw_close.push_back( link->head_wdw_close() );
+            data.b_MML1A_head_overflowCount.push_back( link->head_overflowCount() );
+            data.b_MML1A_head_wdw_matching_engines_usage.push_back( link->head_wdw_matching_engines_usage() );
+            data.b_MML1A_head_cfg_wdw_open_offset.push_back( link->head_cfg_wdw_open_offset() );
+            data.b_MML1A_head_cfg_l1a_req_offset.push_back( link->head_cfg_l1a_req_offset() );
+            data.b_MML1A_head_cfg_wdw_close_offset.push_back( link->head_cfg_wdw_close_offset() );
+            data.b_MML1A_head_cfg_timeout.push_back( link->head_cfg_timeout() );
+            data.b_MML1A_head_link_const.push_back( link->head_link_const() );
+            data.b_MML1A_stream_head_nbits.push_back( link->stream_head_nbits() );
+            data.b_MML1A_stream_head_nwords.push_back( link->stream_head_nwords() );
+            data.b_MML1A_stream_head_fifo_size.push_back( link->stream_head_fifo_size() );
+            data.b_MML1A_stream_head_streamID.push_back( link->stream_head_streamID() );
 
-	     const std::vector<std::shared_ptr<Muon::nsw::MMARTPacket>>& arts = link->art_packets();
-	     std::vector<uint32_t> tmp_BCIDs;
-             std::vector<uint32_t> tmp_layers;
-             std::vector<uint32_t> tmp_channels;
+            const std::vector<std::shared_ptr<Muon::nsw::MMARTPacket>>& arts = link->art_packets();
+            std::vector<uint32_t> tmp_BCIDs;
+            std::vector<uint32_t> tmp_layers;
+            std::vector<uint32_t> tmp_channels;
 
-	     for (auto art : arts){
-	       for (uint i = 0; i < art->channels().size(); i++){
-		 //so that there's a timestamp per channel
-		 tmp_layers.push_back( art->channels()[i].first );
-		 tmp_channels.push_back( art->channels()[i].second );
-		 tmp_BCIDs.push_back( art->art_BCID() );
-	       }
-	     }
+            for (auto art : arts){
+              for (uint i = 0; i < art->channels().size(); i++){
+                //so that there's a timestamp per channel
+                tmp_layers.push_back( art->channels()[i].first );
+                tmp_channels.push_back( art->channels()[i].second );
+                tmp_BCIDs.push_back( art->art_BCID() );
+              }
+            }
 
-             data.b_MML1A_art_BCID.push_back( tmp_BCIDs );
-             data.b_MML1A_art_layers.push_back( tmp_layers );
-             data.b_MML1A_art_channels.push_back( tmp_channels );
+            data.b_MML1A_art_BCID.push_back( tmp_BCIDs );
+            data.b_MML1A_art_layers.push_back( tmp_layers );
+            data.b_MML1A_art_channels.push_back( tmp_channels );
 
-             data.b_MML1A_trailer_CRC.push_back( link->trailer_CRC() );
-           }
-         }
-       }
+            data.b_MML1A_trailer_CRC.push_back( link->trailer_CRC() );
+          }
+        } else if (is_tpmon && is_mmg) {
+          for (size_t i = 0; i < nsw_trigger_decoder.get_elinks().size(); i++) {
+            std::shared_ptr<Muon::nsw::NSWTriggerMMMonElink> link = std::dynamic_pointer_cast<Muon::nsw::NSWTriggerMMMonElink>(nsw_trigger_decoder.get_elinks()[i]);
+            // if (link->finder_V1().size() > 0)
+              // std::cout << link->finder_V1()[0] << std::endl;
+              // std::cout << link->finder_V0()[0] << std::endl;
+              // std::cout << link->finder_U1()[0] << std::endl;
+              // std::cout << link->finder_U0()[0] << std::endl;
+          }
+        }
 
-     } //end if is_nsw
-   } //end for on robs
+      }
 
-   return 0;
+    } //end if is_nsw
+  } //end for on robs
+
+  return 0;
 }
 
 

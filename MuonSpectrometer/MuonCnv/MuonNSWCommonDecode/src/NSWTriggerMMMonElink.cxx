@@ -35,7 +35,7 @@ Muon::nsw::NSWTriggerMMMonElink::NSWTriggerMMMonElink (const uint32_t *bs, const
   m_head_coincRegion =    bit_slice<uint64_t,uint32_t>(bs, pp, pp+Muon::nsw::MMTPMON::size_head_coincRegion-1);   pp+=Muon::nsw::MMTPMON::size_head_coincRegion;
   m_head_reserved =       bit_slice<uint64_t,uint32_t>(bs, pp, pp+Muon::nsw::MMTPMON::size_head_reserved-1);      pp+=Muon::nsw::MMTPMON::size_head_reserved;
 
-  while ( pp < (remaining-2) * sizeof(uint32_t) ){
+  while ( pp < (remaining-2) * sizeof(uint32_t) * 8 ){
     //NB here using sizes from the finder but stream header is identical
     uint32_t current_streamID =     bit_slice<uint64_t,uint32_t>(bs, pp, pp+Muon::nsw::MMTPMON::size_finder_streamID-1);    pp+=Muon::nsw::MMTPMON::size_finder_streamID;
     uint32_t current_regionCount =  bit_slice<uint64_t,uint32_t>(bs, pp, pp+Muon::nsw::MMTPMON::size_finder_regionCount-1); pp+=Muon::nsw::MMTPMON::size_finder_regionCount;
@@ -78,9 +78,9 @@ Muon::nsw::NSWTriggerMMMonElink::NSWTriggerMMMonElink (const uint32_t *bs, const
       throw e;
     }
 
-    //warning: how the swROD is behaving if the last work is a uint16 only? Just 0-padding?
-    m_trailer_CRC =         bit_slice<uint64_t,uint32_t>(bs, pp, pp+Muon::nsw::MMTPMON::size_trailer_CRC-1);        pp+=Muon::nsw::MMTPMON::size_trailer_CRC;
 
   }
 
+  //warning: how the swROD is behaving if the last work is a uint16 only? Just 0-padding?
+  m_trailer_CRC =         bit_slice<uint64_t,uint32_t>(bs, pp, pp+Muon::nsw::MMTPMON::size_trailer_CRC-1);        pp+=Muon::nsw::MMTPMON::size_trailer_CRC;
 }
