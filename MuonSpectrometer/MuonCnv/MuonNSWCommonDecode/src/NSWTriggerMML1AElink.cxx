@@ -43,7 +43,7 @@ Muon::nsw::NSWTriggerMML1AElink::NSWTriggerMML1AElink (const uint32_t *bs, const
   //this is important! It identifies the elink! It should be ABCD1230/ABCD1231/ABCD1232
   //not checked during decoding but must be checked at some point
 
-  while ( pp < (remaining-2) * sizeof(uint32_t) ){
+  while ( pp < (remaining-2) * sizeof(uint32_t) * 8 ){
     //a -2 needed cause remaining includes felix header words
     uint32_t current_stream_head_nbits =     bit_slice<uint64_t,uint32_t>(bs, pp, pp+Muon::nsw::MMTPL1A::size_stream_head_nbits-1);     pp+= Muon::nsw::MMTPL1A::size_stream_head_nbits;
     uint32_t current_stream_head_nwords =    bit_slice<uint64_t,uint32_t>(bs, pp, pp+Muon::nsw::MMTPL1A::size_stream_head_nwords-1);    pp+= Muon::nsw::MMTPL1A::size_stream_head_nwords;
