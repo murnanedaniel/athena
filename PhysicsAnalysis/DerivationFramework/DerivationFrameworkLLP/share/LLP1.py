@@ -341,6 +341,24 @@ ToolSvc += LLP1_LRTMaxCellDecoratorTool
 augmentationTools.append(LLP1_LRTMaxCellDecoratorTool)
 
 #====================================================================
+# SUSY Track Particle Calo Cell Decorator 
+#====================================================================
+from DerivationFrameworkSUSY.DerivationFrameworkSUSYConf import DerivationFramework__TrackParticleCaloCellDecorator
+LLP1_TrackParticleCaloCellDecorator = DerivationFramework__TrackParticleCaloCellDecorator(
+        name = "LLP1_TrackParticleCaloCellDecorator",
+        DecorationPrefix = "LLP1",
+        ContainerName    = "InDetTrackParticles")
+ToolSvc += LLP1_TrackParticleCaloCellDecorator
+augmentationTools.append(LLP1_TrackParticleCaloCellDecorator)
+    
+LLP1_TrackParticleCaloCellDecorator_LargeD0 = DerivationFramework__TrackParticleCaloCellDecorator(
+        name = "LLP1_TrackParticleCaloCellDecorator",
+        DecorationPrefix = "LLP1",
+        ContainerName    = "InDetLargeD0TrackParticles")
+ToolSvc += LLP1_TrackParticleCaloCellDecorator_LargeD0
+augmentationTools.append(LLP1_TrackParticleCaloCellDecorator_LargeD0)
+
+#====================================================================
 # TRIGGER MATCHING WITH LRT LEPTONS (does not include tau chains)
 #===================================================================
 from DerivationFrameworkTrigger.TriggerMatchingHelper import TriggerMatchingHelper
@@ -489,8 +507,8 @@ LLP1SlimmingHelper.ExtraVariables += ["AntiKt10TruthTrimmedPtFrac5SmallR20Jets.T
                                       "AntiKtVR30Rmax4Rmin02TrackJets_BTagging201810.GhostBHadronsFinal.GhostCHadronsFinal.GhostBHadronsFinalCount.GhostBHadronsFinalPt.GhostCHadronsFinalCount.GhostCHadronsFinalPt.GhostTausFinal.GhostTausFinalCount",
                                       "TruthPrimaryVertices.t.x.y.z",
                                       "PrimaryVertices.t.x.y.z",
-                                      "InDetTrackParticles.d0.z0.vz.TTVA_AMVFVertices.TTVA_AMVFWeights.eProbabilityHT.truthParticleLink.truthMatchProbability.radiusOfFirstHit.hitPattern",
-                                      "InDetLargeD0TrackParticles.d0.z0.vz.TTVA_AMVFVertices.TTVA_AMVFWeights.eProbabilityHT.truthParticleLink.truthMatchProbability.radiusOfFirstHit.hitPattern",
+                                      "InDetTrackParticles.d0.z0.vz.TTVA_AMVFVertices.TTVA_AMVFWeights.eProbabilityHT.truthParticleLink.truthMatchProbability.radiusO.fFirstHit.hitPattern.LLP1_CaloCelldEta.LLP1_CaloCelldPhi.LLP1_CaloCelldR.LLP1_CaloCelldX.LLP1_CaloCelldY.LLP1_CaloCelldZ.LLP1_CaloCellE.LLP1_CaloCellEta.LLP1_CaloCellPhi.LLP1_CaloCellR.LLP1_CaloCellSampling.LLP1_CaloCellTime.LLP1_CaloCellX.LLP1_CaloCellY.LLP1_CaloCellZ",
+                                      "InDetLargeD0TrackParticles.d0.z0.vz.TTVA_AMVFVertices.TTVA_AMVFWeights.eProbabilityHT.truthParticleLink.truthMatchProbability.radiusOfFirstHit.hitPattern.LLP1_CaloCelldEta.LLP1_CaloCelldPhi.LLP1_CaloCelldR.LLP1_CaloCelldX.LLP1_CaloCelldY.LLP1_CaloCelldZ.LLP1_CaloCellE.LLP1_CaloCellEta.LLP1_CaloCellPhi.LLP1_CaloCellR.LLP1_CaloCellSampling.LLP1_CaloCellTime.LLP1_CaloCellX.LLP1_CaloCellY.LLP1_CaloCellZ",
                                       "GSFTrackParticles.d0.z0.vz.TTVA_AMVFVertices.TTVA_AMVFWeights.eProbabilityHT.truthParticleLink.truthMatchProbability.radiusOfFirstHit.numberOfPixelHoles.numberOfSCTHoles.numberDoF.chiSquared.hitPattern",
                                       "LRTGSFTrackParticles.d0.z0.vz.TTVA_AMVFVertices.TTVA_AMVFWeights.eProbabilityHT.truthParticleLink.truthMatchProbability.radiusOfFirstHit.numberOfPixelHoles.numberOfSCTHoles.numberDoF.chiSquared.hitPattern",
                                       "EventInfo.hardScatterVertexLink.timeStampNSOffset",
