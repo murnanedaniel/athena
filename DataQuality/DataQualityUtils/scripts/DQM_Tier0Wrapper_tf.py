@@ -93,12 +93,6 @@ def publish_success_to_mq(run, ptag, stream, incr, ami, procpass, hcfg, isprod, 
   conn=stomp.Connection([('atlas-mb.cern.ch', 61013)])
   conn.connect(wait=True, **stompconfig.config())
 
-  #try :
-  #  dqproject = histdsname.split('.')[0]
-  #except :
-  #  dqproject = 'data_test'
-  #  dqproject = parmap.get('projectTag', dqproject)
-
   eos_only = False
 
   servers = parmap.get('servers', 'False')
@@ -258,6 +252,7 @@ def dq_combined_trf(jsonfile, outmap):
     
     # server list
     servers = parmap.get('servers', 'False')
+    os.environ['DQC_SERVERS'] = servers
 
     # get file paths, put into environment vars
     filepaths = parmap.get('filepaths', None)
