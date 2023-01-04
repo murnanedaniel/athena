@@ -351,8 +351,9 @@ LLP1_TrackParticleCaloCellDecorator = DerivationFramework__TrackParticleCaloCell
 ToolSvc += LLP1_TrackParticleCaloCellDecorator
 augmentationTools.append(LLP1_TrackParticleCaloCellDecorator)
     
+## no InDetLargeD0TrackParticlesClusterAssociations for LRT tracks... 
 LLP1_TrackParticleCaloCellDecorator_LargeD0 = DerivationFramework__TrackParticleCaloCellDecorator(
-        name = "LLP1_TrackParticleCaloCellDecorator",
+        name = "LLP1_TrackParticleCaloCellDecorator_LargeD0",
         DecorationPrefix = "LLP1",
         ContainerName    = "InDetLargeD0TrackParticles")
 ToolSvc += LLP1_TrackParticleCaloCellDecorator_LargeD0
