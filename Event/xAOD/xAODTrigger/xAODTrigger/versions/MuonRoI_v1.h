@@ -1,7 +1,7 @@
 // Dear emacs, this is -*- c++ -*-
 
 /*
-  Copyright (C) 2002-2017 CERN for the benefit of the ATLAS collaboration
+  Copyright (C) 2002-2023 CERN for the benefit of the ATLAS collaboration
 */
 
 // $Id: MuonRoI_v1.h 631149 2014-11-26 12:26:18Z krasznaa $
@@ -9,9 +9,6 @@
 #define XAODTRIGGER_VERSIONS_MUONROI_V1_H
 
 // System include(s):
-extern "C" {
-#   include <stdint.h>
-}
 #include <string>
 
 // EDM include(s):
