@@ -19,7 +19,14 @@ LRTElectronValidationPlots::LRTElectronValidationPlots(PlotBase* pParent, const 
 										      //pt_ratio(nullptr),
 										      matrix(nullptr)
 
-{}	
+{
+  m_oCentralElecPlots.Set_d0_nBins(200);
+  m_oCentralElecPlots.Set_d0sig_nBins(200);
+  m_oCentralElecPlots.Set_z0_nBins(200);
+  m_oCentralElecPlots.Set_d0_Bins(std::vector<double>{-300.0,300.0});
+  m_oCentralElecPlots.Set_d0sig_Bins(std::vector<double>{-300.0,300.0});
+  m_oCentralElecPlots.Set_z0_Bins(std::vector<double>{-300.0,300.0});
+}	
 
 void LRTElectronValidationPlots::initializePlots(){
 
