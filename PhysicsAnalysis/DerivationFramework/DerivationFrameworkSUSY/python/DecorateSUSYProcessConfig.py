@@ -55,6 +55,14 @@ def SUSYSignalTaggerCfg(flags, derivationname):
                       primary = True)
     return acc
 
+# Configure SUSY TrackParticleCaloCellDecorator
+def TrackParticleCaloCellCfg(ConfigFlags, **kwargs):
+    from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
+    from AthenaConfiguration.ComponentFactory import CompFactory
+    acc = ComponentAccumulator()
+    acc.setPrivateTools(CompFactory.DerivationFramework.TrackParticleCaloCellDecorator(**kwargs))
+    return acc
+
 def DecorateSUSYProcessCfg(flags,derivationname):
     """Decorate SUSY processes"""
     from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator

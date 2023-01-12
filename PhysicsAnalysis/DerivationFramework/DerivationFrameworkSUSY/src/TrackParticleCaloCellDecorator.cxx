@@ -209,6 +209,10 @@ namespace DerivationFramework {
                         int sampling = -1;
                         if ( caloDDE ) {
                             sampling = caloDDE->getSampling();
+                            std::cout << m_sgName << " Cell eta: " << caloDDE->eta() << std::endl;
+                            std::cout << m_sgName << " Cell phi: " << caloDDE->eta() << std::endl;
+                            std::cout << m_sgName << " Cell energy: " << caloDDE->eta() << std::endl;
+                            std::cout << m_sgName << " Cell uncalibrated time: " << caloDDE->eta() << std::endl;
                             trackCellEta.push_back(caloDDE->eta());
                             trackCellPhi.push_back(caloDDE->phi());
                             trackCellR.push_back(caloDDE->r());

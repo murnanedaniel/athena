@@ -81,23 +81,25 @@ def LLP1KernelCfg(ConfigFlags, name='LLP1Kernel', **kwargs):
     acc.addPublicTool(LLP1LRTMaxCellDecoratorTool)
 
     # SUSY TrackParticleCaloCellDecorator
-    from DerivationFrameworkSUSY.DerivationFrameworkSUSYConf import DerivationFramework__TrackParticleCaloCellDecorator
-    LLP1_TrackParticleCaloCellDecorator = DerivationFramework__TrackParticleCaloCellDecorator(
-            name = "LLP1_TrackParticleCaloCellDecorator",
+    from DerivationFrameworkSUSY.DecorateSUSYProcessConfig import TrackParticleCaloCellCfg
+    LLP1_TrackParticleCaloCellDecoratorTool = acc.popToolsAndMerge(TrackParticleCaloCellCfg(
+            ConfigFlags, 
+            name = "LLP1_TrackParticleCaloCellDecoratorTool",
             DecorationPrefix = "LLP1",
-            ContainerName    = "InDetTrackParticles")
-    acc.addPublicTool(LLP1_TrackParticleCaloCellDecorator)
+            ContainerName    = "InDetTrackParticles"))
+    acc.addPublicTool(LLP1_TrackParticleCaloCellDecoratorTool)
         
-    LLP1_TrackParticleCaloCellDecorator_LargeD0 = DerivationFramework__TrackParticleCaloCellDecorator(
-            name = "LLP1_TrackParticleCaloCellDecorator_LargeD0",
-            DecorationPrefix = "LLP1",
-            ContainerName    = "InDetLargeD0TrackParticles")
-    acc.addPublicTool(LLP1_TrackParticleCaloCellDecorator_LargeD0)
+    LLP1_TrackParticleCaloCellDecoratorTool_LargeD0 = acc.popToolsAndMerge(TrackParticleCaloCellCfg(
+            ConfigFlags, 
+            name = "LLP1_TrackParticleCaloCellDecoratorTool_LargeD0",
+            DecorationPrefix = "LLP1LargeD0",
+            ContainerName    = "InDetLargeD0TrackParticles"))
+    acc.addPublicTool(LLP1_TrackParticleCaloCellDecoratorTool_LargeD0)
 
     augmentationTools = [ LLP1MaxCellDecoratorTool,
                           LLP1LRTMaxCellDecoratorTool,
-                          LLP1_TrackParticleCaloCellDecorator,
-                          LLP1_TrackParticleCaloCellDecorator_LargeD0]
+                          LLP1_TrackParticleCaloCellDecoratorTool, 
+                          LLP1_TrackParticleCaloCellDecoratorTool_LargeD0]
 
     # Common augmentations
     from DerivationFrameworkPhys.PhysCommonConfig import PhysCommonAugmentationsCfg
@@ -383,7 +385,7 @@ def LLP1Cfg(ConfigFlags):
                                           "TruthPrimaryVertices.t.x.y.z",
                                           "PrimaryVertices.t.x.y.z",
                                           "InDetTrackParticles.d0.z0.vz.TTVA_AMVFVertices.TTVA_AMVFWeights.eProbabilityHT.truthParticleLink.truthMatchProbability.radiusO.fFirstHit.hitPattern.LLP1_CaloCelldEta.LLP1_CaloCelldPhi.LLP1_CaloCelldR.LLP1_CaloCelldX.LLP1_CaloCelldY.LLP1_CaloCelldZ.LLP1_CaloCellE.LLP1_CaloCellEta.LLP1_CaloCellPhi.LLP1_CaloCellR.LLP1_CaloCellSampling.LLP1_CaloCellTime.LLP1_CaloCellX.LLP1_CaloCellY.LLP1_CaloCellZ",
-                                          "InDetLargeD0TrackParticles.d0.z0.vz.TTVA_AMVFVertices.TTVA_AMVFWeights.eProbabilityHT.truthParticleLink.truthMatchProbability.radiusOfFirstHit.hitPattern.LLP1_CaloCelldEta.LLP1_CaloCelldPhi.LLP1_CaloCelldR.LLP1_CaloCelldX.LLP1_CaloCelldY.LLP1_CaloCelldZ.LLP1_CaloCellE.LLP1_CaloCellEta.LLP1_CaloCellPhi.LLP1_CaloCellR.LLP1_CaloCellSampling.LLP1_CaloCellTime.LLP1_CaloCellX.LLP1_CaloCellY.LLP1_CaloCellZ",
+                                          "InDetLargeD0TrackParticles.d0.z0.vz.TTVA_AMVFVertices.TTVA_AMVFWeights.eProbabilityHT.truthParticleLink.truthMatchProbability.radiusOfFirstHit.hitPattern.LLP1LargeD0_CaloCelldEta.LLP1LargeD0_CaloCelldPhi.LLP1LargeD0_CaloCelldR.LLP1LargeD0_CaloCelldX.LLP1LargeD0_CaloCelldY.LLP1LargeD0_CaloCelldZ.LLP1LargeD0_CaloCellE.LLP1LargeD0_CaloCellEta.LLP1LargeD0_CaloCellPhi.LLP1LargeD0_CaloCellR.LLP1LargeD0_CaloCellSampling.LLP1LargeD0_CaloCellTime.LLP1LargeD0_CaloCellX.LLP1LargeD0_CaloCellY.LLP1LargeD0_CaloCellZ",
                                           "GSFTrackParticles.d0.z0.vz.TTVA_AMVFVertices.TTVA_AMVFWeights.eProbabilityHT.truthParticleLink.truthMatchProbability.radiusOfFirstHit.numberOfPixelHoles.numberOfSCTHoles.numberDoF.chiSquared.hitPattern",
                                           "LRTGSFTrackParticles.d0.z0.vz.TTVA_AMVFVertices.TTVA_AMVFWeights.eProbabilityHT.truthParticleLink.truthMatchProbability.radiusOfFirstHit.numberOfPixelHoles.numberOfSCTHoles.numberDoF.chiSquared.hitPattern",
                                           "EventInfo.hardScatterVertexLink.timeStampNSOffset",
