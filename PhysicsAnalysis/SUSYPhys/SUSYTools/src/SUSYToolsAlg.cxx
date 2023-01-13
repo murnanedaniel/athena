@@ -1407,6 +1407,7 @@ StatusCode SUSYToolsAlg::bookHistograms(void) {
 void SUSYToolsAlg::groupSysts(void) {
   syst_all.clear();
   syst_weights.clear();
+  const std::vector<std::string> Nominal{"Nominal"};
   for (const auto& sysInfo : sysInfoList) {
     std::string sys_name = sysInfo.systset.name();
     std::string sys_affects = ST::testAffectsObject(sysInfo.affectsType);
@@ -1416,12 +1417,12 @@ void SUSYToolsAlg::groupSysts(void) {
 
     // collect all syst names
     // per affected object
-    syst_all.try_emplace(sys_affects, std::vector<std::string>{"Nominal"});
+    syst_all.try_emplace(sys_affects, Nominal);
     syst_all[sys_affects].push_back(sys_name);
 
     // weight related syst
     if (sys_affects_weights) {
-       syst_weights.try_emplace(sys_affects, std::vector<std::string>{"Nominal"});
+       syst_weights.try_emplace(sys_affects, Nominal);
        syst_weights[sys_affects].push_back(sys_name);
     }
   }
