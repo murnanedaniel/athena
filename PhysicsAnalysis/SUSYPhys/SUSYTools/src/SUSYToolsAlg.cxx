@@ -1416,12 +1416,12 @@ void SUSYToolsAlg::groupSysts(void) {
 
     // collect all syst names
     // per affected object
-    if (syst_all.find(sys_affects) == syst_all.end()) syst_all.try_emplace(sys_affects, {"Nominal"});
+    syst_all.try_emplace(sys_affects, std::vector<std::string>{"Nominal"});
     syst_all[sys_affects].push_back(sys_name);
 
     // weight related syst
     if (sys_affects_weights) {
-       if (syst_weights.find(sys_affects) == syst_weights.end()) syst_weights.try_emplace(sys_affects, {"Nominal"});
+       syst_weights.try_emplace(sys_affects, std::vector<std::string>{"Nominal"});
        syst_weights[sys_affects].push_back(sys_name);
     }
   }
