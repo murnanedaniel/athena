@@ -142,10 +142,6 @@ double findMean(TH1D* s, double frac=0.95) {
       }
     }
     
-    if ( it>=20 ) { 
-      std::cerr << s->GetName() << "\tMax iterations " << it << " reached" << std::endl;
-    }
-    
     mean = m;
     meane = me;
     
