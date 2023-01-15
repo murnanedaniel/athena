@@ -252,7 +252,8 @@ def dq_combined_trf(jsonfile, outmap):
     
     # server list
     servers = parmap.get('servers', 'False')
-    os.environ['DQC_SERVERS'] = servers
+    if 'servers' in parmap and isinstance(parmap['servers'], str):
+      os.environ['DQC_SERVERS'] = parmap['servers']
 
     # get file paths, put into environment vars
     filepaths = parmap.get('filepaths', None)
