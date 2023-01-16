@@ -126,7 +126,7 @@ StatusCode InDet::StagedTrackingGeometryBuilder::initialize()
 }
 
 
-Trk::TrackingGeometry* InDet::StagedTrackingGeometryBuilder::trackingGeometry
+std::unique_ptr<Trk::TrackingGeometry> InDet::StagedTrackingGeometryBuilder::trackingGeometry
 (Trk::TrackingVolume*) const
 {
    // only one assumption: 
@@ -136,7 +136,7 @@ Trk::TrackingGeometry* InDet::StagedTrackingGeometryBuilder::trackingGeometry
    
    ////////////////////////////////////////////////////////////////////////////////////////////////////////    
    // The Overall Geometry
-   Trk::TrackingGeometry* trackingGeometry = nullptr;   
+   std::unique_ptr<Trk::TrackingGeometry> trackingGeometry{};
 
    // get the dimensions from the envelope service 
    const RZPairVector& envelopeDefs = m_enclosingEnvelopeSvc->getInDetRZBoundary();
@@ -155,15 +155,19 @@ Trk::TrackingGeometry* InDet::StagedTrackingGeometryBuilder::trackingGeometry
        ATH_MSG_DEBUG( "[ LayerBuilder : '" << lProvider->identification() << "' ] being processed. " );
        // retrieve the layers
        std::vector<Trk::Layer*> centralLayers = lProvider->centralLayers();
-       std::vector<Trk::Layer*> negativeLayers = lProvider->negativeLayers();
-       std::vector<Trk::Layer*> positiveLayers = lProvider->positiveLayers();
+       std::pair<const std::vector<Trk::Layer*>, const std::vector<Trk::Layer*> > endcapLayersPair = lProvider->endcapLayer();
        ATH_MSG_VERBOSE("       -> retrieved "  << centralLayers.size()  << " central layers.");
-       ATH_MSG_VERBOSE("       -> retrieved "  << negativeLayers.size() << " layers on negative side.");
-       ATH_MSG_VERBOSE("       -> retrieved "  << positiveLayers.size() << " layers on positive side.");
+       ATH_MSG_VERBOSE("       -> retrieved "  << endcapLayersPair.second.size() << " layers on negative side.");
+       ATH_MSG_VERBOSE("       -> retrieved "  << endcapLayersPair.first.size() << " layers on positive side.");
        // getting the Layer setup from parsing the builder output
-       InDet::LayerSetup lSetup = estimateLayerSetup(lProvider->identification(), ilS, 
-                                                     negativeLayers,centralLayers,positiveLayers,
-                                                     envelopeVolumeRadius, envelopeVolumeHalfZ);
+       InDet::LayerSetup lSetup =
+         estimateLayerSetup(lProvider->identification(),
+                            ilS,
+                            endcapLayersPair.second,
+                            centralLayers,
+                            endcapLayersPair.first,
+                            envelopeVolumeRadius,
+                            envelopeVolumeHalfZ);
        // get the maxima - for R and Z
        takeBigger(maximumLayerRadius, lSetup.rMax);
        takeBigger(maximumLayerExtendZ, lSetup.zMax);
@@ -292,7 +296,7 @@ Trk::TrackingGeometry* InDet::StagedTrackingGeometryBuilder::trackingGeometry
        m_replaceJointBoundaries);
 
    //  create the TrackingGeometry ------------------------------------------------------  
-   trackingGeometry = new Trk::TrackingGeometry(enclosedDetector);
+   trackingGeometry = std::make_unique<Trk::TrackingGeometry>(enclosedDetector);
    
    if (m_indexStaticLayers) {
       ATH_MSG_VERBOSE("Re-index the static layers ...");
