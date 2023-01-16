@@ -1417,13 +1417,13 @@ void SUSYToolsAlg::groupSysts(void) {
 
     // collect all syst names
     // per affected object
-    syst_all.try_emplace(sys_affects, Nominal);
-    syst_all[sys_affects].push_back(sys_name);
+    const auto & [pairPtr, inserted] = syst_all.try_emplace(sys_affects, Nominal);
+    pairPtr->second.push_back(sys_name);
 
     // weight related syst
     if (sys_affects_weights) {
-       syst_weights.try_emplace(sys_affects, Nominal);
-       syst_weights[sys_affects].push_back(sys_name);
+      const auto & [pairPtr_w, inserted_w] = syst_weights.try_emplace(sys_affects, Nominal);
+      pairPtr_w->second.push_back(sys_name);
     }
   }
 }
