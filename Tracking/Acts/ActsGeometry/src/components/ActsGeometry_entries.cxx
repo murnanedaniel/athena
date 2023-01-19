@@ -5,6 +5,7 @@
 #include "ActsGeometry/ActsATLASConverterTool.h"
 
 #include "ActsGeometry/ActsExtrapolationAlg.h"
+#include "ActsGeometry/TrackDumperAlg.h"
 #include "ActsGeometry/ActsWriteTrackingGeometry.h"
 #include "ActsGeometry/ActsWriteTrackingGeometryTransforms.h"
 #include "ActsGeometry/ActsTrackingGeometrySvc.h"
@@ -27,6 +28,7 @@
 #include "ActsGeometry/ActsMaterialJsonWriterTool.h"
 
 DECLARE_COMPONENT( ActsExtrapolationAlg )
+DECLARE_COMPONENT( TrackDumperAlg )
 DECLARE_COMPONENT( ActsWriteTrackingGeometry )
 DECLARE_COMPONENT( ActsWriteTrackingGeometryTransforms )
 DECLARE_COMPONENT( ActsTrackingGeometrySvc )

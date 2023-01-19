@@ -54,6 +54,7 @@ atlas_add_library( ActsGeometryLib
 
 atlas_add_component( ActsGeometry
                      src/ActsExtrapolationAlg.cxx
+										 src/TrackDumperAlg.cxx
                      src/ActsWriteTrackingGeometry.cxx
                      src/ActsWriteTrackingGeometryTransforms.cxx
                      src/ActsExtrapolationTool.cxx
