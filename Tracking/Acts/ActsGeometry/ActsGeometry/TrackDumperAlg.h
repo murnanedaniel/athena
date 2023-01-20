@@ -12,6 +12,7 @@
 #include "Gaudi/Property.h"  /*no forward decl: typedef*/
 #include "GaudiKernel/ISvcLocator.h"
 #include "xAODTracking/TrackParticleContainer.h"
+#include "xAODTracking/VertexContainer.h"
 
 // ACTS
 #include "Acts/EventData/TrackParameters.hpp"
@@ -48,6 +49,11 @@ public:
 private:
 
   SG::ReadHandleKey<xAOD::TrackParticleContainer>  m_trackName{this, "TrackParticles", "InDetTrackParticles", "Collection name for track particles"};
+  SG::ReadHandleKey<xAOD::VertexContainer>  m_vertexName{this, "TruthVertices", "TruthVertices", "Collection name for truth vertices"};
+  DoubleProperty m_d0Cut{this, "d0cut", 5, "Abs d0 cut"};
+
+
+
 };
 
 #endif // ActsGeometry_ActsExtrapolation_h
