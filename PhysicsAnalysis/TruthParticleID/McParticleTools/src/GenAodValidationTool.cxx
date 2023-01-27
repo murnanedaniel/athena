@@ -362,8 +362,8 @@ bool GenAodValidationTool::compareVtx( const HepMC::ConstGenVertexPtr& vtx1, con
     ATH_MSG_ERROR("Not the same number of branches !!" << endmsg  << " in:  " << inVtx1.size()  << "\t" << inVtx2.size());
     return false;
   }
-  std::sort(inVtx1.begin(), inVtx1.end(), [](auto& a, auto& b) -> bool{a->momentum().pz() > b->momentum().pz(); });
-  std::sort(inVtx2.begin(), inVtx2.end(), [](auto& a, auto& b) -> bool{a->momentum().pz() > b->momentum().pz(); });
+  std::sort(inVtx1.begin(), inVtx1.end(), [](auto& a, auto& b) -> bool{return a->momentum().pz() > b->momentum().pz(); });
+  std::sort(inVtx2.begin(), inVtx2.end(), [](auto& a, auto& b) -> bool{return a->momentum().pz() > b->momentum().pz(); });
   for (size_t i=0; i<inVtx1.size(); ++i){
      if ( compareParts( inVtx1.at(i), inVtx2.at(i) ) ) continue;
      ATH_MSG_ERROR("In-going particles are NOT matching !!");
@@ -375,8 +375,8 @@ bool GenAodValidationTool::compareVtx( const HepMC::ConstGenVertexPtr& vtx1, con
     ATH_MSG_ERROR("Not the same number of branches !!" << endmsg  << " out:  " << outVtx1.size()  << "\t" << outVtx2.size());
     return false;
   }
-  std::sort(outVtx1.begin(), outVtx1.end(), [](auto& a, auto& b) -> bool{a->momentum().pz() > b->momentum().pz(); });
-  std::sort(outVtx2.begin(), outVtx2.end(), [](auto& a, auto& b) -> bool{a->momentum().pz() > b->momentum().pz(); });
+  std::sort(outVtx1.begin(), outVtx1.end(), [](auto& a, auto& b) -> bool{return a->momentum().pz() > b->momentum().pz(); });
+  std::sort(outVtx2.begin(), outVtx2.end(), [](auto& a, auto& b) -> bool{return a->momentum().pz() > b->momentum().pz(); });
   for (size_t i=0; i<outVtx1.size(); ++i){
      if ( compareParts( outVtx1.at(i), outVtx2.at(i) ) ) continue;
      ATH_MSG_ERROR("Out-going particles are NOT matchiutg !!");
