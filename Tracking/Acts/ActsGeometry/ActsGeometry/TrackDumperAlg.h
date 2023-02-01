@@ -12,7 +12,20 @@
 #include "Gaudi/Property.h"  /*no forward decl: typedef*/
 #include "GaudiKernel/ISvcLocator.h"
 #include "xAODTracking/TrackParticleContainer.h"
+#include "xAODTruth/TruthVertexContainer.h"
+#include "xAODTruth/TruthParticleContainer.h"
+#include "xAODTruth/TruthParticle.h"
 #include "xAODTracking/VertexContainer.h"
+
+#include "xAODTruth/TruthEvent.h"
+#include "xAODTruth/TruthEventContainer.h"
+#include "xAODTruth/TruthEventAuxContainer.h"
+
+#include "xAODTruth/TruthPileupEvent.h"
+#include "xAODTruth/TruthPileupEventContainer.h"
+#include "xAODTruth/TruthPileupEventAuxContainer.h"
+
+
 
 // ACTS
 #include "Acts/EventData/TrackParameters.hpp"
@@ -49,8 +62,15 @@ public:
 private:
 
   SG::ReadHandleKey<xAOD::TrackParticleContainer>  m_trackName{this, "TrackParticles", "InDetTrackParticles", "Collection name for track particles"};
-  SG::ReadHandleKey<xAOD::VertexContainer>  m_vertexName{this, "TruthVertices", "TruthVertices", "Collection name for truth vertices"};
-  DoubleProperty m_d0Cut{this, "d0cut", 5, "Abs d0 cut"};
+  SG::ReadHandleKey<xAOD::TruthVertexContainer>  m_vertexName{this, "TruthVertices", "TruthVertices", "Collection name for truth vertices"};
+  SG::ReadHandleKey<xAOD::TruthEventContainer>  m_truthEventName{this, "TruthEvents", "TruthEvents", "Collection name for TruthEvents"};
+  SG::ReadHandleKey<xAOD::TruthPileupEventContainer>  m_truthPileupEventName{this, "TruthPileupEvents", "TruthPileupEvents", "Collection name for TruthPileupEvents"};
+
+
+
+
+
+  DoubleProperty m_d0Cut{this, "d0cut", 5, "Abs d0 cut in mm"};
 
 
 
