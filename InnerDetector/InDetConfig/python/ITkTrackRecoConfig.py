@@ -197,7 +197,7 @@ def ITkTrackRecoOutputCfg(flags):
             "xAOD::TrackStateValidationAuxContainer#ITkStripMSOSsAux."
         ]
 
-    if flags.ITk.Tracking.doLargeD0 and flags.ITk.Tracking.storeSeparateLargeD0Container:
+    if flags.Tracking.doLargeD0 and flags.Tracking.storeSeparateLargeD0Container:
         toAOD += [
             'xAOD::TrackParticleContainer#InDet{}TrackParticles'.format(
                 flags.ITk.Tracking.LargeD0Pass.extension
