@@ -917,8 +917,7 @@ void StripDigitizationTool::addSDO(SiChargedDiodeCollection* collection, SG::Wri
       if (theDeposit != depositsR_end) {
         (*theDeposit).second += i_ListOfCharges->charge();
       } else { // create a new deposit
-        InDetSimData::Deposit deposit(trkLink, i_ListOfCharges->charge());
-        deposits.push_back(deposit);
+        deposits.emplace_back(trkLink, i_ListOfCharges->charge());
       }
     }
 
