@@ -865,7 +865,7 @@ def make_lite(meta_dict):
                         meta_dict[filename][key].pop(item)
 
         if '/TagInfo' in file_content:
-            keys_to_keep = ['beam_energy', 'beam_type', 'GeoAtlas', 'IOVDbGlobalTag', 'AODFixVersion', 'project_name']
+            keys_to_keep = ['beam_energy', 'beam_type', 'GeoAtlas', 'IOVDbGlobalTag', 'AODFixVersion', 'project_name','hepmc_version']
 
             for item in list(meta_dict[filename]['/TagInfo']):
                 if item not in keys_to_keep:
