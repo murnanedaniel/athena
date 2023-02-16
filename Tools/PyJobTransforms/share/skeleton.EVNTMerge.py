@@ -44,8 +44,21 @@ if hasattr(runArgs, "postInclude"):
 if hasattr(runArgs, "postExec"):
     for cmd in runArgs.postExec:
         exec(cmd)
-              
+
+#==============================================================
+## Special configuration
+from AthenaConfiguration.AutoConfigFlags import GetFileMD
+hepmc_version = GetFileMD(ServiceMgr.EventSelector.InputCollections).get("hepmc_version", None)
+if hepmc_version is not None:
+    log = logging.getLogger('EVNTMerge')
+    if hepmc_version == "2":
+        hepmc_version = "HepMC2"
+    elif hepmc_version == "3":
+        hepmc_version = "HepMC3"
+    log.info('Input file was produced with %s', hepmc_version)
+    ServiceMgr.TagInfoMgr.ExtraTagValuePairs.update({"hepmc_version": hepmc_version})              
 ########## EOF ###############
+
 
 
 
