@@ -322,6 +322,7 @@ ISF::InputConverter::convertParticle(HepMC::GenParticlePtr genPartPtr, EBC_EVCOL
   const int bcid = (kindOfCollection==EBC_MAINEVCOLL) ? 0 : 1;
 
   auto hmpl = std::make_unique<HepMcParticleLink>(pBarcode, parentEvent->event_number(), kindOfCollection);
+  
   auto sParticle = std::make_unique<ISF::ISFParticle>( std::move(pos),
                                                        std::move(mom),
                                                        pMass,
