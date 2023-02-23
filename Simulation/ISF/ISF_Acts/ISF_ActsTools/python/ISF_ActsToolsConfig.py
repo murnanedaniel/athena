@@ -1,7 +1,13 @@
-# Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+"""ComponentAccumulator tool configuration for ISF_ActsTools
 
-from AthenaCommon import CfgMgr
+Copyright (C) 2002-2022 CERN for the benefit of the ATLAS collaboration
+"""
+from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
+from AthenaConfiguration.ComponentFactory import CompFactory
 
-def getActsFatrasSimTool(name="ISF_ActsFatrasSimTool", **kwargs):
-    kwargs.setdefault('MaxSteps'          , 2000           )
-    return CfgMgr.ISF__ActsFatrasSimTool(name, **kwargs)
+def ActsFatrasSimToolCfg(flags, name="ISF_ActsFatrasSimTool", **kwargs):
+    """Return ISF_FatrasSimHitCreatorID configured with ComponentAccumulator"""
+    acc = ComponentAccumulator()
+    kwargs.setdefault("MaxSteps", 1500)
+    acc.setPrivateTools(CompFactory.ISF.ActsFatrasSimTool(name, **kwargs))
+    return acc
