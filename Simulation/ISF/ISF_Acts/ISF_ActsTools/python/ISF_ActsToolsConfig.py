@@ -11,6 +11,6 @@ def ActsFatrasSimToolCfg(flags, name="ISF_ActsFatrasSimTool", **kwargs):
     from ActsGeometry.ActsGeometryConfig import ActsTrackingGeometryToolCfg
     kwargs.setdefault('TrackingGeometryTool', acc.popToolsAndMerge(ActsTrackingGeometryToolCfg(flags)))
 
-    kwargs.setdefault("MaxSteps", 1500)
+    kwargs.setdefault("MaxSteps", 2000)
     acc.setPrivateTools(CompFactory.ISF.ActsFatrasSimTool(name, **kwargs))
     return acc
