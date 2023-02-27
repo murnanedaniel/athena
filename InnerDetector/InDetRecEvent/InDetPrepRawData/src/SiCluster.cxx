@@ -30,7 +30,8 @@ SiCluster::SiCluster(
         m_width(width),
         m_globalPosition(0),
         m_gangedPixel(0),
-        m_detEl(detEl) {}
+        m_detEl(detEl),
+        m_index(0) {}
 
 SiCluster::SiCluster(
         const Identifier &RDOId,
@@ -46,7 +47,8 @@ SiCluster::SiCluster(
         m_width(width),
         m_globalPosition(0),
         m_gangedPixel(0),
-        m_detEl(detEl) {}
+        m_detEl(detEl),
+        m_index(0) {}
 
 // Destructor:
 SiCluster::~SiCluster()
@@ -60,7 +62,8 @@ SiCluster::SiCluster():
 	PrepRawData(),
 	m_globalPosition(0),
 	m_gangedPixel(0),
-	m_detEl(0)
+	m_detEl(0),
+	m_index(0) 
 {}
 
 //copy constructor:
@@ -69,7 +72,8 @@ SiCluster::SiCluster(const SiCluster& RIO):
 	m_width( RIO.m_width ),
 	m_globalPosition( 0 ),
 	m_gangedPixel( RIO.m_gangedPixel ),
-	m_detEl( RIO.m_detEl )
+	m_detEl( RIO.m_detEl ),
+        m_index( RIO.m_index )
 
 {
   // copy only if it exists
@@ -82,7 +86,8 @@ SiCluster::SiCluster(SiCluster&& RIO):
 	m_width( std::move(RIO.m_width) ),
 	m_globalPosition( RIO.m_globalPosition ),
 	m_gangedPixel( RIO.m_gangedPixel ),
-	m_detEl( RIO.m_detEl )
+	m_detEl( RIO.m_detEl ),
+        m_index( RIO.m_index )
 
 {
   RIO.m_globalPosition = nullptr;
@@ -97,6 +102,7 @@ SiCluster& SiCluster::operator=(const SiCluster& RIO){
 		m_globalPosition = (RIO.m_globalPosition) ? new Amg::Vector3D(*RIO.m_globalPosition) : 0;
 		m_gangedPixel = RIO.m_gangedPixel;
 		m_detEl =  RIO.m_detEl ;
+                m_index = RIO.m_index ;
        }
        return *this;
 } 
@@ -111,6 +117,7 @@ SiCluster& SiCluster::operator=(SiCluster&& RIO){
                 RIO.m_globalPosition = nullptr;
 		m_gangedPixel = RIO.m_gangedPixel;
 		m_detEl =  RIO.m_detEl ;
+                m_index = RIO.m_index ;
        }
        return *this;
 } 
@@ -176,6 +183,14 @@ std::ostream& SiCluster::dump( std::ostream&    stream) const
     std::ostream& operator << (std::ostream& stream, const SiCluster& prd)
     {
         return prd.dump(stream);
+    }
+    
+    void SiCluster::setIndex(int index) {
+      m_index = index;  
+    }
+
+    int SiCluster::getIndex() const {
+      return m_index;
     }
 
 

@@ -108,12 +108,18 @@ class SiCluster :   public Trk::PrepRawData {
 	virtual MsgStream&    dump( MsgStream&    stream) const;
 	/** dump information about the SiCluster*/
 	virtual std::ostream& dump( std::ostream& stream) const;
+  
+        void setIndex(int index);
+        int getIndex() const;
+  
 
 	private:
 	InDet::SiWidth m_width; //col, row, and width in mm
 	mutable const Amg::Vector3D* m_globalPosition;
 	bool m_gangedPixel;
 	const InDetDD::SiDetectorElement* m_detEl;
+  
+        int m_index;
 
 };
 
