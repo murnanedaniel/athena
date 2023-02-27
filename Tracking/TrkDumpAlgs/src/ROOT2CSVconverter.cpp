@@ -509,7 +509,7 @@ int main()
 {
   std::cout << "Starting convertion ROOT -> txt" << std::endl;
 
-  std::string filename = "Dumper2/Dump_GNN4Itk.root";
+  std::string filename = "Dump_GNN4Itk.root";
   ROOT2CSVconverter converter (filename);
 
   converter.convert_subevents ();
