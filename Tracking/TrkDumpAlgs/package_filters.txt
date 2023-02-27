@@ -1,0 +1,8 @@
++ InnerDetector/InDetRecEvent/InDetPrepRawData
++ InnerDetector/InDetEventCnv/InDetEventTPCnv
++ InnerDetector/InDetRecAlgs/InDetPrepRawDataFormation
++ InnerDetector/InDetRecTools/SiClusterizationTool
++ InnerDetector/InDetExample/InDetRecExample
++ Simulation/ISF/ISF_HepMC/ISF_HepMC_Tools
++ Tracking/TrkDumpAlgs
+- .*
