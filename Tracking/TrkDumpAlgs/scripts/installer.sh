@@ -18,17 +18,15 @@ git checkout 21.9.26-root-and-csv-files-from-RDO
 cd "$local_dir/athena"
 #     [i.e. return to the « head » directory of the local copy of athena]
 
-cp Tracking/TrkDumpAlgs/package_filters.txt ../
+#cp Tracking/TrkDumpAlgs/package_filters.txt ../
 mkdir build
 cd build
-pwd
-cmake -DATLAS_PACKAGE_FILTER_FILE=$local_dir/package_filters.txt $local_dir/athena/Projects/WorkDir
+cmake -DATLAS_PACKAGE_FILTER_FILE=${local_dir}/athena/Tracking/TrkDumpAlgs/package_filters.txt ${local_dir}/athena/Projects/WorkDir
 #     [This configures a « sparse build » : only the packages that are listed in package_filter.txt will be recompiled, the rest is taken from the official ATLAS release.]
 
 make
 #     [This is the actual build]
 
-pwd
 source x86_64-centos7-gcc62-opt/setup.sh 
 #     [activate our sparse build for execution]
 
