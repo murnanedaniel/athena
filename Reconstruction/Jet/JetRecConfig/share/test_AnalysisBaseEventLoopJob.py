@@ -7,7 +7,7 @@
 #  python test_AnalysisBaseEventLoopJob.py
 #
 # WARNING : this is experimental. Pay attention to the TEMPORARY comments : these are still needed to run the job.
-import ROOT
+import ROOT, os
 
 ROOT.JetSorter # TEMPORARY : ask ROOT/cppyy to load simple jet tool first. Otherwise loading other tools might result in crash.
 
@@ -28,7 +28,7 @@ filePattern = 'AOD.24230077._000510.pool.root.1'
 import JetRecConfig.JetAnalysisCommon
 
 from JetRecConfig.JetRecConfig import JetRecCfg
-from JetRecConfig.StandardSmallRJets import AntiKt4LCTopo, AntiKt4Truth
+from JetRecConfig.StandardSmallRJets import AntiKt4EMPFlow, AntiKt4LCTopo, AntiKt4Truth
 
 
 # TEMPORARY : we need to run a simplistic AnaAlgorithm (and NOT a AnaReentrantAlgorithm like jet algs) as the
@@ -38,17 +38,11 @@ aa = CompFactory.TCAlg('AA')
 
 
 # We need to setup the flags according to our input file :
-flags = JetRecConfig.JetAnalysisCommon.setupFlags(inputFiles=[inputFilePath+filePattern])
-
-#*******************************************************************
-# Some flags are not available in AnalysisBase.
-# Add them manually :
-flags.addFlag('Reco.EnableTracking',True)
-flags.addFlag('Reco.EnableCombinedMuon',True)
+ConfigFlags = JetRecConfig.JetAnalysisCommon.setupFlags(inputFiles=[inputFilePath+filePattern])
 
 # Schedule 2 jet containers
 # truth jets :
-acc=JetRecCfg(flags, AntiKt4Truth )
+acc=JetRecCfg(ConfigFlags, AntiKt4Truth )
 
 # we re-define AntiKt4LCTopo adding a suffix to the output and the modifiers :
 myAk4LCtopo = AntiKt4LCTopo.clone(suffix="ReDone",
@@ -58,7 +52,7 @@ myAk4LCtopo = AntiKt4LCTopo.clone(suffix="ReDone",
                                   )
 
 # generate the config and append it to acc :
-acc.merge(JetRecCfg( flags, myAk4LCtopo ))
+acc.merge(JetRecCfg( ConfigFlags, myAk4LCtopo ))
 
 # acc contains all the algs (inputs + jet finding) needed. Just set debug mode for the last one : 
 acc.algs[-1].OutputLevel = 2

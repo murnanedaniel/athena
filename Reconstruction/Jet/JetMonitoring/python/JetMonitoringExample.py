@@ -167,22 +167,21 @@ if __name__=='__main__':
     log.setLevel(INFO)
 
     # Set the Athena configuration flags
-    from AthenaConfiguration.AllConfigFlags import initConfigFlags
+    from AthenaConfiguration.AllConfigFlags import ConfigFlags
     #fileName = 'TestAOD.root'
     fileName = '/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/CommonInputs/data16_13TeV.00311321.physics_Main.recon.AOD.r9264/AOD.11038520._000001.pool.root.1'
-    flags = initConfigFlags()
-    flags.Input.Files = [fileName]
-    flags.Input.isMC = False
-    flags.Output.HISTFileName = 'JetExampleMonitorOutput.root'
-    flags.lock()
+    ConfigFlags.Input.Files = [fileName]
+    ConfigFlags.Input.isMC = False
+    ConfigFlags.Output.HISTFileName = 'JetExampleMonitorOutput.root'
+    ConfigFlags.lock()
 
     # Initialize configuration object, add accumulator, merge, and run.
     from AthenaConfiguration.MainServicesConfig import MainServicesCfg 
     from AthenaPoolCnvSvc.PoolReadConfig import PoolReadCfg
-    cfg = MainServicesCfg(flags)
-    cfg.merge(PoolReadCfg(flags))
+    cfg = MainServicesCfg(ConfigFlags)
+    cfg.merge(PoolReadCfg(ConfigFlags))
 
-    exampleMonitorAcc = jetMonitoringExampleConfig(flags)
+    exampleMonitorAcc = jetMonitoringExampleConfig(ConfigFlags)
     
     cfg.merge(exampleMonitorAcc)
     #cfg.run()

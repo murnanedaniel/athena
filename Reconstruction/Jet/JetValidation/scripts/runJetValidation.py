@@ -13,23 +13,22 @@ def GetCustomAthArgs():
 # Parse the arguments
 MyArgs = GetCustomAthArgs()
 
-from AthenaConfiguration.AllConfigFlags import initConfigFlags
-flags = initConfigFlags()
-flags.Input.Files = []
+from AthenaConfiguration.AllConfigFlags import ConfigFlags
+ConfigFlags.Input.Files = []
 for path in MyArgs.filesInput.split(','):
-    flags.Input.Files += glob(path)
-flags.PhysVal.OutputFileName = MyArgs.outputFile
+    ConfigFlags.Input.Files += glob(path)
+ConfigFlags.PhysVal.OutputFileName = MyArgs.outputFile
 
-flags.lock()
+ConfigFlags.lock()
 
 from AthenaConfiguration.MainServicesConfig import MainServicesCfg
-acc = MainServicesCfg(flags)
+acc = MainServicesCfg(ConfigFlags)
 from AthenaPoolCnvSvc.PoolReadConfig import PoolReadCfg
-acc.merge(PoolReadCfg(flags))
+acc.merge(PoolReadCfg(ConfigFlags))
 
 from JetValidation.JetValidationConfig import PhysValJetCfg
 from PhysValMonitoring.PhysValMonitoringConfig import PhysValMonitoringCfg
-acc.merge(PhysValMonitoringCfg(flags, tools=[acc.popToolsAndMerge(PhysValJetCfg(flags))]))
+acc.merge(PhysValMonitoringCfg(ConfigFlags, tools=[acc.popToolsAndMerge(PhysValJetCfg(ConfigFlags))]))
 
 acc.printConfig(withDetails=True)
 

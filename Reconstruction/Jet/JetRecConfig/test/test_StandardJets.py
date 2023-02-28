@@ -42,25 +42,24 @@ Logging.log.setLevel(msgLvl)
 tlog = Logging.logging.getLogger('test_StandardJets')
 
 # Config flags steer the job at various levels
-from AthenaConfiguration.AllConfigFlags import initConfigFlags
-flags = initConfigFlags()
-flags.Input.Files = args.filesIn.split(",")
+from AthenaConfiguration.AllConfigFlags import ConfigFlags
+ConfigFlags.Input.Files = args.filesIn.split(",")
 
 # Flags relating to multithreaded execution
-flags.Concurrency.NumThreads = args.nThreads
+ConfigFlags.Concurrency.NumThreads = args.nThreads
 if args.nThreads>0:
-    flags.Scheduler.ShowDataDeps = True
-    flags.Scheduler.ShowDataFlow = True
-    flags.Scheduler.ShowControlFlow = True
-    flags.Concurrency.NumConcurrentEvents = args.nThreads
+    ConfigFlags.Scheduler.ShowDataDeps = True
+    ConfigFlags.Scheduler.ShowDataFlow = True
+    ConfigFlags.Scheduler.ShowControlFlow = True
+    ConfigFlags.Concurrency.NumConcurrentEvents = args.nThreads
 
 # Prevent the flags from being modified
-flags.lock()
+ConfigFlags.lock()
 
 
 # Get a ComponentAccumulator setting up the fundamental Athena job
 from AthenaConfiguration.MainServicesConfig import MainServicesCfg 
-cfg=MainServicesCfg(flags) 
+cfg=MainServicesCfg(ConfigFlags) 
 
 
 # ***********************************************
@@ -118,7 +117,7 @@ if args.nEvents == 0:
     # Don't run over events --> just run the jet config.
     # Add the components from our jet reconstruction job
     for jetdef in jetdefs:
-        cfg.merge( JetRecCfg(flags,jetdef) )        
+        cfg.merge( JetRecCfg(ConfigFlags,jetdef) )        
     import sys
     tlog.info("Performed jet config. Exiting now")
     sys.exit(0)
@@ -132,21 +131,21 @@ if args.nEvents == 0:
 
 # Add the components for reading in pool files
 from AthenaPoolCnvSvc.PoolReadConfig import PoolReadCfg
-cfg.merge(PoolReadCfg(flags))
+cfg.merge(PoolReadCfg(ConfigFlags))
 
 # Nowadays the jet calibration tool requires the EventInfo
 # to be decorated with lumi info, which is not in Run 2 AODs
 from LumiBlockComps.LuminosityCondAlgConfig import LuminosityCondAlgCfg
-cfg.merge(LuminosityCondAlgCfg(flags))
+cfg.merge(LuminosityCondAlgCfg(ConfigFlags))
 
 from LumiBlockComps.LumiBlockMuWriterConfig import LumiBlockMuWriterCfg
-cfg.merge(LumiBlockMuWriterCfg(flags))
+cfg.merge(LumiBlockMuWriterCfg(ConfigFlags))
 
 
 
 # =======================
 # If running on ESD the CHSXYZParticleFlowObjects container pre-exist and can get in the way. Just rename them manually here :
-if 'CHSChargedParticleFlowObjects' in flags.Input.Collections:
+if 'CHSChargedParticleFlowObjects' in ConfigFlags.Input.Collections:
     from SGComps.AddressRemappingConfig import InputRenameCfg
     cfg.merge( InputRenameCfg("xAOD::PFOContainer", "CHSNeutralParticleFlowObjects" , "CHSNeutralParticleFlowObjects_original") )
     cfg.merge( InputRenameCfg("xAOD::PFOContainer", "CHSChargedParticleFlowObjects" , "CHSChargedParticleFlowObjects_original") )
@@ -155,7 +154,7 @@ if 'CHSChargedParticleFlowObjects' in flags.Input.Collections:
     
 # Add the components from our jet reconstruction job
 for jetdef in jetdefs:
-    cfg.merge( JetRecCfg(flags,jetdef) )        
+    cfg.merge( JetRecCfg(ConfigFlags,jetdef) )        
 
 
 # Now get the output stream components
@@ -167,7 +166,7 @@ for j in alljetdefs:
                    f"xAOD::JetAuxContainer#{key}Aux.-PseudoJet"]
 
 from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
-cfg.merge(OutputStreamCfg(flags,"xAOD",ItemList=outputlist))
+cfg.merge(OutputStreamCfg(ConfigFlags,"xAOD",ItemList=outputlist))
 pprint( cfg.getEventAlgo("OutputStreamxAOD").ItemList )
 
 # Optionally, print the contents of the store every event

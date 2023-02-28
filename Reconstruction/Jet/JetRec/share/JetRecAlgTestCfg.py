@@ -6,22 +6,21 @@
 # Date: 21.01.2020
 
 # Config flags steer the job at various levels
-from AthenaConfiguration.AllConfigFlags import initConfigFlags
-flags = initConfigFlags()
-flags.Input.isMC  = True
+from AthenaConfiguration.AllConfigFlags import ConfigFlags
+ConfigFlags.Input.isMC  = True
 # Grab standard test file (annoyingly, set incorrectly in master?)
-flags.Input.Files = ["/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/CommonInputs/mc16_13TeV.410501.PowhegPythia8EvtGen_A14_ttbar_hdamp258p75_nonallhad.merge.AOD.e5458_s3126_r9364_r9315/AOD.11182705._000001.pool.root.1"]
+ConfigFlags.Input.Files = ["/cvmfs/atlas-nightlies.cern.ch/repo/data/data-art/CommonInputs/mc16_13TeV.410501.PowhegPythia8EvtGen_A14_ttbar_hdamp258p75_nonallhad.merge.AOD.e5458_s3126_r9364_r9315/AOD.11182705._000001.pool.root.1"]
 
 # Flags relating to multithreaded execution
-flags.Concurrency.NumThreads = 1
+ConfigFlags.Concurrency.NumThreads = 1
 # Dump some information about the job scheduling
-flags.Scheduler.ShowDataDeps = True
-flags.Scheduler.ShowDataFlow = True
-flags.Scheduler.ShowControlFlow = True
-flags.Concurrency.NumConcurrentEvents = 1
+ConfigFlags.Scheduler.ShowDataDeps = True
+ConfigFlags.Scheduler.ShowDataFlow = True
+ConfigFlags.Scheduler.ShowControlFlow = True
+ConfigFlags.Concurrency.NumConcurrentEvents = 1
 
 # Prevent the flags from being modified
-flags.lock()
+ConfigFlags.lock()
 
 ########################################################################
 # The ComponentAccumulator is the smallest component of an Athena job in
@@ -30,18 +29,18 @@ from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 
 # Get a ComponentAccumulator setting up the fundamental Athena job
 from AthenaConfiguration.MainServicesConfig import MainServicesCfg
-cfg=MainServicesCfg(flags)
+cfg=MainServicesCfg(ConfigFlags)
 
 # Add the components for reading in pool files
 from AthenaPoolCnvSvc.PoolReadConfig import PoolReadCfg
-cfg.merge(PoolReadCfg(flags))
+cfg.merge(PoolReadCfg(ConfigFlags))
 
 # This import is needed to get components (tools, algs)
 # See https://indico.cern.ch/event/871612/contributions/3677824/attachments/1963726/3264714/UseCompFactory.pdf
 from AthenaConfiguration.ComponentFactory import CompFactory
 
 # Return a ComponentAccumulator holding the jet input sequence
-def JetInputCfg(flags):
+def JetInputCfg(ConfigFlags):
     # Create a sequence that holds a set of algorithms
     # -- mainly for understanding how chunks of the job
     #    relate to each other
@@ -99,7 +98,7 @@ def JetInputCfg(flags):
     return inputcfg, pjcs
 
 # Return a ComponentAccumulator holding the jet building sequence
-def JetBuildAlgCfg(flags,buildjetsname):
+def JetBuildAlgCfg(ConfigFlags,buildjetsname):
     buildcfg = ComponentAccumulator()
 
     # Create a sequence that holds a set of algorithms
@@ -109,7 +108,7 @@ def JetBuildAlgCfg(flags,buildjetsname):
     sequencename = "JetBuildSeq"
     buildcfg.addSequence( CompFactory.AthSequencer(sequencename) )
     # Merge in config to get jet inputs
-    inputcfg, pjcs = JetInputCfg(flags)
+    inputcfg, pjcs = JetInputCfg(ConfigFlags)
     buildcfg.merge(inputcfg)
 
     # Create a merger to build the PseudoJetContainer for this specific jet collection
@@ -149,7 +148,7 @@ def JetBuildAlgCfg(flags,buildjetsname):
     return buildcfg
 
 # Return a ComponentAccumulator holding the jet groom sequence
-def JetGroomAlgCfg(flags,buildjetsname,groomjetsname):
+def JetGroomAlgCfg(ConfigFlags,buildjetsname,groomjetsname):
     groomcfg = ComponentAccumulator()
 
     # Create a sequence that holds a set of algorithms
@@ -177,7 +176,7 @@ def JetGroomAlgCfg(flags,buildjetsname,groomjetsname):
     return groomcfg
 
 # Return a ComponentAccumulator holding the jet copy sequence
-def JetCopyAlgCfg(flags,buildjetsname,copyjetsname):
+def JetCopyAlgCfg(ConfigFlags,buildjetsname,copyjetsname):
     copycfg = ComponentAccumulator()
 
     # Create a sequence that holds a set of algorithms
@@ -213,9 +212,9 @@ if __name__=="__main__":
     buildjetsname = "MyAntiKt10LCTopoJets"
     groomjetsname = "MyAntiKt10LCTopoTrimmedSmallR5Frac20Jets"
     copyjetsname = "CopyAntiKt10LCTopoJets"
-    cfg.merge( JetBuildAlgCfg(flags, buildjetsname) )
-    cfg.merge( JetGroomAlgCfg(flags, buildjetsname, groomjetsname) )
-    cfg.merge( JetCopyAlgCfg(flags, buildjetsname, copyjetsname) )
+    cfg.merge( JetBuildAlgCfg(ConfigFlags, buildjetsname) )
+    cfg.merge( JetGroomAlgCfg(ConfigFlags, buildjetsname, groomjetsname) )
+    cfg.merge( JetCopyAlgCfg(ConfigFlags, buildjetsname, copyjetsname) )
 
     # Write what we produced to AOD
     # First define the output list
@@ -231,7 +230,7 @@ if __name__=="__main__":
 
     # Now get the output stream components
     from OutputStreamAthenaPool.OutputStreamConfig import OutputStreamCfg
-    cfg.merge(OutputStreamCfg(flags,"xAOD",ItemList=outputlist))
+    cfg.merge(OutputStreamCfg(ConfigFlags,"xAOD",ItemList=outputlist))
     from pprint import pprint
     pprint( cfg.getEventAlgo("OutputStreamxAOD").ItemList )
     cfg.printConfig()

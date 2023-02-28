@@ -18,7 +18,7 @@ class _dummyJetDef:
         self._prereqOrder = [] 
 
 
-def solveDependencies( jetdef0, flags=None ):
+def solveDependencies( jetdef0, configFlags=None ):
     """ Retrieve reccursively all  dependencies described by str aliases (from modifiers, ghosts, etc..) within jetdef0.
     The aliases are converted in to proper config objects (like JetModifier, JetInputConstit,...) and are collected into
     a cloned version of jetdef0.
@@ -31,8 +31,8 @@ def solveDependencies( jetdef0, flags=None ):
     # jetdef.inputdef = jetdef.inputdef.clone()
     # 
 
-    if jetdef._cflags is None and flags is not None:
-        jetdef._cflags = flags
+    if jetdef._cflags is None and configFlags is not None:
+        jetdef._cflags = configFlags
 
     solveConstitDependencies(jetdef.inputdef, jetdef, inplace=True)
 

@@ -13,7 +13,7 @@ from AthenaConfiguration.ComponentAccumulator import ComponentAccumulator
 from AthenaConfiguration.ComponentFactory import CompFactory
 import ROOT
 
-def getJvtEffToolCfg(flags, jetalg):
+def getJvtEffToolCfg(ConfigFlags, jetalg):
   """Configure the JVT efficiency tool"""
 
   acc = ComponentAccumulator()
