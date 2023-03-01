@@ -25,7 +25,6 @@
 #include "AthContainers/debug.h"
 #include "AthLinks/DataLink.h"
 
-
 struct AthContainersInstan
 {
   std::pair<SG::auxid_set_t::const_iterator, bool> p2;
@@ -114,6 +113,7 @@ INSTAN_TYPE(std::vector<std::string>);
 
 template class SG::AtomicConstAccessor<unsigned int>;
 
+#ifndef __APPLE__
 template class std::vector<char, std::pmr::polymorphic_allocator<char> >;
 template class std::vector<unsigned char, std::pmr::polymorphic_allocator<unsigned char> >;
 template class std::vector<short, std::pmr::polymorphic_allocator<short> >;
@@ -122,7 +122,7 @@ template class std::vector<int, std::pmr::polymorphic_allocator<int> >;
 template class std::vector<unsigned int, std::pmr::polymorphic_allocator<unsigned int> >;
 template class std::vector<float, std::pmr::polymorphic_allocator<float> >;
 template class std::vector<double, std::pmr::polymorphic_allocator<double> >;
-
+#endif
 
 #undef ARGS1
 #undef ARGS2

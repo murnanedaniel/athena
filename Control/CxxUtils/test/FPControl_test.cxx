@@ -55,6 +55,7 @@ void test1()
 {
   std::cout << "test1\n";
 
+#ifndef __APPLE__
   fedisableexcept (FE_DIVBYZERO);
   feclearexcept (FE_DIVBYZERO);
   testit (false, false);
@@ -79,6 +80,7 @@ void test1()
     testit (true, false);
     assert (!fetestexcept (FE_DIVBYZERO));
   }
+#endif
 }
 
 

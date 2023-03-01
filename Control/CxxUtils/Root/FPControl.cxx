@@ -60,9 +60,13 @@ void FPControl::holdExceptions()
  */
 void FPControl::enable (Exc exc)
 {
+#ifndef __APPLE__
   int mask = excToMask (exc);
   feenableexcept (mask);
   m_masked &= ~mask;
+#else
+  (void) exc;
+#endif
 }
 
 
@@ -72,9 +76,13 @@ void FPControl::enable (Exc exc)
  */
 void FPControl::disable (Exc exc)
 {
+#ifndef __APPLE__
   int mask = excToMask (exc);
   fedisableexcept (mask);
   m_masked |= mask;
+#else
+  (void) exc;
+#endif
 }
 
 
