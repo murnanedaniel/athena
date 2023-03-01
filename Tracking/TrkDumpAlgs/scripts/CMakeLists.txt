@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 
 # Project's name
-
+message(STATUS "compiling converter ROOT 2 CSV")
 project (Dumper
          VERSION 0.1
          LANGUAGES CXX)
@@ -10,8 +10,8 @@ project (Dumper
 #set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
 #set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 #set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})
-get_filename_component(PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR} PATH)
 #cmake_path(GET ${CMAKE_CURRENT_SOURCE_DIR} PARENT_PATH PROJECT_DIR)
+get_filename_component(PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR} PATH)
 
 # minimal dependency versions. they are defined here in a single place so
 # they can be easily upgraded, although they might not be used if the
@@ -31,18 +31,13 @@ find_package(ROOT ${root_version} REQUIRED CONFIG COMPONENTS Core Geom GenVector
 message(STATUS "include dir: ${PROJECT_DIR}")
 include_directories(${PROJECT_DIR}/src)
 include_directories(${PROJECT_DIR}/TrkDumpAlgs)
-include("${ROOT_DIR}/RootMacros.cmake")
-
-#add_subdirectory (include)
-#add_subdirectory (src)
+include(${ROOT_DIR}/RootMacros.cmake)
 
 # =====================
 # Graph Creator Library
 # =====================
 
-set(SOURCE_FILES ${PROJECT_DIR}/src/ROOTT2CSVconverter.cpp)
-#target_include_directories (run.exe PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-include_directories(include)
+set(SOURCE_FILES {$PROJECT_DIR}/src/ROOT2CSVconverter.cpp)
 add_library(
 Dumper SHARED
 ${PROJECT_DIR}/TrkDumpAlgs/ROOT2CSVconverter.hpp
@@ -56,11 +51,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # removes leading or trailing whitespace
 #string (STRIP ${SOURCE_FILES} SOURCE_FILES)
 # defines how to build the executable from source files
-#add_executable (tracking.exe main.cpp ${SOURCE_FILES})
-add_executable(ROOT2CSVconverter.exe "${PROJECT_DIR}/src/ROOT2CSVconverter.cpp")
+#add_executable(ROOT2CSVconverter.exe ${PROJECT_DIR}/src/ROOT2CSVconverter.cpp)
+add_executable(ROOT2CSVconverter.exe ${PROJECT_DIR}/src/ROOT2CSVconverter.cpp)
 
 target_compile_features (Dumper INTERFACE cxx_std_17)
-#set_target_properties(STL++ PROPERTIES LINKER_LANGUAGE CXX)
+
 # ---Rootcint dictionary ---------------------------------------------------
 # rootcint -f dic.cpp -c LinkDef.hpp
 root_generate_dictionary(ROOT2CSVconverter.hpp MODULE Dumper LINKDEF ${PROJECT_DIR}/TrkDumpAlgs/LinkDef.hpp)

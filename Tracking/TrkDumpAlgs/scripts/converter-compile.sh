@@ -1,2 +1,3 @@
-cmake -H. -Bbuild -Sathena/Tracking/TrkDumpAlgs/scripts/
-cmake --build build -- -j3
+cmake -Hathena/Tracking/TrkDumpAlgs/scripts -Bbuild -Sathena/Tracking/TrkDumpAlgs/scripts -DCMAKE_CXX_STANDARD=17
+cmake --build athena/build -- -j3
+
