@@ -1,1 +1,1 @@
-./athena/build/ROOT2CSVconverter.exe
+./build/ROOT2CSVconverter.exe
