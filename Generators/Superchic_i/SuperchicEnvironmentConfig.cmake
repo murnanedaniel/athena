@@ -11,12 +11,6 @@ if( SUPERCHIC_FOUND )
   set( SUPERCHICENVIRONMENT_ENVIRONMENT 
         FORCESET SUPERCHICVER ${SUPERCHIC_LCGVERSION} 
         FORCESET SUPERCHICPATH ${SUPERCHIC_LCGROOT} 
-        APPEND LHAPATH
-              /cvmfs/atlas.cern.ch/repo/sw/Generators/lhapdfsets/current
-        APPEND LHAPATH ${LHAPDF_DATA_PATH}
-        APPEND LHAPDF_DATA_PATH
-              /cvmfs/atlas.cern.ch/repo/sw/Generators/lhapdfsets/current
-        APPEND LHAPDF_DATA_PATH ${LHAPDF_DATA_PATH} )
 endif()
 
 
