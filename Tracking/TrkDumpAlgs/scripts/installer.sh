@@ -1,8 +1,6 @@
 #!/bin/sh
+#newgrp l2it
 local_dir=$(pwd)
-cp athena/Tracking/TrkDumpAlgs/scripts/source.sh .
-cp athena/Tracking/TrkDumpAlgs/scripts/setup* .
-dir="$( cd "$( dirname "${this_script}" )" && pwd )"
 
 export ATLAS_LOCAL_ROOT_BASE=/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
 alias setupATLAS='source ${ATLAS_LOCAL_ROOT_BASE}/user/atlasLocalSetup.sh'
@@ -22,7 +20,6 @@ git checkout 21.9.26-root-and-csv-files-from-RDO
 cd ${local_dir}/athena
 #     [i.e. return to the « head » directory of the local copy of athena]
 
-# cp Tracking/TrkDumpAlgs/package_filters.txt .
 mkdir build
 cd build
 cmake -DATLAS_PACKAGE_FILTER_FILE=${local_dir}/athena/Tracking/TrkDumpAlgs/package_filters.txt ${local_dir}/athena/Projects/WorkDir
@@ -34,6 +31,6 @@ make
 source x86_64-centos7-gcc62-opt/setup.sh 
 #     [activate our sparse build for execution]
 
-cd ..
-source athena/Tracking/TrkDumpAlgs/scripts/run_reco.sh
+cd ../../
+sh athena/Tracking/TrkDumpAlgs/scripts/run_reco.sh
 
