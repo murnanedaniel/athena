@@ -8,3 +8,11 @@ def SeedNewtonTrkDistanceFinderCfg(flags, name='SeedNewtonTrkDistanceFinder', **
     acc.setPrivateTools(
         CompFactory.Trk.SeedNewtonTrkDistanceFinder(name, **kwargs))
     return acc
+
+
+def Mode3dFromFsmw1dFinderCfg(flags, name='Mode3dFromFsmw1dFinder', **kwargs):
+
+  acc = ComponentAccumulator()
+
+  acc.setPrivateTools(CompFactory.Trk.Mode3dFromFsmw1dFinder(name, **kwargs))
+  return acc

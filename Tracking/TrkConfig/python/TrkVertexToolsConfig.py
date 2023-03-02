@@ -41,3 +41,14 @@ def VertexCollectionSortingToolCfg(flags, **kwargs):
     elif flags.Tracking.PriVertex.sortingSetup == \
          VertexSortingSetup.SumPtSorting:
         return SumPtVertexCollectionSortingToolCfg(flags, **kwargs)
+
+
+def SecVertexMergingToolCfg(flags, name='SecVertexMergingTool', **kwargs):
+
+  acc = ComponentAccumulator()
+
+  if "VertexFitterTool" not in kwargs:
+    from TrkConfig.TrkVertexFittersConfig import AdaptiveVertexFitterCfg
+    kwargs.setdefault("VertexFitterTool", acc.popToolsAndMerge(AdaptiveVertexFitterCfg(flags)))
+  acc.setPrivateTools(CompFactory.Trk.SecVertexMergingTool(name,**kwargs))
+  return acc

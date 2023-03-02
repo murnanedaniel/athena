@@ -157,3 +157,15 @@ def InDetGlobalLRTMonAlg_TrackSelectionToolCfg(flags, name="InDetGlobalLRTMonAlg
     kwargs.setdefault("minPt", 1000.)
     kwargs.setdefault("maxNPixelHoles", 1)
     return InDetTrackSelectionTool_TrackTools_Cfg(flags, name, **kwargs)
+
+
+
+################################
+#####  Configs for SecVtx  #####
+################################
+
+def InDetSecVtxTrackSelectionToolCfg(flags, name='InDetSecVtxTrackSelectionTool', **kwargs):
+
+  acc = ComponentAccumulator()
+  acc.setPrivateTools(CompFactory.InDet.InDetSecVtxTrackSelectionTool(name, **kwargs))
+  return acc

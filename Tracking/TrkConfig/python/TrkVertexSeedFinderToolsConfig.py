@@ -31,3 +31,22 @@ def CrossDistancesSeedFinderCfg(flags, name="CrossDistancesSeedFinder", **kwargs
 
     acc.setPrivateTools(CompFactory.Trk.CrossDistancesSeedFinder(name, **kwargs))
     return acc
+
+
+def IndexedCrossDistancesSeedFinderCfg(flags, name='IndexedCrossDistancesSeedFinder', **kwargs):
+
+  acc = ComponentAccumulator()
+  if "Mode3dFinder" not in kwargs:
+    from TrkConfig.TrkVertexSeedFinderUtilsConfig import Mode3dFromFsmw1dFinderCfg
+    kwargs.setdefault("Mode3dFinder", acc.popToolsAndMerge(Mode3dFromFsmw1dFinderCfg(flags,
+                                      Fraction = 0.5,
+                                      MinimalDistanceFromZtoXY = 0.25,
+                                      MinimalRadiusFromBeam = 1.5,
+                                      UseBroadenModes  = True)))
+
+  if "TrkDistanceFinder" not in kwargs:
+    from TrkConfig.TrkVertexSeedFinderUtilsConfig import SeedNewtonTrkDistanceFinderCfg
+    kwargs.setdefault("TrkDistanceFinder", acc.popToolsAndMerge(SeedNewtonTrkDistanceFinderCfg(flags)))
+
+  acc.setPrivateTools(CompFactory.Trk.IndexedCrossDistancesSeedFinder(name, **kwargs))
+  return acc
