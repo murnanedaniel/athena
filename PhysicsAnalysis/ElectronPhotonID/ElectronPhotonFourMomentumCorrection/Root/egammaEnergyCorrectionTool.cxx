@@ -2320,8 +2320,14 @@ namespace AtlasRoot {
       value -= get_ZeeSyst(eta) * varSF;
     } else if( var==egEnergyCorr::Scale::OFCUp && m_zeeSystOFC ) {
       value += get_OFCSyst(eta) * varSF;
-
-    } else if( var==egEnergyCorr::Scale::OFCDown && m_zeeSystOFC ) {
+    } else if( var == egEnergyCorr::Scale::EXTRARUN3PREUp)
+    {
+      value+=0.4E-2*varSF;  // flat 0.4% syst (details: https://indico.cern.ch/event/1250560/contributions/5253619/attachments/2586538/4462853/mc21-change.pdf)
+    } else if(var == egEnergyCorr::Scale::EXTRARUN3PREDown)
+    {
+      value-=0.4E-2*varSF;
+    }
+    else if( var==egEnergyCorr::Scale::OFCDown && m_zeeSystOFC ) {
       value -= get_OFCSyst(eta) * varSF;
     } else if( var==egEnergyCorr::Scale::ZeePhysUp && m_zeePhys ) {
 
