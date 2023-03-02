@@ -604,7 +604,7 @@ class TestEgammaCalibrationAndSmearingTool(unittest.TestCase):
                 self.assertAlmostEqual(pt1, pt2)
                 self.assertAlmostEqual(eta1, eta2)
 
-    def test_1NP_vs_FULL_es2017(self):
+    def test_1NP_vs_FULL_es2022(self):
         """ check that the 1NP model is the squared sum of the single systematics """
         tool_1NP = ROOT.CP.EgammaCalibrationAndSmearingTool(
             "tool_es2022_R22_PRE_1NP")
