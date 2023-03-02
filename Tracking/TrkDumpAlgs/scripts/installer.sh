@@ -1,4 +1,8 @@
+#!/bin/sh
 local_dir=$(pwd)
+cp athena/Tracking/TrkDumpAlgs/scripts/source.sh .
+cp athena/Tracking/TrkDumpAlgs/scripts/setup* .
+dir="$( cd "$( dirname "${this_script}" )" && pwd )"
 
 export ATLAS_LOCAL_ROOT_BASE=/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
 alias setupATLAS='source ${ATLAS_LOCAL_ROOT_BASE}/user/atlasLocalSetup.sh'
@@ -15,10 +19,10 @@ git fetch upstream
 git checkout 21.9.26-root-and-csv-files-from-RDO
 #     [Now we have a local copy of the entire Athena code, version 21.9.26] that includes the dumper
 
-cd "$local_dir/athena"
+cd ${local_dir}/athena
 #     [i.e. return to the « head » directory of the local copy of athena]
 
-#cp Tracking/TrkDumpAlgs/package_filters.txt ../
+# cp Tracking/TrkDumpAlgs/package_filters.txt .
 mkdir build
 cd build
 cmake -DATLAS_PACKAGE_FILTER_FILE=${local_dir}/athena/Tracking/TrkDumpAlgs/package_filters.txt ${local_dir}/athena/Projects/WorkDir
