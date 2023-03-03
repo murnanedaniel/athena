@@ -12,4 +12,3 @@ Reco_tf.py \
     --postExec 'all:ServiceMgr.PixelLorentzAngleSvc.ITkL03D = True' 'HITtoRDO:CfgMgr.MessageSvc().setError+=["HepMcParticleLink"];conddb.addMarkup("MDT/Ofl/CABLING/MEZZANINE_SCHEMA","<forceRunNumber>232550</forceRunNumber>");conddb.addMarkup("MDT/Ofl/CABLING/MAP_SCHEMA","<forceRunNumber>232550</forceRunNumber>")' 'RAWtoESD:ToolSvc.InDetSCT_ClusteringTool.useRowInformation=True' 'ESDtoAOD:StreamAOD.ItemList+=["CaloCellContainer#AllCalo"]' 'RAWtoESD:dumpObjects.csvFile=True' 'RAWtoESD:dumpObjects.rootFile=True; rootfile();'\
     --inputRDOFile=/sps/l2it/stark/NewSamples/RDO/mc15_14TeV.600012.PhPy8EG_A14_ttbar_hdamp258p75_nonallhad.recon.RDO.e8185_s3770_s3773_r13618_tid31548381_00/RDO.31548381._000001.pool.root.1 \
     --outputESDFile=ESD.31548381._000001.root \
-    --maxEvents 2

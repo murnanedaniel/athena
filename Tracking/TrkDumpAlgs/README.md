@@ -19,10 +19,13 @@ sh athena/Tracking/TrkDumpAlgs/scripts/dumper-rebuild.sh
 #-----------------
 #to run the dumper
 #-----------------
-first parameter the files you want to generate in the file athena/Tracking/TrkDumpAlgs/scipts/run_reco.sh
-set parameter to True or False to generate or not the files
-'RAWtoESD:dumpObjects.csvFile=True/False'
-'RAWtoESD:dumpObjects.rootFile=True/False'
+* First parameter the files you want to generate in the file athena/Tracking/TrkDumpAlgs/scipts/run_reco.sh
+  set parameter to True or False to generate or not the files
+  'RAWtoESD:dumpObjects.csvFile=True/False'
+  'RAWtoESD:dumpObjects.rootFile=True/False'
+* Second - you can limit the number of events to make some tests with the following option in file run_reco.sh
+  --maxEvents 2
+* run job using the script
 sh athena/Tracking/TrkDumpAlgs/scripts/dumper-run.sh
 
 #------------------------
