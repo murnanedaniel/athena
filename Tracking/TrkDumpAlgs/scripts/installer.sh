@@ -1,4 +1,5 @@
 #!/bin/sh
+env -i /bin/bash
 #newgrp l2it
 local_dir=$(pwd)
 
@@ -31,6 +32,6 @@ make
 source x86_64-centos7-gcc62-opt/setup.sh 
 #     [activate our sparse build for execution]
 
-cd ../../
-sh athena/Tracking/TrkDumpAlgs/scripts/run_reco.sh
+# cd ../../
+# sh athena/Tracking/TrkDumpAlgs/scripts/run_reco.sh
 

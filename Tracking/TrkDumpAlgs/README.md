@@ -1,20 +1,7 @@
-#---------------------------------------
-# download configuration files from repo
-#---------------------------------------
-download the following files :
-setup
-setup_cvmfs_lcg97.sh
-
 #-------------------------------------
 # download installation file from repo
 #-------------------------------------
 installer.sh
-
-#----------------------
-# configure environment
-#----------------------
-sh setup
-source setup_cvmfs_lcg97.sh
 
 #---------------
 # install dumper

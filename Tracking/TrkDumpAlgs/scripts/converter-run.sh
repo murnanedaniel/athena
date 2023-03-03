@@ -1,1 +1,1 @@
-./build/ROOT2CSVconverter.exe
+./bin/ROOT2CSVconverter.exe

@@ -7,11 +7,13 @@ project (Dumper
          LANGUAGES CXX)
 
 # Set the output folder where your program will be created
-#set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
-#set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
-#set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 #cmake_path(GET ${CMAKE_CURRENT_SOURCE_DIR} PARENT_PATH PROJECT_DIR)
 get_filename_component(PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR} PATH)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_DIR}/../../../bin)
+set(LIBRARY_OUTPUT_PATH ${PROJECT_DIR}/../../../bin)
 
 # minimal dependency versions. they are defined here in a single place so
 # they can be easily upgraded, although they might not be used if the
