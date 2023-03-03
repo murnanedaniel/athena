@@ -153,7 +153,8 @@ def InDetPhysValTruthDecoratorAlgCfg(flags, **kwargs):
     If the collection name TruthParticleContainerName is specified and differs from the default, the name
     of the algorithm will be extended by the collection name
     '''
-    acc = ComponentAccumulator()
+    from BeamSpotConditions.BeamSpotConditionsConfig import BeamSpotCondAlgCfg
+    acc = BeamSpotCondAlgCfg(flags) # To produce InDet::BeamSpotData CondHandle
 
     from TrkConfig.AtlasExtrapolatorConfig import AtlasExtrapolatorCfg
     extrapolator = acc.popToolsAndMerge(AtlasExtrapolatorCfg(flags))
