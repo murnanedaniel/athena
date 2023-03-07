@@ -965,7 +965,7 @@ def _extract_fields_triggermenujson(interface, aux):
             elif decoded['filetype'] == 'bunchgroupset':
                 return result
             else:
-                msg.warn('Got an xAOD::TriggerMenuJson called {0} but only expecting hltmenu or l1menu'.format(decoded['filetype']))
+                msg.warn('Got an xAOD::TriggerMenuJson called {0} but only expecting hltmenu, l1menu, hltprescale, l1prescale or bunchgroupset'.format(decoded['filetype']))
                 return {}
                 
     except Exception as err: # noqa: F841
