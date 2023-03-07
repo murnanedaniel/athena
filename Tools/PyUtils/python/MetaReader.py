@@ -962,7 +962,8 @@ def _extract_fields_triggermenujson(interface, aux):
                 return result
             elif decoded['filetype'] == 'hltmonitoringsummary':
                 return result
-
+            elif decoded['filetype'] == 'bunchgroupset':
+                return result
             else:
                 msg.warn('Got an xAOD::TriggerMenuJson called {0} but only expecting hltmenu or l1menu'.format(decoded['filetype']))
                 return {}
