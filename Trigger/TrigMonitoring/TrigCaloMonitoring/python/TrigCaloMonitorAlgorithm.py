@@ -285,7 +285,6 @@ def TrigCaloMonConfig(inputFlags):
             # Add group
             TopoCaloClustersMonGroup[i][j] = helper.addGroup(configuredAlg, 'TrigCaloMonitor','HLT/HLTCalo')
             # Algorithm must be scheduled after the decoding of the trigger bytestream ROB
-            from TrigDecisionTool.TrigDecisionToolConfig import getRun3NavigationContainerFromInput
             configuredAlg.ExtraInputs += [('xAOD::TrigCompositeContainer' , 'StoreGateSvc+'+getRun3NavigationContainerFromInput(inputFlags))]
 
             ########################
