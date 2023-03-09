@@ -85,8 +85,8 @@ StatusCode ISF::ActsFatrasSimTool::simulateVector(
   auto bField = std::make_shared<ATLASMagneticFieldWrapper>();
   auto chargedStepper = ChargedStepper(std::move(bField));
   auto neutralStepper = NeutralStepper();
-  auto chargedPropagator = ChargedPropagator(chargedStepper, navigator, (*m_logger).clone(Acts::Logging::Level::FATAL));
-  auto neutralPropagator = NeutralPropagator(neutralStepper, navigator, (*m_logger).clone(Acts::Logging::Level::FATAL));
+  auto chargedPropagator = ChargedPropagator(chargedStepper, navigator, m_logger->clone(Acts::Logging::Level::FATAL));
+  auto neutralPropagator = NeutralPropagator(neutralStepper, navigator, m_logger->clone(Acts::Logging::Level::FATAL));
   ChargedSimulation simulatorCharged(std::move(chargedPropagator), m_logger);
   NeutralSimulation simulatorNeutral(std::move(neutralPropagator), m_logger);
   Simulation simulator=Simulation(std::move(simulatorCharged),std::move(simulatorNeutral));
