@@ -82,6 +82,10 @@ class DumpObjects : public AthAlgorithm {
     std::string m_ntupleDirName;        //!< jobOption: Ntuple directory name
     std::string m_ntupleTreeName;       //!< jobOption: Ntuple tree name
     int m_maxCL;                        //!< jobOption: maximum number of clusters
+    int m_maxPart;                        //!< jobOption: maximum number of particles
+    int m_maxSP;                        //!< jobOption: maximum number of space points
+    int m_maxTRK;
+    int m_maxDTT;
     bool m_csvFile;                     //!< jobOption: save data in csv format
     bool m_rootFile;                    //!< jobOption: save data in root format
     TTree* m_nt;
@@ -116,19 +120,19 @@ class DumpObjects : public AthAlgorithm {
     std::vector<std::vector<double>> *m_CLlocal_cov;
 
     int m_nPartEVT;
-    int* m_CLevent_number;
-    int* m_CLbarcode;
-    float *m_CLpx, *m_CLpy, *m_CLpz;
-    float* m_CLpt;
-    float *m_CLeta;
-    float *m_CLvx, *m_CLvy, *m_CLvz;
-    float* m_CLradius;
-    float* m_CLstatus;
-    float* m_CLcharge;
-    int* m_CLpdg_id;
-    int* m_CLpassed;
-    int *m_CLvProdNin, *m_CLvProdNout, *m_CLvProdStatus, *m_CLvProdBarcode;
-    std::vector<std::vector<int>> *m_CLvParentID, *m_CLvParentBarcode;
+    int* m_Part_event_number;
+    int* m_Part_barcode;
+    float *m_Part_px, *m_Part_py, *m_Part_pz;
+    float* m_Part_pt;
+    float *m_Part_eta;
+    float *m_Part_vx, *m_Part_vy, *m_Part_vz;
+    float* m_Part_radius;
+    float* m_Part_status;
+    float* m_Part_charge;
+    int* m_Part_pdg_id;
+    int* m_Part_passed;
+    int *m_Part_vProdNin, *m_Part_vProdNout, *m_Part_vProdStatus, *m_Part_vProdBarcode;
+    std::vector<std::vector<int>> *m_Part_vParentID, *m_Part_vParentBarcode;
 
     int m_nSP;
     int* m_SPindex;

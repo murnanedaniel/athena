@@ -39,16 +39,16 @@ class ROOT2CSVconverter
     int *m_CLID;
 
     int m_nPartEVT;
-    int *m_CLevent_number;
-    int *m_CLbarcode;
-    float *m_CLpx, *m_CLpy, *m_CLpz;
-    float *m_CLpt;
-    float *m_CLeta;
-    float *m_CLvx, *m_CLvy, *m_CLvz;
-    float *m_CLradius, *m_CLstatus, *m_CLcharge;
-    int *m_CLpdg_id, *m_CLpassed;
-    int *m_CLvProdNin, *m_CLvProdNout, *m_CLvProdStatus, *m_CLvProdBarcode;
-    std::vector<std::vector<int>> *m_CLvParentID, *m_CLvParentBarcode;
+    int *m_Part_event_number;
+    int *m_Part_barcode;
+    float *m_Part_px, *m_Part_py, *m_Part_pz;
+    float *m_Part_pt;
+    float *m_Part_eta;
+    float *m_Part_vx, *m_Part_vy, *m_Part_vz;
+    float *m_Part_radius, *m_Part_status, *m_Part_charge;
+    int *m_Part_pdg_id, *m_Part_passed;
+    int *m_Part_vProdNin, *m_Part_vProdNout, *m_Part_vProdStatus, *m_Part_vProdBarcode;
+    std::vector<std::vector<int>> *m_Part_vParentID, *m_Part_vParentBarcode;
 
     int m_nCL;
     int *m_CLindex;

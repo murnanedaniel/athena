@@ -23,16 +23,16 @@ ROOT2CSVconverter::~ROOT2CSVconverter ()
   RootFile -> Close ();
   delete[] m_CLID;
 
-  delete[] m_CLevent_number;
-  delete[] m_CLbarcode;
-  delete[] m_CLpx, m_CLpy, m_CLpz;
-  delete[] m_CLpt;
-  delete[] m_CLeta;
-  delete[] m_CLvx, m_CLvy, m_CLvz;
-  delete[] m_CLradius, m_CLstatus, m_CLcharge;
-  delete[] m_CLpdg_id, m_CLpassed;
-  delete[] m_CLvProdNin, m_CLvProdNout, m_CLvProdStatus, m_CLvProdBarcode;
-  delete m_CLvParentID, m_CLvParentBarcode;
+  delete[] m_Part_event_number;
+  delete[] m_Part_barcode;
+  delete[] m_Part_px, m_Part_py, m_Part_pz;
+  delete[] m_Part_pt;
+  delete[] m_Part_eta;
+  delete[] m_Part_vx, m_Part_vy, m_Part_vz;
+  delete[] m_Part_radius, m_Part_status, m_Part_charge;
+  delete[] m_Part_pdg_id, m_Part_passed;
+  delete[] m_Part_vProdNin, m_Part_vProdNout, m_Part_vProdStatus, m_Part_vProdBarcode;
+  delete m_Part_vParentID, m_Part_vParentBarcode;
 
   delete [] m_CLindex;
   delete m_CLhardware;
@@ -125,48 +125,48 @@ void ROOT2CSVconverter::convert_particles ()
   }
 
   // allocates memory
-  m_CLevent_number = new int[max_size];
-  RootTree -> SetBranchAddress("CLevent_number", m_CLevent_number);
-  m_CLbarcode = new int[max_size];
-  RootTree -> SetBranchAddress("CLbarcode", m_CLbarcode);
-  m_CLpx = new float[max_size];
-  RootTree -> SetBranchAddress("CLpx", m_CLpx);
-  m_CLpy = new float[max_size];
-  RootTree -> SetBranchAddress("CLpy", m_CLpy);
-  m_CLpz = new float[max_size];
-  RootTree -> SetBranchAddress("CLpz", m_CLpz);
-  m_CLpt = new float[max_size];
-  RootTree -> SetBranchAddress("CLpt", m_CLpt);
-  m_CLeta = new float[max_size];
-  RootTree -> SetBranchAddress("CLeta", m_CLeta);
-  m_CLvx = new float[max_size];
-  RootTree -> SetBranchAddress("CLvx", m_CLvx);
-  m_CLvy = new float[max_size];
-  RootTree -> SetBranchAddress("CLvy", m_CLvy);
-  m_CLvz = new float[max_size];
-  RootTree -> SetBranchAddress("CLvz", m_CLvz);
-  m_CLradius = new float[max_size];
-  RootTree -> SetBranchAddress("CLradius", m_CLradius);
-  m_CLstatus = new float[max_size];
-  RootTree -> SetBranchAddress("CLstatus", m_CLstatus);
-  m_CLcharge = new float[max_size];
-  RootTree -> SetBranchAddress("CLcharge", m_CLcharge);
-  m_CLpdg_id = new int[max_size];
-  RootTree -> SetBranchAddress("CLpdg_id", m_CLpdg_id);
-  m_CLpassed = new int[max_size];
-  RootTree -> SetBranchAddress("CLpassed", m_CLpassed);
-  m_CLvProdNin = new int[max_size];
-  RootTree -> SetBranchAddress("CLvProdNin", m_CLvProdNin);
-  m_CLvProdNout = new int[max_size];
-  RootTree -> SetBranchAddress("CLvProdNout", m_CLvProdNout);
-  m_CLvProdStatus = new int[max_size];
-  RootTree -> SetBranchAddress("CLvProdStatus", m_CLvProdStatus);
-  m_CLvProdBarcode = new int[max_size];
-  RootTree -> SetBranchAddress("CLvProdBarcode", m_CLvProdBarcode);
-  m_CLvParentID = new std::vector<std::vector<int>>;
-  RootTree -> SetBranchAddress("CLvParentID", &m_CLvParentID);
-  m_CLvParentBarcode = new std::vector<std::vector<int>>;
-  RootTree -> SetBranchAddress("CLvParentBarcode", &m_CLvParentBarcode);
+  m_Part_event_number = new int[max_size];
+  RootTree -> SetBranchAddress("Part_event_number", m_Part_event_number);
+  m_Part_barcode = new int[max_size];
+  RootTree -> SetBranchAddress("Part_barcode", m_Part_barcode);
+  m_Part_px = new float[max_size];
+  RootTree -> SetBranchAddress("Part_px", m_Part_px);
+  m_Part_py = new float[max_size];
+  RootTree -> SetBranchAddress("Part_py", m_Part_py);
+  m_Part_pz = new float[max_size];
+  RootTree -> SetBranchAddress("Part_pz", m_Part_pz);
+  m_Part_pt = new float[max_size];
+  RootTree -> SetBranchAddress("Part_pt", m_Part_pt);
+  m_Part_eta = new float[max_size];
+  RootTree -> SetBranchAddress("Part_eta", m_Part_eta);
+  m_Part_vx = new float[max_size];
+  RootTree -> SetBranchAddress("Part_vx", m_Part_vx);
+  m_Part_vy = new float[max_size];
+  RootTree -> SetBranchAddress("Part_vy", m_Part_vy);
+  m_Part_vz = new float[max_size];
+  RootTree -> SetBranchAddress("Part_vz", m_Part_vz);
+  m_Part_radius = new float[max_size];
+  RootTree -> SetBranchAddress("Part_radius", m_Part_radius);
+  m_Part_status = new float[max_size];
+  RootTree -> SetBranchAddress("Part_status", m_Part_status);
+  m_Part_charge = new float[max_size];
+  RootTree -> SetBranchAddress("Part_charge", m_Part_charge);
+  m_Part_pdg_id = new int[max_size];
+  RootTree -> SetBranchAddress("Part_pdg_id", m_Part_pdg_id);
+  m_Part_passed = new int[max_size];
+  RootTree -> SetBranchAddress("Part_passed", m_Part_passed);
+  m_Part_vProdNin = new int[max_size];
+  RootTree -> SetBranchAddress("Part_vProdNin", m_Part_vProdNin);
+  m_Part_vProdNout = new int[max_size];
+  RootTree -> SetBranchAddress("Part_vProdNout", m_Part_vProdNout);
+  m_Part_vProdStatus = new int[max_size];
+  RootTree -> SetBranchAddress("Part_vProdStatus", m_Part_vProdStatus);
+  m_Part_vProdBarcode = new int[max_size];
+  RootTree -> SetBranchAddress("Part_vProdBarcode", m_Part_vProdBarcode);
+  m_Part_vParentID = new std::vector<std::vector<int>>;
+  RootTree -> SetBranchAddress("Part_vParentID", &m_Part_vParentID);
+  m_Part_vParentBarcode = new std::vector<std::vector<int>>;
+  RootTree -> SetBranchAddress("Part_vParentBarcode", &m_Part_vParentBarcode);
 
   // read branch and save file in csv format
   for (int n=0; n<_nb_events; n++) {
@@ -178,12 +178,12 @@ void ROOT2CSVconverter::convert_particles ()
     std::ofstream file (filename.c_str(), std::ios::out);
     assert (!file.fail());
     for (int i=0; i<m_nPartEVT; i++) {
-      std::string passed = (m_CLpassed[i]) ? "YES": "NO";
-      file << m_CLevent_number[i] << "," << m_CLbarcode[i] << "," << m_CLpx[i] << "," << m_CLpy[i] << "," << m_CLpz[i] << "," << m_CLpt[i] << "," << m_CLeta[i] << "," << m_CLvx[i] << "," << m_CLvy[i] << "," << m_CLvz[i] << ","
-           << m_CLradius[i] << "," << m_CLstatus[i] << "," << m_CLcharge[i] << "," << m_CLpdg_id[i] << "," << passed << "," << m_CLvProdNin[i] << "," << m_CLvProdNout[i] << "," << m_CLvProdStatus[i] << "," << m_CLvProdBarcode[i] << ",#,";
-      if ((*m_CLvParentID)[i].size()) {
-        for (int j=0; j<(*m_CLvParentID)[i].size(); j++)
-          file << "(" << (*m_CLvParentID)[i][j] << "," << (*m_CLvParentBarcode)[i][j] << "),";
+      std::string passed = (m_Part_passed[i]) ? "YES": "NO";
+      file << m_Part_event_number[i] << "," << m_Part_barcode[i] << "," << m_Part_px[i] << "," << m_Part_py[i] << "," << m_Part_pz[i] << "," << m_Part_pt[i] << "," << m_Part_eta[i] << "," << m_Part_vx[i] << "," << m_Part_vy[i] << "," << m_Part_vz[i] << ","
+           << m_Part_radius[i] << "," << m_Part_status[i] << "," << m_Part_charge[i] << "," << m_Part_pdg_id[i] << "," << passed << "," << m_Part_vProdNin[i] << "," << m_Part_vProdNout[i] << "," << m_Part_vProdStatus[i] << "," << m_Part_vProdBarcode[i] << ",#,";
+      if ((*m_Part_vParentID)[i].size()) {
+        for (int j=0; j<(*m_Part_vParentID)[i].size(); j++)
+          file << "(" << (*m_Part_vParentID)[i][j] << "," << (*m_Part_vParentBarcode)[i][j] << "),";
       }
       file << "#";
       file << std::endl;

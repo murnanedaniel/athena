@@ -60,6 +60,11 @@ DumpObjects::DumpObjects(const std::string& name, ISvcLocator *pSvcLocator)
     declareProperty("NtupleDirectoryName", m_ntupleDirName);
     declareProperty("NtupleTreeName", m_ntupleTreeName);
     declareProperty("maxCL", m_maxCL = 1500000);
+    declareProperty("maxPart", m_maxPart = 1500000);
+    declareProperty("maxPart", m_maxSP = 1500000);
+    declareProperty("maxPart", m_maxTRK = 1500000);
+    declareProperty("maxPart", m_maxDTT = 1500000);
+
     declareProperty("csvFile", m_csvFile);
     declareProperty("rootFile", m_rootFile);
   }
@@ -162,56 +167,56 @@ StatusCode DumpObjects::initialize() {
     m_CLnorm_z = new float[m_maxCL];
     m_CLlocal_cov = new std::vector<std::vector<double>>;
 
-    m_CLevent_number = new int[m_maxCL];
-    m_CLbarcode = new int[m_maxCL];
-    m_CLpx = new float[m_maxCL];
-    m_CLpy = new float[m_maxCL];
-    m_CLpz = new float[m_maxCL];
-    m_CLpt = new float[m_maxCL];
-    m_CLeta = new float[m_maxCL];
-    m_CLvx = new float[m_maxCL];
-    m_CLvy = new float[m_maxCL];
-    m_CLvz = new float[m_maxCL];
-    m_CLradius = new float[m_maxCL];
-    m_CLstatus = new float[m_maxCL];
-    m_CLcharge = new float[m_maxCL];
-    m_CLpdg_id = new int[m_maxCL];
-    m_CLpassed = new int[m_maxCL];
-    m_CLvProdNin = new int[m_maxCL];
-    m_CLvProdNout = new int[m_maxCL];
-    m_CLvProdStatus = new int[m_maxCL];
-    m_CLvProdBarcode = new int[m_maxCL];
-    m_CLvParentID = new std::vector<std::vector<int>>;
-    m_CLvParentBarcode = new std::vector<std::vector<int>>;
+    m_Part_event_number = new int[m_maxPart];
+    m_Part_barcode = new int[m_maxPart];
+    m_Part_px = new float[m_maxPart];
+    m_Part_py = new float[m_maxPart];
+    m_Part_pz = new float[m_maxPart];
+    m_Part_pt = new float[m_maxPart];
+    m_Part_eta = new float[m_maxPart];
+    m_Part_vx = new float[m_maxPart];
+    m_Part_vy = new float[m_maxPart];
+    m_Part_vz = new float[m_maxPart];
+    m_Part_radius = new float[m_maxPart];
+    m_Part_status = new float[m_maxPart];
+    m_Part_charge = new float[m_maxPart];
+    m_Part_pdg_id = new int[m_maxPart];
+    m_Part_passed = new int[m_maxPart];
+    m_Part_vProdNin = new int[m_maxPart];
+    m_Part_vProdNout = new int[m_maxPart];
+    m_Part_vProdStatus = new int[m_maxPart];
+    m_Part_vProdBarcode = new int[m_maxPart];
+    m_Part_vParentID = new std::vector<std::vector<int>>;
+    m_Part_vParentBarcode = new std::vector<std::vector<int>>;
 
-    m_SPindex = new int[m_maxCL];
-    m_SPx = new double[m_maxCL];
-    m_SPy = new double[m_maxCL];
-    m_SPz = new double[m_maxCL];
-    m_SPCL1_index = new int[m_maxCL];
-    m_SPCL2_index = new int[m_maxCL];
+    m_SPindex = new int[m_maxSP];
+    m_SPx = new double[m_maxSP];
+    m_SPy = new double[m_maxSP];
+    m_SPz = new double[m_maxSP];
+    m_SPCL1_index = new int[m_maxSP];
+    m_SPCL2_index = new int[m_maxSP];
 
-    m_TRKindex = new int[m_maxCL];
-    m_TRKtrack_fitter = new int[m_maxCL];
-    m_TRKparticle_hypothesis = new int[m_maxCL];
+    m_TRKindex = new int[m_maxTRK];
+    m_TRKtrack_fitter = new int[m_maxTRK];
+    m_TRKparticle_hypothesis = new int[m_maxTRK];
     m_TRKproperties = new std::vector<std::vector<int>>;
     m_TRKpattern = new std::vector<std::vector<int>>;
-    m_TRKndof = new int[m_maxCL];
-    m_TRKmot = new int[m_maxCL];
-    m_TRKoot = new int[m_maxCL];
-    m_TRKchiSq = new float[m_maxCL];
+    m_TRKndof = new int[m_maxTRK];
+    m_TRKmot = new int[m_maxTRK];
+    m_TRKoot = new int[m_maxTRK];
+    m_TRKchiSq = new float[m_maxTRK];
     m_TRKmeasurementsOnTrack_pixcl_sctcl_index = new std::vector<std::vector<int>>;
     m_TRKoutliersOnTrack_pixcl_sctcl_index = new std::vector<std:: vector<int>>;
-    m_TRKcharge = new int [m_maxCL];
+    m_TRKcharge = new int [m_maxTRK];
     m_TRKperigee_position = new std::vector<std::vector<double>>;
     m_TRKperigee_momentum = new std::vector<std::vector<double>>;
-    m_TTCindex = new int[m_maxCL];
-    m_TTCevent_index = new int[m_maxCL];
-    m_TTCparticle_link = new int[m_maxCL];
-    m_TTCprobability = new float[m_maxCL];
+    m_TTCindex = new int[m_maxTRK];
+    m_TTCevent_index = new int[m_maxTRK];
+    m_TTCparticle_link = new int[m_maxTRK];
+    m_TTCprobability = new float[m_maxTRK];
 
-    m_DTTindex = new int[m_maxCL];
-    m_DTTsize = new int[m_maxCL];
+    m_DTTindex = new int[m_maxDTT];
+    m_DTTsize = new int[m_maxDTT];
     m_DTTtrajectory_eventindex = new std::vector<std::vector<int>>;
     m_DTTtrajectory_barcode = new std::vector<std::vector<int>>;
     m_DTTstTruth_subDetType = new std::vector<std::vector<int>>;
@@ -239,11 +244,6 @@ StatusCode DumpObjects::initialize() {
     m_nt->Branch("CLphis", &m_CLphis);
     m_nt->Branch("CLetas", &m_CLetas);
     m_nt->Branch("CLtots", &m_CLtots);
-    m_nt->Branch("CLparticleLink_barcode", &m_CLparticleLink_barcode);
-    m_nt->Branch("CLbarcodesLinked", &m_CLbarcodesLinked);
-    m_nt->Branch("CLphis", &m_CLphis);
-    m_nt->Branch("CLetas", &m_CLetas);
-    m_nt->Branch("CLtots", &m_CLtots);
     m_nt->Branch("CLloc_direction1", m_CLloc_direction1,"CLloc_direction1[nCL]/D");
     m_nt->Branch("CLloc_direction2", m_CLloc_direction2,"CLloc_direction2[nCL]/D");
     m_nt->Branch("CLloc_direction3", m_CLloc_direction3,"CLloc_direction3[nCL]/D");
@@ -264,27 +264,27 @@ StatusCode DumpObjects::initialize() {
     m_nt->Branch("CLlocal_cov", &m_CLlocal_cov);
 
     m_nt->Branch("nPartEVT",&m_nPartEVT,"nPartEVT/I");
-    m_nt->Branch("CLevent_number",m_CLevent_number,"CLevent_number[nPartEVT]/I");
-    m_nt->Branch("CLbarcode",m_CLbarcode,"CLbarcode[nPartEVT]/I");
-    m_nt->Branch("CLpx",m_CLpx,"CLpx[nPartEVT]/F");
-    m_nt->Branch("CLpy",m_CLpy,"CLpy[nPartEVT]/F");
-    m_nt->Branch("CLpz",m_CLpz,"CLpz[nPartEVT]/F");
-    m_nt->Branch("CLpt",m_CLpt,"CLpt[nPartEVT]/F");
-    m_nt->Branch("CLeta",m_CLeta,"CLeta[nPartEVT]/F");
-    m_nt->Branch("CLvx",m_CLvx,"CLvx[nPartEVT]/F");
-    m_nt->Branch("CLvy",m_CLvy,"CLvy[nPartEVT]/F");
-    m_nt->Branch("CLvz",m_CLvz,"CLvz[nPartEVT]/F");
-    m_nt->Branch("CLradius",m_CLradius,"CLradius[nPartEVT]/F");
-    m_nt->Branch("CLstatus",m_CLstatus,"CLstatus[nPartEVT]/F");
-    m_nt->Branch("CLcharge",m_CLcharge,"CLcharge[nPartEVT]/F");
-    m_nt->Branch("CLpdg_id",m_CLpdg_id,"CLpdg_id[nPartEVT]/I");
-    m_nt->Branch("CLpassed",m_CLpassed,"CLpassed[nPartEVT]/I");
-    m_nt->Branch("CLvProdNin",m_CLvProdNin,"CLvProdNin[nPartEVT]/I");
-    m_nt->Branch("CLvProdNout",m_CLvProdNout,"CLvProdNout[nPartEVT]/I");
-    m_nt->Branch("CLvProdStatus",m_CLvProdStatus,"CLvProdStatus[nPartEVT]/I");
-    m_nt->Branch("CLvProdBarcode", m_CLvProdBarcode,"CLvProdBarcode[nPartEVT]/I");
-    m_nt->Branch("CLvParentID", &m_CLvParentID);
-    m_nt->Branch("CLvParentBarcode", &m_CLvParentBarcode);
+    m_nt->Branch("Part_event_number",m_Part_event_number,"Part_event_number[nPartEVT]/I");
+    m_nt->Branch("Part_barcode",m_Part_barcode,"Part_barcode[nPartEVT]/I");
+    m_nt->Branch("Part_px",m_Part_px,"Part_px[nPartEVT]/F");
+    m_nt->Branch("Part_py",m_Part_py,"Part_py[nPartEVT]/F");
+    m_nt->Branch("Part_pz",m_Part_pz,"Part_pz[nPartEVT]/F");
+    m_nt->Branch("Part_pt",m_Part_pt,"Part_pt[nPartEVT]/F");
+    m_nt->Branch("Part_eta",m_Part_eta,"Part_eta[nPartEVT]/F");
+    m_nt->Branch("Part_vx",m_Part_vx,"Part_vx[nPartEVT]/F");
+    m_nt->Branch("Part_vy",m_Part_vy,"Part_vy[nPartEVT]/F");
+    m_nt->Branch("Part_vz",m_Part_vz,"PArt_vz[nPartEVT]/F");
+    m_nt->Branch("Part_radius",m_Part_radius,"Part_radius[nPartEVT]/F");
+    m_nt->Branch("Part_status",m_Part_status,"Part_status[nPartEVT]/F");
+    m_nt->Branch("Part_charge",m_Part_charge,"Part_charge[nPartEVT]/F");
+    m_nt->Branch("Part_pdg_id",m_Part_pdg_id,"Part_pdg_id[nPartEVT]/I");
+    m_nt->Branch("Part_passed",m_Part_passed,"Part_passed[nPartEVT]/I");
+    m_nt->Branch("Part_vProdNin",m_Part_vProdNin,"Part_vProdNin[nPartEVT]/I");
+    m_nt->Branch("Part_vProdNout",m_Part_vProdNout,"Part_vProdNout[nPartEVT]/I");
+    m_nt->Branch("Part_vProdStatus",m_Part_vProdStatus,"Part_vProdStatus[nPartEVT]/I");
+    m_nt->Branch("Part_vProdBarcode", m_Part_vProdBarcode,"Part_vProdBarcode[nPartEVT]/I");
+    m_nt->Branch("Part_vParentID", &m_Part_vParentID);
+    m_nt->Branch("Part_vParentBarcode", &m_Part_vParentBarcode);
 
     m_nt->Branch("nSP",&m_nSP,"nSP/I");
     m_nt->Branch("SPindex",m_SPindex,"SPindex[nSP]/I");
@@ -399,8 +399,8 @@ StatusCode DumpObjects::execute() {
   m_nPartEVT=0;
 
   if (m_rootFile) {
-    (*m_CLvParentID).clear();
-    (*m_CLvParentBarcode).clear();
+    (*m_Part_vParentID).clear();
+    (*m_Part_vParentBarcode).clear();
   }
 
   for (unsigned int cntr = 0; cntr < mcCollptr->size(); ++cntr) {
@@ -432,31 +432,31 @@ StatusCode DumpObjects::execute() {
       	  *m_outfile<<"#"<<std::endl;
         }
         if (m_rootFile) {
-  	      m_CLevent_number[m_nPartEVT]=genEvt->event_number();
-	        m_CLbarcode[m_nPartEVT]=(*p)->barcode();
-	        m_CLpx[m_nPartEVT]=px;
-	        m_CLpy[m_nPartEVT]=py;
-	        m_CLpz[m_nPartEVT]=pz;
-          m_CLpt[m_nPartEVT]=pt;
-          m_CLeta[m_nPartEVT]=eta;
-          m_CLvx[m_nPartEVT] = vx;
-          m_CLvy[m_nPartEVT] = vy;
-          m_CLvz[m_nPartEVT] = vz;
-          m_CLradius[m_nPartEVT] = radius;
-          m_CLstatus[m_nPartEVT] = status;
-          m_CLcharge[m_nPartEVT] = charge;
-          m_CLpdg_id[m_nPartEVT] = (*p)->pdg_id();
-          m_CLpassed[m_nPartEVT] = (passed ? true : false);
-          m_CLvProdNin[m_nPartEVT] = vProdNin;
-          m_CLvProdNout[m_nPartEVT] = vProdNout;
-          m_CLvProdStatus[m_nPartEVT] = vProdStatus;
-          m_CLvProdBarcode[m_nPartEVT] = vProdBarcode;
-          (*m_CLvParentID).push_back(vParentID);
-          (*m_CLvParentBarcode).push_back(vParentBarcode);
+  	      m_Part_event_number[m_nPartEVT]=genEvt->event_number();
+	        m_Part_barcode[m_nPartEVT]=(*p)->barcode();
+	        m_Part_px[m_nPartEVT]=px;
+	        m_Part_py[m_nPartEVT]=py;
+	        m_Part_pz[m_nPartEVT]=pz;
+          m_Part_pt[m_nPartEVT]=pt;
+          m_Part_eta[m_nPartEVT]=eta;
+          m_Part_vx[m_nPartEVT] = vx;
+          m_Part_vy[m_nPartEVT] = vy;
+          m_Part_vz[m_nPartEVT] = vz;
+          m_Part_radius[m_nPartEVT] = radius;
+          m_Part_status[m_nPartEVT] = status;
+          m_Part_charge[m_nPartEVT] = charge;
+          m_Part_pdg_id[m_nPartEVT] = (*p)->pdg_id();
+          m_Part_passed[m_nPartEVT] = (passed ? true : false);
+          m_Part_vProdNin[m_nPartEVT] = vProdNin;
+          m_Part_vProdNout[m_nPartEVT] = vProdNout;
+          m_Part_vProdStatus[m_nPartEVT] = vProdStatus;
+          m_Part_vProdBarcode[m_nPartEVT] = vProdBarcode;
+          (*m_Part_vParentID).push_back(vParentID);
+          (*m_Part_vParentBarcode).push_back(vParentBarcode);
         }
 
     	  m_nPartEVT++;
-    	  if (m_nPartEVT==m_maxCL) {
+    	  if (m_nPartEVT==m_maxPart) {
           std::cout<<"======================================="<<std::endl;
          std::cout<<"DUMP : hit max number of particle events"<<std::endl;
           std::cout<<"======================================="<<std::endl;
@@ -1021,7 +1021,7 @@ StatusCode DumpObjects::execute() {
           }
 
           m_nSP++;
-      	  if (m_nSP==m_maxCL) {
+      	  if (m_nSP==m_maxSP) {
             std::cout<<"====================================="<<std::endl;
 	          std::cout<<"DUMP : hit max number of space points"<<std::endl;
             std::cout<<"====================================="<<std::endl;
@@ -1061,7 +1061,7 @@ StatusCode DumpObjects::execute() {
           }
 
           m_nSP++;
-      	  if (m_nSP==m_maxCL) {
+      	  if (m_nSP==m_maxSP) {
             std::cout<<"====================================="<<std::endl;
 	          std::cout<<"DUMP : hit max number of space points"<<std::endl;
             std::cout<<"====================================="<<std::endl;
@@ -1300,7 +1300,7 @@ StatusCode DumpObjects::execute() {
 
       // index
       m_nTRK++;
-  	  if (m_nTRK==m_maxCL) {
+  	  if (m_nTRK==m_maxTRK) {
         std::cout<<"====================================="<<std::endl;
         std::cout<<"DUMP : hit max number of track events"<<std::endl;
         std::cout<<"====================================="<<std::endl;
@@ -1576,23 +1576,23 @@ StatusCode DumpObjects::finalize() {
     delete[] m_CLnorm_z;
     delete m_CLlocal_cov;
 
-    delete[] m_CLevent_number;
-    delete[] m_CLbarcode;
-    delete[] m_CLpx;
-    delete[] m_CLpy;
-    delete[] m_CLpz;
-    delete[] m_CLpt;
-    delete[] m_CLeta;
-    delete[] m_CLvx;
-    delete[] m_CLvy;
-    delete[] m_CLvz;
-    delete[] m_CLradius;
-    delete[] m_CLstatus;
-    delete[] m_CLcharge;
-    delete[] m_CLpdg_id;
-    delete[] m_CLpassed;
-//  if ((*m_CLvParentID).size()) delete[] m_CLvParentID;
-//  if ((*m_CLvParentBarcode).size()) delete[] m_CLvParentBarcode;
+    delete[] m_Part_event_number;
+    delete[] m_Part_barcode;
+    delete[] m_Part_px;
+    delete[] m_Part_py;
+    delete[] m_Part_pz;
+    delete[] m_Part_pt;
+    delete[] m_Part_eta;
+    delete[] m_Part_vx;
+    delete[] m_Part_vy;
+    delete[] m_Part_vz;
+    delete[] m_Part_radius;
+    delete[] m_Part_status;
+    delete[] m_Part_charge;
+    delete[] m_Part_pdg_id;
+    delete[] m_Part_passed;
+//  if ((*m_Part_vParentID).size()) delete[] m_Part_vParentID;
+//  if ((*m_Part_vParentBarcode).size()) delete[] m_Part_vParentBarcode;
 
     delete[] m_SPindex;
     delete[] m_SPx;
