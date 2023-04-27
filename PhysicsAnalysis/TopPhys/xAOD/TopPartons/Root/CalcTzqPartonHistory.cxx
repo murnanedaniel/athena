@@ -63,11 +63,11 @@ namespace top {
 		
         const xAOD::TruthParticle* ZChildren = particle->child(k);
         if (ZChildren->pdgId() > 0) {
-           tZ.Zdecay1_p4 = findAfterGamma(ZChildren)->p4();
+           tZ.Zdecay1_p4 = ZChildren->p4();
            tZ.Zdecay1_pdgId = ZChildren->pdgId();
            tZ.Zdecay1_status = ZChildren->status();
         } else {
-		   tZ.Zdecay2_p4 = findAfterGamma(ZChildren)->p4();
+           tZ.Zdecay2_p4 = ZChildren->p4();
            tZ.Zdecay2_pdgId = ZChildren->pdgId();
            tZ.Zdecay1_status = ZChildren->status();
         }
