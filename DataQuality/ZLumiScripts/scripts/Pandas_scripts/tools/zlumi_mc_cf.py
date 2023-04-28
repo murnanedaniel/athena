@@ -9,7 +9,6 @@ def correction(mu, runmode, campaign):
         elif campaign == "mc16e":
             return 0.90238 - 8.75767e-05*mu - 5.79201e-06*mu*mu
         elif campaign == "mc21":
-            #return 0.904817 - 0.000800863*mu    # stepmode 3
             return 0.889336 - 0.000191184*mu - 4.11419e-06*mu*mu
     elif runmode == "Zmumu":
         if campaign == "mc16a":
@@ -19,6 +18,5 @@ def correction(mu, runmode, campaign):
         elif campaign == "mc16e":
             return 9.90808e-01 - 9.99749e-05*mu - 1.40241e-06*mu*mu
         elif campaign == "mc21":
-            #return 0.992002 - 0.000236199*mu    # stepmode 3
             return 0.987 - 6.11277e-05*mu - 2.59671e-06*mu*mu 
 

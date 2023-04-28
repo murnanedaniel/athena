@@ -41,7 +41,6 @@ campaign = args.campaign
 
 BINWIDTH      = 10
 ZPURITYFACTOR = 0.9935
-ZATIMESC = 0.29632
 if args.campaign == "mc21":
     ZXSEC = 2.0675
 else:
