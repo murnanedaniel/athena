@@ -9,7 +9,7 @@
 
 void ATLASLabel(Double_t x,Double_t y,const char* text,Color_t color) 
 {
-  TLatex l;
+  TLatex l; //l.SetTextAlign(12); l.SetTextSize(tsize); 
   l.SetNDC();
   l.SetTextFont(72);
   l.SetTextColor(color);
@@ -23,13 +23,14 @@ void ATLASLabel(Double_t x,Double_t y,const char* text,Color_t color)
     p.SetTextFont(42);
     p.SetTextColor(color);
     p.DrawLatex(x+delx,y,text);
+    //    p.DrawLatex(x,y,"#sqrt{s}=900GeV");
   }
 }
 
 
 void ATLASLabelOld(Double_t x,Double_t y,bool Preliminary,Color_t color) 
 {
-  TLatex l; 
+  TLatex l; //l.SetTextAlign(12); l.SetTextSize(tsize); 
   l.SetNDC();
   l.SetTextFont(72);
   l.SetTextColor(color);
