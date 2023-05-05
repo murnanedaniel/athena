@@ -37,7 +37,7 @@ def main():
     # Drop LBs with no Z-counting information
     dfz = dfz.drop(dfz[(dfz.ZeeLumi == 0) | (dfz.ZmumuLumi == 0)].index)
 
-    #Calculate mean per LB against ATLAS
+    # Calculate mean per LB against ATLAS
     for channel in ['Zee', 'Zmumu']:
         dfz = dfz.drop(dfz[(dfz['LBLive']<10) | (dfz['PassGRL']==0)].index)
         ratio = array('d', dfz[channel+'Lumi']/dfz['OffLumi'])
