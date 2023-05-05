@@ -91,7 +91,6 @@ def main():
         channel_comparison(years)
     else: 
         zcounting_vs_atlas(channel, years)
-    #CountZ(years)
 
 def channel_comparison(years):
     dict_zlumi = {}
@@ -99,12 +98,8 @@ def channel_comparison(years):
         for channel in ["Zee", "Zmumu"]: 
             maindir  = indir + "data"+year+"_13p6TeV/"
             grl = pt.get_grl(year)
-            #filelist = os.listdir("/eos/atlas/atlascerngroupdisk/perf-lumi/Zcounting/Run3/CSVOutputs/HighMu/data22_13p6TeV/")
-            #filelist = os.listdir("/eos/user/s/salibocu/test_out/stepmode3_eonly/data22_13p6TeV/")
+
             for run in grl: 
-            #for run in filelist:
-                #run = run.replace('.csv', '')
-                #run = run.replace('run_', '')
 
                 dfz = pd.read_csv(maindir + "run_" + run + ".csv")
                 dfz_small = dfz
@@ -160,9 +155,6 @@ def channel_comparison(years):
     for i in vec_ratio:
         if i < ymin or i > ymax:
             print(i)
-
-    #for i in range(len(vec_ratio)):
-        #print("ratio and error", vec_ratio[i], vec_ratio_err[i])
 
     tg = R.TGraphErrors(len(vec_times), vec_times, vec_ratio, R.nullptr, vec_ratio_err)
     leg = R.TLegend(0.645, 0.72, 0.805, 0.91)
@@ -222,10 +214,7 @@ def zcounting_vs_atlas(channel, years):
     for year in years:
         maindir  = indir + "data"+year+"_13p6TeV/"
         grl = pt.get_grl(year)
-        #filelist = os.listdir("/eos/atlas/atlascerngroupdisk/perf-lumi/Zcounting/Run3/CSVOutputs/HighMu/data22_13p6TeV/")
-        #filelist = os.listdir("/eos/user/s/salibocu/test_out/stepmode3_eonly/data22_13p6TeV/")
         for run in grl:
-        #for run in filelist:
             run = run.replace('.csv', '')
             run = run.replace('run_', '')
 
