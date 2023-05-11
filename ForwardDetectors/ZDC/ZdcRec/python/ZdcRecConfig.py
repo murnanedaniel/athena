@@ -44,7 +44,7 @@ def ZdcAnalysisToolCfg(flags, run, config="PbPb2015", DoCalib=False, DoTimeCalib
 
 def ZdcRecRun2Cfg(flags):        
     acc = ComponentAccumulator()
-    config = None
+    config = "Default"
     doCalib = False
     doTimeCalib = False
     doTrigEff = False
@@ -82,7 +82,7 @@ def ZdcRecRun2Cfg(flags):
 def ZdcRecRun3Cfg(flags):
 
     acc = ComponentAccumulator()
-    config = None
+    config = "Default"
     doCalib = False
     doTimeCalib = False
     doTrigEff = False
