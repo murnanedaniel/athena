@@ -535,14 +535,12 @@ def EGammaCommonCfg(ConfigFlags):
     # ==================================================
     # Truth Related tools
     if ConfigFlags.Input.isMC:
-        simBarcodeOffset = ConfigFlags.Sim.SimBarcodeOffset
 
         # Decorate Electron with bkg electron type/origin
         from MCTruthClassifier.MCTruthClassifierConfig import MCTruthClassifierCfg
         BkgElectronMCTruthClassifier = acc.popToolsAndMerge(MCTruthClassifierCfg(
             ConfigFlags,
             name="BkgElectronMCTruthClassifier",
-            barcodeG4Shift = simBarcodeOffset+1,
             ParticleCaloExtensionTool = ""))
         acc.addPublicTool(BkgElectronMCTruthClassifier)
 
@@ -550,8 +548,7 @@ def EGammaCommonCfg(ConfigFlags):
         BkgElectronClassificationTool = acc.getPrimaryAndMerge(BkgElectronClassificationCfg(
             ConfigFlags,
             name="BkgElectronClassificationTool",
-            MCTruthClassifierTool=BkgElectronMCTruthClassifier,
-            barcodeCut=simBarcodeOffset))
+            MCTruthClassifierTool=BkgElectronMCTruthClassifier))
         EGAugmentationTools.append(BkgElectronClassificationTool)
 
         # Decorate egammaTruthParticles with truth-particle-level etcone20,30,40
